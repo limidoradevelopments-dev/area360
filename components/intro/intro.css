@@ -1,0 +1,44 @@
+/* ─── Intro (the example component) ───
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --intro-unit: 1rem;
+
+  --text-intro-display: calc(var(--intro-unit) * 5.75);
+  /* 92px */
+  --leading-intro-display: 0.9;
+  --tracking-intro-display: -0.035em;
+
+  --text-intro-body: calc(var(--intro-unit) * 1.125);
+  /* 18px */
+  --leading-intro-body: 1.5;
+
+  --space-intro-block: calc(var(--intro-unit) * 7.5);
+  /* 120px */
+  --space-intro-row: calc(var(--intro-unit) * 1.5);
+  /* 24px */
+
+  --size-intro-card-pad: calc(var(--intro-unit) * 1.75);
+  /* 28px */
+  --radius-intro-card: calc(var(--intro-unit) * 0.75);
+  /* 12px */
+  --text-intro-stat: calc(var(--intro-unit) * 3.5);
+  /* 56px */
+}
+
+/* Tablet and small laptop. */
+@media (max-width: 1279.98px) {
+  :root {
+    --intro-unit: 0.8rem;
+  }
+}
+
+/* Phone. */
+@media (max-width: 767.98px) {
+  :root {
+    --intro-unit: 0.62rem;
+    /* Body copy must not shrink with the unit on a phone — small body type is
+     * just small type. Pin it back to an absolute rem. */
+    --text-intro-body: 1rem;
+  }
+}

@@ -1,0 +1,50 @@
+/* ─── Global resets & the root scaler ─── */
+
+html {
+  /* THE ROOT SCALER — the ONLY fluid scaling mechanism in the system.
+   *
+   * The design origin is the 1440 artboard, where 1rem = 16px, so a token
+   * written as 1.035rem renders at 16.56px on the artboard it was drawn on.
+   * The root holds 16px up to 95rem (1520px), then grows 0.012px per px of
+   * viewport: 1920 → ~20.8px, 2560 → ~28.5px. That slope is what makes a 5K
+   * display read as high-end rather than stretched. Every token is a rem
+   * multiple of this, so the whole site grows as one piece and there is
+   * exactly one curve to reason about.
+   *
+   * FLOOR IS 1rem, NOT px. At the root, rem resolves against the browser's
+   * own font size, so a visitor who set theirs to 20px keeps it (WCAG 1.4.4).
+   * A px floor silently discards that preference.
+   *
+   * FLOOR IS NOT LOWER THAN 1rem. Below 1rem every rem shrinks on most laptops
+   * and technical labels fall under 10px. Scaling DOWN is the job of each
+   * feature's step-down blocks, per component unit.
+   *
+   * CEILING 3.75rem caps the root at 60px (~5100px viewport); without it an
+   * 8K display computes a 90px root.
+   *
+   * No clamp() anywhere else in the system, except when a size must answer
+   * to viewport HEIGHT, which this curve knows nothing about. */
+  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem);
+
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-switzer), system-ui, sans-serif;
+  /* 450, not 400: Switzer's variable axis reads a touch thin at 400 on
+   * light ground. The layout declares the 100–900 range so this lands. */
+  font-weight: 450;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

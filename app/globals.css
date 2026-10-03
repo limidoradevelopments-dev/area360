@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * THE STYLESHEET ENTRY
+ *
+ * One Tailwind entry and one cascade. This file only imports, in cascade
+ * order; every rule lives in a partial:
+ *
+ *   styles/theme.css      @theme: the few tokens that SHOULD become utilities
+ *                         (colours, the two families, margin + gutter)
+ *   styles/tokens.css     :root tokens every feature shares, the one-unit
+ *                         rule, and the two step-down breakpoints
+ *   styles/base.css       the root scaler, resets, body
+ *   styles/utilities.css  noise, glass, the reveal-mask states
+ *
+ *   components/<feature>/<feature>.css
+ *                         each feature's own unit, tokens, step-downs and
+ *                         component rules, next to its code, in page order
+ *
+ * A NEW FEATURE adds its stylesheet to the list below and nothing else.
+ * Read AGENTS.md before adding to any of these files.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+
+@import "./styles/theme.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/utilities.css";
+
+/* Features, in page order. */
+@import "../components/hero/hero.css";
+@import "../components/intro/intro.css";
+
+/* The docs spell utilities in examples; keep the scanner out of them. */
+@source not "../AGENTS.md";
+@source not "../README.md";

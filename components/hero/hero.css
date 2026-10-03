@@ -1,0 +1,114 @@
+/* ─── Hero · Still Water ───
+ *
+ * A stone in still water, in fog, seen from the shore. The scene is
+ * WebGL (components/hero/stage); this file holds everything CSS decides for
+ * it: its tokens (which the engine reads back at mount), its step-downs, and
+ * the static first paint that is also the no-WebGL fallback.
+ *
+ * MEASURED, NOT PICKED. Every grey is fitted to the user's reference frames
+ * (B&W; the first, 2000×1215, set the set's tones; the second, 942×567, the
+ * camera and the water): their banded means and percentiles. All of it is
+ * pure neutral — red, green and blue within a point of each other —
+ * because the moment the fog leans warm or cool it reads as a filter
+ * instead of as air.
+ *
+ * The engine converts these sRGB tokens to LINEAR light before any optics
+ * (fog is Beer–Lambert, reflection is Fresnel: both are linear in radiance),
+ * and the film grade (stage/optics.ts) takes the result back to display. */
+:root {
+  --hero-unit: 1rem;
+
+  /* ── The air ──
+   * Fog in full light (the backlit glow over the stone) and fog in its own
+   * shadow. Every fog sheet, and the sky, is a mix of these two by how much
+   * light reaches it through the fog above. */
+  --color-hero-lit: #FFFFFF;
+  --color-hero-shade: #B4B4B3;
+
+  /* ── The set ──
+   * Concrete, as a reflectance: what the stone returns of the light that
+   * reaches it. Weathered board-formed concrete is ~30%. */
+  --color-hero-stone: #9C9B98;
+  /* The lake itself, under the reflection: dark, deep water. */
+  --color-hero-water: #0C0D0D;
+
+  /* ── The static first paint ──
+   * The rendered frame's own light, measured: the mean of each tenth of its
+   * height (at 1440×810, grain off), placed at the middle of that tenth. The
+   * canvas fades in over an image of the same light, so nothing jumps.
+   * Re-measure if the grade changes (the engine's dev handle:
+   * __kaviStage.measure(20), averaged in pairs). Re-measured 2026-10-02 for
+   * the afternoon paper (stage/optics.ts FILM.paper), six drifts averaged. */
+  --color-hero-still-05: #CBCBCB;
+  --color-hero-still-15: #C9C9C9;
+  --color-hero-still-25: #BFBFBF;
+  --color-hero-still-35: #A4A4A4;
+  --color-hero-still-45: #858585;
+  --color-hero-still-55: #6F6F6F;
+  --color-hero-still-65: #595959;
+  --color-hero-still-75: #424242;
+  --color-hero-still-85: #313131;
+  --color-hero-still-95: #252525;
+
+  /* Registered below as <length>, so getComputedStyle hands the engine a
+   * resolved px value rather than an unevaluated calc(). */
+  --size-hero-cell: calc(var(--hero-unit) * 0.25);
+  /* 4px: one cell of the simulated air */
+}
+
+/* The one hero token the engine measures. A registered <length> computes to
+ * absolute px; an unregistered custom property would come back as the raw
+ * calc() text. */
+@property --size-hero-cell {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 4px;
+}
+
+/* Tablet and small laptop. The air steps down less than type does: its
+ * unit sets the size of a swirl, and a swirl answers a finger or a cursor,
+ * which do not shrink with the screen. */
+@media (max-width: 1279.98px) {
+  :root {
+    --hero-unit: 0.9rem;
+  }
+}
+
+/* Phone. */
+@media (max-width: 767.98px) {
+  :root {
+    --hero-unit: 0.85rem;
+  }
+}
+
+/* The static paint: the rendered frame's light, band by band. What shows
+ * before the engine's first frame, and all a browser without WebGL2 ever
+ * shows. */
+[data-hero-ground] {
+  background: linear-gradient(to bottom,
+      var(--color-hero-still-05) 5%,
+      var(--color-hero-still-15) 15%,
+      var(--color-hero-still-25) 25%,
+      var(--color-hero-still-35) 35%,
+      var(--color-hero-still-45) 45%,
+      var(--color-hero-still-55) 55%,
+      var(--color-hero-still-65) 65%,
+      var(--color-hero-still-75) 75%,
+      var(--color-hero-still-85) 85%,
+      var(--color-hero-still-95) 95%);
+  /* A long press on a phone must stay a press: no callout, no selection. */
+  -webkit-touch-callout: none;
+}
+
+/* PRE-ENTRANCE STATE. The canvas is invisible until its first frame exists;
+ * the section's timeline fades it in over the static paint. */
+[data-hero-stage] {
+  opacity: 0;
+}
+
+/* No scripting, no engine: the canvas would only ever be an empty layer. */
+@media (scripting: none) {
+  [data-hero-stage] {
+    display: none;
+  }
+}

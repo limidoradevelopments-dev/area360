@@ -1,0 +1,16 @@
+{
+  "plate": [
+    3666,
+    1496
+  ],
+  "depth": [
+    1833,
+    748
+  ],
+  "horizonRow": 1365.0,
+  "centerColumn": 1865.1,
+  "texelsPerTan": 4414.31,
+  "depthNear": 5.0,
+  "depthFar": 900.0,
+  "nearest": 57.7
+}

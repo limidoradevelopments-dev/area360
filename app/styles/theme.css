@@ -1,0 +1,39 @@
+/* ─── Theme tokens ───
+ *
+ * Only what a utility needs. `inline` bakes the resolved value into the
+ * generated utility, which means nothing references the VARIABLE itself at
+ * runtime, and Tailwind v4 tree-shakes a theme variable no utility references.
+ * Anything you want to read with var() from hand-written CSS or inline styles
+ * must ALSO be declared in :root (tokens.css restates the two families). */
+@theme inline {
+  /* Colours */
+  --color-background: #FAFAF8;
+  --color-surface: #F4F4F4;
+  --color-foreground: #000000;
+  --color-ink: #1A1A1A;
+  --color-hairline: #E5E5E5;
+  --color-muted: rgba(0, 0, 0, 0.55);
+
+  /* Typography — mapped to the variables next/font injects on <html>.
+   * Display voice (headlines, big numbers) and interface voice (UI, body,
+   * technical labels). Rename the token when the family behind it changes;
+   * a utility named after a face it no longer renders is a class that lies. */
+  --font-cabinet: var(--font-cabinet-grotesk);
+  --font-switzer: var(--font-switzer-variable);
+}
+
+/* Grid & spacing — a SEPARATE, non-inline @theme block, on purpose.
+ *
+ * The ONLY two shared spacing tokens: every section's outer margin and its
+ * column gutter. 30px / 20px at the 1440 origin, in rem so they ride the root
+ * scaler. Generates the margin and gutter spacing utilities.
+ *
+ * NOT INLINE, because the phone block (tokens.css) overrides the margin. An
+ * inline token is baked into the utility as a literal, so a later :root
+ * override never reaches it — the padding silently stays 30px on a phone.
+ * Non-inline, the utility reads var() and the override lands. Any theme token
+ * you intend to override in a media block belongs in this block. */
+@theme {
+  --spacing-margin: 1.875rem;
+  --spacing-gutter: 1.25rem;
+}

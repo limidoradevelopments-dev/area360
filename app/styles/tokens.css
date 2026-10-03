@@ -1,0 +1,79 @@
+/* ─── Shared tokens ───
+ *
+ * Tokens every feature may use. A feature's OWN tokens live in its own
+ * stylesheet next to its code (components/<feature>/<feature>.css), with its
+ * unit and its two step-downs, so one file holds everything that sizes it.
+ *
+ * Declared outside @theme on purpose: plain :root is always emitted, and
+ * these are consumed through var() in inline styles and arbitrary values,
+ * which the class scanner cannot see.
+ *
+ * THE ONE-UNIT RULE (for feature stylesheets). Each component gets ONE unit
+ * and derives every measurement from it with calc(). Authoring convention:
+ * the multiplier is the Figma pixel value divided by 16, so at full scale the
+ * component is dimensionally identical to the artboard and the stylesheet can
+ * be read against the design file without arithmetic. Leave the px value as
+ * a trailing comment. Retune a component's scale by changing its unit and
+ * nothing else.
+ *
+ * THE TWO STEPS DOWN. The root scaler (base.css) only scales UP: it is
+ * floored at 1rem, so from 1440 down to a phone the root is a constant 16px
+ * and every token holds its 1440 size. That is right for margins, nav,
+ * hairlines and body type, and wrong for large display type and dense
+ * components, which must come down. So the UNITS, and only the units, step
+ * down twice, at exactly these two breakpoints and no private ones:
+ *
+ *   max-width 1279.98px   tablet and small laptop
+ *   max-width 767.98px    phone
+ *
+ * They match the 1280 band the components switch spans on and Tailwind's md
+ * (768). Each feature stylesheet repeats the two blocks for its own unit.
+ * Calibrate at the CROWDED end of each band: too small never breaks a layout,
+ * too large does. */
+:root {
+  /* The families, restated. The @theme copies (theme.css) are not emitted at
+   * runtime (nothing references the variable), so a hand-written rule using
+   * var(--font-cabinet) would resolve to nothing without these lines. */
+  --font-cabinet: var(--font-cabinet-grotesk);
+  --font-switzer: var(--font-switzer-variable);
+
+  /* ── Structure ──
+   * Hairlines stay 1px at every viewport. A rule is a datum; one that
+   * thickens on a large display stops being a datum and becomes a divider. */
+  --size-rule: 1px;
+  --color-rule: #E5E5E5;
+
+  /* ── Shared depth ──
+   * Layered, high-blur, very low opacity. Never the stock Tailwind shadows.
+   * Consume with the typed arbitrary form: box-shadow, then var(). */
+  --shadow-float:
+    0 2.5rem 3.75rem -0.9375rem rgba(0, 0, 0, 0.05),
+    0 0.5rem 1.125rem -0.5rem rgba(20, 20, 20, 0.06);
+  --shadow-contact:
+    0 0.0625rem 0.125rem -0.0625rem rgba(20, 20, 20, 0.1);
+
+  /* ── Shared glass ── */
+  --color-glass: rgba(255, 255, 255, 0.7);
+  --color-glass-edge: rgba(255, 255, 255, 0.6);
+  --blur-glass: 1.5rem;
+
+  /* ── Technical label (the badge voice) ──
+   * Small uppercase Switzer at wide tracking. 10px is the floor; never set
+   * technical type below it. */
+  --text-label: 0.625rem;
+  /* 10px */
+  --tracking-label: 0.22em;
+
+  /* ── Shared curve ── */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Phone: the one SHARED token that steps down. The outer margin narrows so a
+ * phone's text column is not lost to air. (The token lives in the non-inline
+ * @theme block in theme.css, which is what lets this override reach the
+ * margin utilities.) */
+@media (max-width: 767.98px) {
+  :root {
+    --spacing-margin: 1rem;
+  }
+}
