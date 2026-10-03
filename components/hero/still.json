@@ -1,0 +1,67 @@
+{
+  "stills": [
+    {
+      "name": "superwide",
+      "aspect": 3.5556,
+      "min": 2.9,
+      "max": null,
+      "widths": [
+        3840,
+        2560
+      ]
+    },
+    {
+      "name": "ultra",
+      "aspect": 2.3889,
+      "min": 2.2874,
+      "max": null,
+      "widths": [
+        2580,
+        1720
+      ]
+    },
+    {
+      "name": "wide",
+      "aspect": 2.2,
+      "min": 1.95,
+      "max": null,
+      "widths": [
+        2376,
+        1584
+      ]
+    },
+    {
+      "name": "tablet",
+      "aspect": 0.75,
+      "min": 0.62,
+      "max": 0.8793,
+      "widths": [
+        1080,
+        720
+      ]
+    },
+    {
+      "name": "phone",
+      "aspect": 0.4621,
+      "min": null,
+      "max": 0.62,
+      "widths": [
+        1170,
+        828,
+        480
+      ]
+    },
+    {
+      "name": "landscape",
+      "aspect": 1.7729,
+      "min": null,
+      "max": null,
+      "widths": [
+        2553,
+        1920,
+        1280
+      ]
+    }
+  ],
+  "version": "8d28f92ea4"
+}

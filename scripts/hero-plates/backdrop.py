@@ -56,6 +56,7 @@ node_modules/.cache/hero-plates; delete it to re-run the network.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -184,6 +185,15 @@ def shoreline(img: np.ndarray) -> np.ndarray:
     line = cv2.GaussianBlur(line.reshape(1, -1), (0, 0), sigmaX=2.5).ravel()
     log(f"shoreline  symmetry trusted on {int((w > 0.5).sum())} of {W} columns")
     return line
+
+
+def plates_version() -> str:
+    """A short hash of the written images' bytes, plate then depth."""
+    h = hashlib.sha256()
+    for name in ("plate.webp", "depth.webp"):
+        with open(os.path.join(OUT_DIR, name), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()[:10]
 
 
 def land_mask(shape, line: np.ndarray) -> np.ndarray:
@@ -376,6 +386,10 @@ def main():
         "depthFar": DEPTH_FAR,
         # The nearest any land stands: a reflected ray's march starts here.
         "nearest": round(float(1.0 / inv_z[land > 0.5].max()), 1),
+        # The images' own content, in their URLs (layers.ts): the site serves
+        # them cached for a year (next.config.ts), so a rebuilt photograph
+        # must arrive under a new address or visitors keep the old one.
+        "version": plates_version(),
     }
     with open(GEOMETRY, "w") as f:
         json.dump(geometry, f, indent=2)

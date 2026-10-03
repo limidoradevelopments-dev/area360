@@ -13,9 +13,9 @@ import type { StageEngine } from "./engine";
  * and never re-renders for anything the scene does — per-frame work lives in
  * the engine, outside React.
  *
- * The engine is a dynamic import started after mount, so none of it (or its
- * shaders) sits in front of the first paint. Until its first frame exists
- * the static paint underneath IS the hero.
+ * The engine is a dynamic import, so none of it (or its shaders) sits in
+ * front of the first paint. Until its first frame exists the still
+ * underneath IS the hero.
  *
  * Pointer events are read from the whole section, not the canvas, so text
  * laid over the scene later still lets the fog feel the hand beneath it.
@@ -33,6 +33,12 @@ type Tuner = { Panel: ComponentType<{ engine: StageEngine }>; engine: StageEngin
 
 /* Resize settles before the engine re-measures: a rebuild resets the air. */
 const RESIZE_SETTLE_MS = 120;
+
+/* The engine's code is asked for as soon as this module runs — while the
+   page is still hydrating — not from the mount effect after it: the
+   download overlaps hydration instead of following it. Only in the
+   browser; the server never needs it. */
+const engineModule = typeof window === "undefined" ? null : import("./engine");
 
 export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: StageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,7 +61,7 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
     const syncVisibility = () =>
       engine?.setVisible(onScreen && document.visibilityState === "visible");
 
-    import("./engine").then(({ createStageEngine }) => {
+    (engineModule ?? import("./engine")).then(({ createStageEngine }) => {
       if (cancelled) return;
       engine = createStageEngine({
         canvas,
@@ -83,6 +89,10 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
           if (!cancelled) setTuner({ Panel, engine: live });
         });
       }
+    }).catch((error: unknown) => {
+      /* The engine's code never arrived: the still stays the hero. */
+      console.warn(error);
+      if (!cancelled) unavailable();
     });
 
     /* The tuning panel floats over the scene; touching it must not. */

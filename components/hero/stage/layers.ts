@@ -49,8 +49,11 @@ export const SHEET_EDGES = [DEPTH.subject, DEPTH.nearShore, DEPTH.farShore, DEPT
 const plate = geometry.plate as [number, number];
 
 export const BACKDROP = {
-  plateUrl: "/hero/backdrop/plate.webp",
-  depthUrl: "/hero/backdrop/depth.webp",
+  /* Addressed by their content (backdrop.py writes `version`): they are
+   * served cached for a year (next.config.ts), so a rebuilt photograph must
+   * arrive under a new address. */
+  plateUrl: `/hero/backdrop/plate.webp?v=${geometry.version}`,
+  depthUrl: `/hero/backdrop/depth.webp?v=${geometry.version}`,
   /** The photograph's size, texels (its top rows are fog it was extended by). */
   plate,
   /** The depth map's size, texels. */

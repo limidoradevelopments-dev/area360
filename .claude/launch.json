@@ -17,6 +17,18 @@
         "C:/Users/B E S T  COMPUTER/AppData/Local/Temp/claude/C--Users-B-E-S-T--COMPUTER-Desktop-editorial-template/5a3e8b1f-60e3-4af6-90bf-271980fccee4/scratchpad/snapserver.py"
       ],
       "port": 8765
+    },
+    {
+      "name": "prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--",
+        "-p",
+        "3100"
+      ],
+      "port": 3100
     }
   ]
 }

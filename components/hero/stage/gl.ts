@@ -24,6 +24,7 @@ export interface MultiTarget {
 
 export interface Program {
   readonly handle: WebGLProgram;
+  /** Filled once the program has linked (programsLinked). */
   readonly uniforms: Record<string, WebGLUniformLocation | null>;
 }
 
@@ -53,19 +54,39 @@ void main() {
 }
 `;
 
-function compile(gl: WebGL2RenderingContext, type: GLenum, source: string): WebGLShader {
+/**
+ * COMPILED OFF THE MAIN THREAD. Every program is only started here —
+ * compiled and linked with no question asked of it — and finished in one
+ * place, programsLinked, once the driver says it is done. Asking a shader
+ * or program for its status (or a uniform's location) the moment it is
+ * built makes the page wait for the driver: the scene shader alone held
+ * the main thread ~1 s on a GTX 1050 Ti (Windows, ANGLE), the set ~1.4 s,
+ * with the page frozen and the shore images not yet asked for. With
+ * KHR_parallel_shader_compile the browser compiles on its own threads and
+ * says when each program is ready; without it, the first question waits,
+ * as before. Same source, same shaders: not one pixel changes.
+ */
+interface Pending {
+  readonly program: Program;
+  readonly names: readonly string[];
+  readonly vs: WebGLShader;
+  readonly fs: WebGLShader;
+}
+
+const pending = new WeakMap<WebGL2RenderingContext, Pending[]>();
+
+function startShader(gl: WebGL2RenderingContext, type: GLenum, source: string): WebGLShader {
   const shader = gl.createShader(type);
   if (!shader) throw new Error("stage: createShader failed");
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-    const log = gl.getShaderInfoLog(shader);
-    gl.deleteShader(shader);
-    throw new Error(`stage: shader compile failed\n${log}`);
-  }
   return shader;
 }
 
+/**
+ * Starts a fullscreen program. Its `uniforms` are empty, and it must not be
+ * drawn with, until programsLinked has resolved.
+ */
 export function createProgram(
   gl: WebGL2RenderingContext,
   fragment: string,
@@ -73,20 +94,56 @@ export function createProgram(
 ): Program {
   const handle = gl.createProgram();
   if (!handle) throw new Error("stage: createProgram failed");
-  const vs = compile(gl, gl.VERTEX_SHADER, FULLSCREEN_VERT);
-  const fs = compile(gl, gl.FRAGMENT_SHADER, fragment);
+  const vs = startShader(gl, gl.VERTEX_SHADER, FULLSCREEN_VERT);
+  const fs = startShader(gl, gl.FRAGMENT_SHADER, fragment);
   gl.attachShader(handle, vs);
   gl.attachShader(handle, fs);
   gl.linkProgram(handle);
-  /* Shaders are owned by the program once linked. */
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
-  if (!gl.getProgramParameter(handle, gl.LINK_STATUS) && !gl.isContextLost()) {
-    throw new Error(`stage: link failed\n${gl.getProgramInfoLog(handle)}`);
+  const program: Program = { handle, uniforms: {} };
+  const list = pending.get(gl) ?? [];
+  list.push({ program, names: uniformNames, vs, fs });
+  pending.set(gl, list);
+  return program;
+}
+
+/** The driver's word that a program is built, without waiting for it. */
+const COMPLETION_STATUS_KHR = 0x91b1;
+/** How often to ask, ms: about a frame. */
+const LINK_POLL_MS = 16;
+/**
+ * How long to keep asking, ms, before asking the blocking way. The answer
+ * comes back from the GPU process between tasks, and a browser that stops
+ * delivering it (seen once, in a hidden embedded pane: the scene never
+ * reported done) must not leave the hero waiting for ever. Past this, the
+ * wait is what it was before: until the driver is done.
+ */
+const LINK_POLL_GIVE_UP_MS = 3000;
+
+/**
+ * Resolves once every program started on `gl` has linked, then checks each
+ * and reads its uniforms. Rejects with the driver's log if one failed.
+ */
+export async function programsLinked(gl: WebGL2RenderingContext): Promise<void> {
+  const list = pending.get(gl) ?? [];
+  pending.delete(gl);
+  if (gl.getExtension("KHR_parallel_shader_compile")) {
+    /* Everything started so far goes to the driver now. */
+    gl.flush();
+    const done = () =>
+      gl.isContextLost() || list.every((p) => gl.getProgramParameter(p.program.handle, COMPLETION_STATUS_KHR));
+    const giveUp = performance.now() + LINK_POLL_GIVE_UP_MS;
+    while (!done() && performance.now() < giveUp) await new Promise((resolve) => setTimeout(resolve, LINK_POLL_MS));
   }
-  const uniforms: Record<string, WebGLUniformLocation | null> = {};
-  for (const name of uniformNames) uniforms[name] = gl.getUniformLocation(handle, name);
-  return { handle, uniforms };
+  for (const { program, names, vs, fs } of list) {
+    if (!gl.getProgramParameter(program.handle, gl.LINK_STATUS) && !gl.isContextLost()) {
+      const log = gl.getShaderInfoLog(fs) || gl.getShaderInfoLog(vs) || gl.getProgramInfoLog(program.handle);
+      throw new Error(`stage: shader failed\n${log}`);
+    }
+    /* Shaders are owned by the program once linked. */
+    gl.deleteShader(vs);
+    gl.deleteShader(fs);
+    for (const name of names) program.uniforms[name] = gl.getUniformLocation(program.handle, name);
+  }
 }
 
 function allocateTexture(

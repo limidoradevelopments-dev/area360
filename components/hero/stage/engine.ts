@@ -36,6 +36,7 @@ import {
   createTarget,
   deleteTarget,
   parseColor,
+  programsLinked,
   srgbToLinear,
   supportsHalfFloatTargets,
   type Program,
@@ -244,6 +245,9 @@ export function createStageEngine(options: StageEngineOptions): StageEngine | nu
     powerPreference: "default",
   });
   if (!gl || !supportsHalfFloatTargets(gl)) return null;
+  /* Asked for before the first shader, so every compile can run on the
+     browser's own threads (gl.ts programsLinked). */
+  gl.getExtension("KHR_parallel_shader_compile");
   try {
     return new Stage(gl, options);
   } catch (error) {
@@ -368,6 +372,9 @@ class Stage implements StageEngine {
 
   private visible = true;
   private reduced: boolean;
+  /* Every program has linked: the frame can be measured (which draws the
+     air's first state) and drawn. */
+  private linked = false;
   private ready = false;
   private disposed = false;
   private lost = false;
@@ -402,7 +409,6 @@ class Stage implements StageEngine {
     this.up = createProgram(gl, UP_FRAG, ["uCoarse", "uFine", "uTexel", "uSpread"]);
 
     options.canvas.addEventListener("webglcontextlost", this.handleLost);
-    this.measureFrame();
     void this.load();
   }
 
@@ -412,9 +418,26 @@ class Stage implements StageEngine {
 
   /* ── Lifecycle ──────────────────────────────────────────────────────── */
 
+  /**
+   * THE SHORES AND THE SHADERS AT ONCE. The images are fetched (already on
+   * their way: HeroSection preloads them with the page) and decoded while
+   * the driver compiles, instead of after: either alone was most of the
+   * wait. Only then is the frame measured — measuring draws the air's first
+   * state, which needs its programs.
+   */
   private async load(): Promise<void> {
-    const plates = await buildPlates(this.gl, () => !this.disposed && !this.lost);
-    if (!plates || this.disposed || this.lost) return;
+    const alive = () => !this.disposed && !this.lost;
+    let plates: Plates | null;
+    try {
+      [plates] = await Promise.all([buildPlates(this.gl, alive), programsLinked(this.gl)]);
+    } catch (error) {
+      console.warn(error);
+      if (alive()) this.options.onLost();
+      return;
+    }
+    if (!plates || !alive()) return;
+    this.linked = true;
+    this.measureFrame();
     this.plates = plates;
     this.ready = true;
     this.render();
@@ -438,7 +461,8 @@ class Stage implements StageEngine {
   }
 
   resize(): void {
-    if (this.disposed || this.lost) return;
+    /* Before the programs link there is nothing to size: load measures. */
+    if (this.disposed || this.lost || !this.linked) return;
     this.measureFrame();
     if (this.ready && !this.raf) this.render();
   }

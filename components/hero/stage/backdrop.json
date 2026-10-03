@@ -12,5 +12,6 @@
   "texelsPerTan": 4414.31,
   "depthNear": 5.0,
   "depthFar": 900.0,
-  "nearest": 57.7
+  "nearest": 57.7,
+  "version": "09086e4300"
 }
