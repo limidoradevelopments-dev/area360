@@ -7,16 +7,16 @@
  * draw one triangle.
  */
 
+/**
+ * One texture behind one framebuffer. ONE: no pass draws into two targets
+ * at once. Under Direct3D (every Windows browser) a program is compiled for
+ * a single render target; drawn into several, it is compiled again, whole
+ * and synchronously, on its first draw, with the GPU process waiting — a
+ * first visit lost ~5 s to it (2026-10-04). Several values a pixel are
+ * drawn in several draws, or packed (atmosphere/shaders/sheets.ts).
+ */
 export interface Target {
   readonly tex: WebGLTexture;
-  readonly fbo: WebGLFramebuffer;
-  readonly width: number;
-  readonly height: number;
-}
-
-/** One framebuffer writing several textures at once (a shader's `out`s). */
-export interface MultiTarget {
-  readonly texs: readonly WebGLTexture[];
   readonly fbo: WebGLFramebuffer;
   readonly width: number;
   readonly height: number;
@@ -39,6 +39,19 @@ export function supportsHalfFloatTargets(gl: WebGL2RenderingContext): boolean {
   return Boolean(
     gl.getExtension("EXT_color_buffer_float") || gl.getExtension("EXT_color_buffer_half_float"),
   );
+}
+
+/**
+ * The format for values one pass hands the next at the same pixel (the
+ * stone's slots, the photograph in the lake): 32-bit floats where they can
+ * be rendered to (EXT_color_buffer_float, nearly every WebGL2 device), so
+ * nothing is rounded on the way and the scene reads exactly what it would
+ * have computed. Half floats otherwise: a rounding of 1 in 2000, under a
+ * level of the print. Not filterable at 32 bits: read with texelFetch, and
+ * made with NEAREST, or the texture is incomplete and reads as black.
+ */
+export function exactTargetFormat(gl: WebGL2RenderingContext): GLenum {
+  return gl.getExtension("EXT_color_buffer_float") ? gl.RGBA32F : gl.RGBA16F;
 }
 
 /**
@@ -84,17 +97,19 @@ function startShader(gl: WebGL2RenderingContext, type: GLenum, source: string): 
 }
 
 /**
- * Starts a fullscreen program. Its `uniforms` are empty, and it must not be
- * drawn with, until programsLinked has resolved.
+ * Starts a program: a fullscreen pass, unless it brings its own vertex stage
+ * (bloom/: the plant is a mesh). Its `uniforms` are empty, and it must not
+ * be drawn with, until programsLinked has resolved.
  */
 export function createProgram(
   gl: WebGL2RenderingContext,
   fragment: string,
   uniformNames: readonly string[],
+  vertex: string = FULLSCREEN_VERT,
 ): Program {
   const handle = gl.createProgram();
   if (!handle) throw new Error("stage: createProgram failed");
-  const vs = startShader(gl, gl.VERTEX_SHADER, FULLSCREEN_VERT);
+  const vs = startShader(gl, gl.VERTEX_SHADER, vertex);
   const fs = startShader(gl, gl.FRAGMENT_SHADER, fragment);
   gl.attachShader(handle, vs);
   gl.attachShader(handle, fs);
@@ -111,13 +126,16 @@ const COMPLETION_STATUS_KHR = 0x91b1;
 /** How often to ask, ms: about a frame. */
 const LINK_POLL_MS = 16;
 /**
- * How long to keep asking, ms, before asking the blocking way. The answer
- * comes back from the GPU process between tasks, and a browser that stops
- * delivering it (seen once, in a hidden embedded pane: the scene never
- * reported done) must not leave the hero waiting for ever. Past this, the
- * wait is what it was before: until the driver is done.
+ * How long to keep asking, ms, before asking the blocking way — only for a
+ * driver that never answers. NOT A FEW SECONDS: a first visit on Windows
+ * compiles from an empty shader cache, which took the scene 9–31 s
+ * (measured 2026-10-04, GTX 1050 Ti; ~1.3 s once cached), and the blocking
+ * query freezes the page — scroll, clicks, everything — for whatever is
+ * left. With 3 s here the page froze for 8 s on every first visit (27 s
+ * before the scene's compile was cut). Asking costs nothing and the still
+ * covers the wait.
  */
-const LINK_POLL_GIVE_UP_MS = 3000;
+const LINK_POLL_GIVE_UP_MS = 120_000;
 
 /**
  * Resolves once every program started on `gl` has linked, then checks each
@@ -189,34 +207,6 @@ export function createTarget(
   return { tex, fbo, width, height };
 }
 
-/**
- * `count` textures behind one framebuffer, attachment i ↔ `layout(location
- * = i) out`. WebGL2 guarantees four draw buffers, so one pass can write four
- * RGBA values per pixel without running twice.
- */
-export function createMultiTarget(
-  gl: WebGL2RenderingContext,
-  width: number,
-  height: number,
-  internalFormat: GLenum,
-  filter: GLenum,
-  count: number,
-): MultiTarget {
-  const fbo = gl.createFramebuffer();
-  if (!fbo) throw new Error("stage: framebuffer allocation failed");
-  const texs: WebGLTexture[] = [];
-  const buffers: GLenum[] = [];
-  for (let i = 0; i < count; i += 1) texs.push(allocateTexture(gl, width, height, internalFormat, filter));
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  texs.forEach((tex, i) => {
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, tex, 0);
-    buffers.push(gl.COLOR_ATTACHMENT0 + i);
-  });
-  gl.drawBuffers(buffers);
-  checkFramebuffer(gl);
-  return { texs, fbo, width, height };
-}
-
 /** Zeroes a target. New sim targets must start from rest, not from garbage. */
 export function clearTarget(gl: WebGL2RenderingContext, target: Target): void {
   gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
@@ -225,10 +215,9 @@ export function clearTarget(gl: WebGL2RenderingContext, target: Target): void {
   gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
-export function deleteTarget(gl: WebGL2RenderingContext, target: Target | MultiTarget | null): void {
+export function deleteTarget(gl: WebGL2RenderingContext, target: Target | null): void {
   if (!target) return;
-  if ("texs" in target) target.texs.forEach((tex) => gl.deleteTexture(tex));
-  else gl.deleteTexture(target.tex);
+  gl.deleteTexture(target.tex);
   gl.deleteFramebuffer(target.fbo);
 }
 
@@ -238,6 +227,8 @@ function describe(gl: WebGL2RenderingContext, internalFormat: GLenum) {
       return { format: gl.RGBA, type: gl.FLOAT };
     case gl.RGBA16F:
       return { format: gl.RGBA, type: gl.HALF_FLOAT };
+    case gl.RGBA32UI:
+      return { format: gl.RGBA_INTEGER, type: gl.UNSIGNED_INT };
     case gl.R8:
       return { format: gl.RED, type: gl.UNSIGNED_BYTE };
     case gl.RG8:

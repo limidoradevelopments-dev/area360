@@ -93,6 +93,11 @@ export default function StageTuner({ engine }: { engine: StageEngine }) {
         footAway: { value: d.footAway, min: 0.2, max: 1, step: 0.01, label: "shaded foot keeps" },
         footToward: { value: d.footToward, min: 0.2, max: 1, step: 0.01, label: "lit foot keeps" },
       }),
+      "Bloom · bloom/optics, bloom/motion": folder({
+        /* Below 0: the visit's clock opens it (OPENING). */
+        bloomOpen: { value: d.bloomOpen, min: -0.05, max: 1, step: 0.01, label: "open (<0 live)" },
+        bloomSeed: { value: d.bloomSeed, min: 0, max: 1, step: 0.01, label: "flower (seed)" },
+      }),
     },
     { store },
   );

@@ -20,11 +20,20 @@
  * it. Each billow is lit on the side toward the light (its density is
  * compared with a sample one step up), so the fog has form, not just shade.
  *
- * Out (all per sheet, near → far):
- *   location 0   density multiplier: × the sheet's optical depth
- *   location 1   xyz: light on sheets 0–2; w: the plain light, used for
+ * Per sheet, near → far, two sets of four:
+ *   density      multiplier: × the sheet's optical depth
+ *   light        xyz: light on sheets 0–2; w: the plain light, used for
  *                the far sheet and the sky (their billows are too far away
  *                to show a lit side)
+ *
+ * PACKED INTO ONE OUTPUT. Both sets come out of the same march, so they
+ * are drawn at once — but never into two targets at once: under Direct3D
+ * the browser compiles a program for one render target, and one drawn into
+ * two is compiled again, whole, on its first draw (2.4 s of a first visit
+ * for this one, the GPU process waiting). So the eight values go out as
+ * half floats, two to a 32-bit channel of one unsigned target — the same
+ * halves the two half-float targets held — and SHEETS_UNPACK_FRAG lays
+ * them back into the two textures the scene reads, filtered as before.
  */
 
 import { CAMERA_GLSL } from "../../stage/shaders/camera";
@@ -37,8 +46,7 @@ precision highp sampler2D;
 #define LIGHT_STEPS 10
 
 in vec2 vUv;
-layout(location = 0) out vec4 outDensity;
-layout(location = 1) out vec4 outLight;
+out uvec4 outPacked;
 
 ${CAMERA_GLSL}
 
@@ -56,6 +64,9 @@ uniform float uPivotZ;
 uniform float uTime;
 /* the fog's breath: a density scale */
 uniform float uBreath;
+/* 2: the carried sets a near sheet's billows are read at — a uniform, not
+   a constant: see main */
+uniform float uCarriedSets;
 
 /* per sheet, near → far */
 uniform vec4 uSheetPlane;
@@ -92,16 +103,16 @@ vec2 gridUv(vec2 ruv) {
 }
 
 float fogAt(vec2 ruv) {
-  return max(texture(uFluid, gridUv(ruv)).b, 0.0);
+  return max(textureLod(uFluid, gridUv(ruv), 0.0).b, 0.0);
 }
 
 /* The simulated air at a rest-frame point, read \`blur\` cells soft. */
 vec4 airAt(vec2 g, float blur) {
-  vec4 a = texture(uFluid, g);
+  vec4 a = textureLod(uFluid, g, 0.0);
   if (blur > 0.5) {
     vec2 r = blur / uGrid;
-    a += texture(uFluid, g + vec2(r.x, 0.0)) + texture(uFluid, g - vec2(r.x, 0.0))
-       + texture(uFluid, g + vec2(0.0, r.y)) + texture(uFluid, g - vec2(0.0, r.y));
+    a += textureLod(uFluid, g + vec2(r.x, 0.0), 0.0) + textureLod(uFluid, g - vec2(r.x, 0.0), 0.0)
+       + textureLod(uFluid, g + vec2(0.0, r.y), 0.0) + textureLod(uFluid, g - vec2(0.0, r.y), 0.0);
     a *= 0.2;
   }
   return a;
@@ -187,24 +198,32 @@ void main() {
        banks never line up; within a sheet the axis is time. */
     float e = uTime * uEvolve.x + float(k) * 7.31;
     float turb = response * smoothstep(0.0, uTurb.x, sqrt(max(air.a, 0.0)));
-    float n;
-    float form;
-    if (k < 2) {
-      /* The near sheets ride the simulated air: their billows are read where
-         the air has carried them from, converted from cells on the stone's plane to
-         metres on this one. */
-      vec4 carry = texture(uCarry, g);
-      vec2 cell = g * uGrid;
-      float toMetres = uCellPx * z / uFocal * response;
-      float formA;
-      float formB;
-      float nA = billows(w + (carry.xy - cell) * toMetres, scale, uSheetDrift[k], e, turb, uSheetForm[k], formA);
-      float nB = billows(w + (carry.zw - cell) * toMetres, scale, uSheetDrift[k], e, turb, uSheetForm[k], formB);
-      n = (wA * nA + wB * nB) * norm;
-      form = wA * formA + wB * formB;
-    } else {
-      n = billows(w, scale, uSheetDrift[k], e, turb, uSheetForm[k], form);
+    /* The near sheets ride the simulated air: their billows are read where
+       the air has carried them from — at both carried sets, blended — converted
+       from cells on the stone's plane to metres on this one. The far ones
+       are read where they stand.
+       ONE CALL OF BILLOWS A SHEET, in a loop that runs to a uniform's count.
+       A GPU program has no calls (each is pasted in) and Direct3D's
+       compiler also pastes a loop's body once a turn when it knows the
+       count: written as two calls for a near sheet and one for a far, the
+       noise was pasted six times over and the pass took 1.7 s to compile
+       on a first visit; this way, 0.7 s. The same calls, the same sums in
+       the same order (0 + x is x). */
+    bool near = k < 2;
+    vec4 carry = textureLod(uCarry, g, 0.0);
+    vec2 cell = g * uGrid;
+    float toMetres = uCellPx * z / uFocal * response;
+    float n = 0.0;
+    float form = 0.0;
+    for (int c = 0; c < (near ? int(uCarriedSets) : 1); c++) {
+      vec2 at = near ? w + ((c == 0 ? carry.xy : carry.zw) - cell) * toMetres : w;
+      float f;
+      float b = billows(at, scale, uSheetDrift[k], e, turb, uSheetForm[k], f);
+      float weight = near ? (c == 0 ? wA : wB) : 1.0;
+      n += weight * b;
+      form += weight * f;
     }
+    if (near) n *= norm;
 
     float rho = max(1.0 + response * (air.b - 1.0), 0.0) * uBreath;
     float billow = pow(smoothstep(-0.25, 0.65, n), uSheetSharp[k]);
@@ -215,8 +234,27 @@ void main() {
     lit[k] = light * mix(1.0 - shape, 1.0 + shape, form) * exp(-uEvolve.y * (m - 1.0));
   }
 
-  outDensity = density;
-  outLight = vec4(lit.xyz, light);
+  outPacked = uvec4(packHalf2x16(density.xy), packHalf2x16(density.zw), packHalf2x16(lit.xy),
+                    packHalf2x16(vec2(lit.z, light)));
 
+}
+`;
+
+/**
+ * The sheets' packed halves (SHEETS_FRAG) back into a half-float target the
+ * scene reads, one set a draw: `uSet` 0 the densities, 1 the light. A half
+ * read and written as a half is the same half.
+ */
+export const SHEETS_UNPACK_FRAG = /* glsl */ `#version 300 es
+precision highp float;
+precision highp usampler2D;
+
+out vec4 outColor;
+uniform usampler2D uPacked;
+uniform float uSet;
+
+void main() {
+  uvec4 p = texelFetch(uPacked, ivec2(gl_FragCoord.xy), 0);
+  outColor = uSet < 0.5 ? vec4(unpackHalf2x16(p.x), unpackHalf2x16(p.y)) : vec4(unpackHalf2x16(p.z), unpackHalf2x16(p.w));
 }
 `;

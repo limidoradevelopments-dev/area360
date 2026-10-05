@@ -32,6 +32,23 @@
   /* The lake itself, under the reflection: dark, deep water. */
   --color-hero-water: #0C0D0D;
 
+  /* ── The bloom ──
+   * The one living thing on the set, and the only colour in it, as
+   * reflectances, read off the user's references (assets/sources/flowers/):
+   * the inner tepals white with a breath of cream, the outer white with a
+   * breath of green, the stems a waxy green, the tube paler, the anthers
+   * cream. Kept quiet on purpose: in this light a saturated green reads as
+   * a sticker laid on the print. Measured in the frame, every other thing
+   * in it is neutral within a level or three (the stone's top, the warmest,
+   * ~3); at the references' own green the stems printed ~10 levels green
+   * and read as pasted on, so each colour here keeps under half its
+   * references' chroma: the stems ~4 levels green, a whisper. */
+  --color-hero-petal: #F0EFE9;
+  --color-hero-sepal: #C9CCC0;
+  --color-hero-leaf: #7A8075;
+  --color-hero-tube: #A0A597;
+  --color-hero-anther: #DFD6B5;
+
   /* ── The static first paint ──
    * The rendered frame's own light, measured: the mean of each tenth of its
    * height (at 1440×810, grain off), placed at the middle of that tenth. The

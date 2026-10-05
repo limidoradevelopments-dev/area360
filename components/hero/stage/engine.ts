@@ -11,8 +11,15 @@
  *   weather     the stillness clock (weather/clock.ts)
  *   air         the simulated air, fixed 1/60s steps (atmosphere/)
  *   sheets      the fog between the planes, half resolution (atmosphere/)
+ *   bloom       the plant on the stone, and in the lake (bloom/): posed
+ *               on the CPU from the visit's clock and the air read back
+ *               where it stands (atmosphere/sampler.ts)
+ *   stone       the stone as the camera sees it and as the lake mirrors
+ *               it, over rects round it (stone/)
+ *   lake        the photograph reflected in the lake (water/lake.ts)
  *   scene       the set, the water and the fog, front to back, as linear
- *               light, at the scene's resolution (shaders/scene.ts)
+ *               light, at the scene's resolution, reading the three above
+ *               (shaders/scene.ts)
  *   diffusion   the frame softened over five levels, for the lens's glow
  *   film        at the screen's own resolution: the photograph's detail put
  *               back, the glow, the film and the grain (shaders/post.ts)
@@ -23,13 +30,18 @@
 import { Atmosphere, type FogLook, type HandGains } from "../atmosphere/atmosphere";
 import type { AirParams } from "../atmosphere/fluid";
 import { FLUID, WIND } from "../atmosphere/motion";
+import { AirSampler } from "../atmosphere/sampler";
+import { BloomPass, type AirAt } from "../bloom/bloom";
+import { BLOOM } from "../bloom/optics";
 import { AERIAL, EXTINCTION, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
-import { LAPS, WATER_MOTION, WAVES } from "../water/motion";
-import { WATER, WATER_R0, WATER_UNDER } from "../water/optics";
+import { SLOT_UNIFORMS, StonePass } from "../stone/stone";
+import { LakePass } from "../water/lake";
+import { WATER_MOTION } from "../water/motion";
+import { WATER } from "../water/optics";
 import { StillnessClock } from "../weather/clock";
 import { STILLNESS } from "../weather/motion";
-import { CAMERA, CAMERA_UNIFORMS, CameraRig, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
+import { CAMERA, CAMERA_UNIFORMS, CameraRig, focalPx, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
 import {
   bindTexture,
   createProgram,
@@ -42,12 +54,27 @@ import {
   type Program,
   type Target,
 } from "./gl";
-import { BACKDROP, DEPTH, SHEET_EDGES } from "./layers";
 import { PARALLAX } from "./motion";
 import { FILM, RENDER } from "./optics";
 import { buildPlates, type Plates } from "./plates";
 import { DOWN_FRAG, FILM_FRAG, UP_FRAG } from "./shaders/post";
 import { SCENE_FRAG } from "./shaders/scene";
+import {
+  DEVELOP_UNIFORMS,
+  FOG_UNIFORMS,
+  PLATE_UNIFORMS,
+  SHEET_UNIFORMS,
+  STONE_UNIFORMS,
+  UNITS,
+  WATER_UNIFORMS,
+  setDevelopUniforms,
+  setFogUniforms,
+  setPlateUniforms,
+  setSheetUniforms,
+  setStoneUniforms,
+  setWaterUniforms,
+  type SetFrame,
+} from "./uniforms";
 
 /* ── Public surface ───────────────────────────────────────────────────── */
 
@@ -113,6 +140,11 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   glass: number;
   /** The near bank's drifting self-shade over the open fog (MIST_SEEN.grey). */
   mistSeen: number;
+  /** The bloom (bloom/): how open, 0 bud … 1 full — below 0, as the visit's
+   *  clock opens it (bloom/motion.ts OPENING) — and which flower, 0–1 (a new
+   *  one each visit). */
+  bloomOpen: number;
+  bloomSeed: number;
 }
 
 export function defaultParams(): StageParams {
@@ -175,6 +207,8 @@ export function defaultParams(): StageParams {
     lapping: 1,
     paws: WATER_MOTION.catsPaws.coverage,
     glass: WATER_MOTION.catsPaws.glass,
+    bloomOpen: -1,
+    bloomSeed: 0.37,
   };
 }
 
@@ -260,10 +294,6 @@ export function createStageEngine(options: StageEngineOptions): StageEngine | nu
 
 type Rgb = readonly [number, number, number];
 
-/* Constant per build: packed once, not per frame. */
-const WAVE_DATA = new Float32Array(WAVES.flat());
-const LAP_DATA = new Float32Array(LAPS.flat());
-
 const smoothstep = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -319,7 +349,7 @@ function unprintTable(pivot: number, shadows: number, highlights: number, toe: n
 /* The diffusion's pyramid: half the scene, then each level half again. */
 const GLOW_LEVELS = 5;
 
-const COLOR_TOKENS = ["lit", "shade", "stone", "water"] as const;
+const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "sepal", "leaf", "tube", "anther"] as const;
 type ColorToken = (typeof COLOR_TOKENS)[number];
 
 class Stage implements StageEngine {
@@ -333,6 +363,10 @@ class Stage implements StageEngine {
   private readonly down: Program;
   private readonly up: Program;
   private readonly atmosphere: Atmosphere;
+  private readonly bloom: BloomPass;
+  private readonly airSampler: AirSampler;
+  private readonly stone: StonePass;
+  private readonly lake: LakePass;
   private readonly camera = new CameraRig();
   private readonly stillness = new StillnessClock();
   private plates: Plates | null = null;
@@ -351,17 +385,27 @@ class Stage implements StageEngine {
   /* Raised by the adaptive watcher and never lowered, so neither a resize
      nor a good second undoes a step-down the frame rate asked for. */
   private tier = 0;
+  /* Development only: the scene's pixel cap raised past the tier's, for
+     close-up stills of the plant (set from the console, then resize()). */
+  private sceneCap = 0;
   private colors: Record<ColorToken, Rgb> = {
     lit: [1, 1, 1],
     shade: [0.5, 0.5, 0.5],
     stone: [0.25, 0.25, 0.25],
     water: [0, 0, 0],
+    petal: [0.8, 0.8, 0.8],
+    sepal: [0.7, 0.7, 0.7],
+    leaf: [0.1, 0.1, 0.1],
+    tube: [0.3, 0.3, 0.3],
+    anther: [0.7, 0.7, 0.7],
   };
 
   /* Clock. `time` only advances while the loop runs; the lake's own time
      stands still under reduced motion (the water holds its last shape). */
   private time = 0;
   private waterTime = 0;
+  /* Seconds the scene has been on screen this visit: the bloom opens on it. */
+  private bloomClock = 0;
   private lastTime = 0;
   private raf = 0;
   private slowFrames = 0;
@@ -389,16 +433,17 @@ class Stage implements StageEngine {
     this.vao = vao;
 
     this.atmosphere = new Atmosphere(gl, vao);
+    /* A new flower each visit (bloom/shape.ts grow). */
+    this.params.bloomSeed = Math.random();
+    this.bloom = new BloomPass(gl, vao, this.params.bloomSeed);
+    this.airSampler = new AirSampler(gl);
+    this.stone = new StonePass(gl, vao);
+    this.lake = new LakePass(gl, vao);
     this.scene = createProgram(gl, SCENE_FRAG, [
-      ...CAMERA_UNIFORMS,
-      "uSheetDensity", "uSheetLight", "uExtinction", "uFogHeight", "uSheetEdge", "uSheetVeil", "uLit", "uShade",
-      "uWaterBody", "uWaterR0", "uWaves", "uWaterTime", "uWaterGain", "uCatsPaws", "uWind", "uMinElevation",
-      "uWaterClarity", "uSubjectWaver", "uLaps", "uLapFade",
-      "uStonePlan", "uStoneSpan", "uStoneAlbedo", "uStoneLight", "uLightSide", "uStoneFoot", "uStoneSheen",
-      "uStoneGrain", "uStoneFine", "uStoneWeather", "uStoneLichen", "uStoneWear",
-      "uStoneWater", "uStoneUnder", "uStoneMeniscus", "uSubjectDepth",
-      "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis", "uBackdropNearest",
-      "uSheetMean", "uSheetLife", "uFogLife", "uFogReach", "uAerial", "uSoftBlack", "uMistSeen", "uLakeBurn", "uExposure", "uUnprint",
+      ...CAMERA_UNIFORMS, ...FOG_UNIFORMS, ...SHEET_UNIFORMS, ...WATER_UNIFORMS,
+      ...STONE_UNIFORMS, ...PLATE_UNIFORMS, ...DEVELOP_UNIFORMS, ...SLOT_UNIFORMS,
+      "uLakePhoto", "uLakeBurn",
+      "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
     ]);
     this.film = createProgram(gl, FILM_FRAG, [
       ...CAMERA_UNIFORMS,
@@ -440,6 +485,8 @@ class Stage implements StageEngine {
     this.measureFrame();
     this.plates = plates;
     this.ready = true;
+    /* The plant posed before its first frame: a bud. */
+    this.stepBloom(0);
     this.render();
     this.options.onFirstFrame();
     this.syncLoop();
@@ -457,7 +504,10 @@ class Stage implements StageEngine {
 
   setParams(next: Partial<StageParams>): void {
     Object.assign(this.params, next);
-    if (this.ready && !this.raf) this.render();
+    if (this.ready && !this.raf) {
+      this.stepBloom(0);
+      this.render();
+    }
   }
 
   resize(): void {
@@ -480,6 +530,10 @@ class Stage implements StageEngine {
     gl.deleteProgram(this.up.handle);
     this.deleteTargets();
     this.atmosphere.dispose();
+    this.bloom.dispose();
+    this.airSampler.dispose();
+    this.stone.dispose();
+    this.lake.dispose();
     if (this.plates) {
       gl.deleteTexture(this.plates.backdrop);
       gl.deleteTexture(this.plates.depth);
@@ -519,9 +573,12 @@ class Stage implements StageEngine {
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
     /* The scene at most `scenePixels`; the film pass makes up the rest. */
-    const sceneScale = Math.min(1, Math.sqrt(tier.scenePixels / (w * h)));
+    const sceneScale = Math.min(1, Math.sqrt((this.sceneCap || tier.scenePixels) / (w * h)));
     this.resizeTargets(Math.max(1, Math.round(w * sceneScale)), Math.max(1, Math.round(h * sceneScale)));
     this.upscale = w / (this.sceneTarget?.width ?? w);
+    this.bloom.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h, this.cssW, this.cssH);
+    this.stone.resize();
+    this.lake.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
 
     const volumeW = Math.max(1, Math.round(Math.min(this.cssW * VOLUME.scale, VOLUME.maxWidth) * tier.volumeScale));
     const volumeH = Math.max(1, Math.round((volumeW * this.cssH) / this.cssW));
@@ -586,16 +643,113 @@ class Stage implements StageEngine {
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
     this.atmosphere.tick(dt, this.params, this.params, tier.pressureIterations, this.reduced);
+    this.bloomClock += dt;
+    this.stepBloom(dt);
     if (paint) this.render();
   }
+
+  /**
+   * The plant's step: the air round it asked for (and last frame's
+   * collected: atmosphere/sampler.ts), then its opening, sway and pollen.
+   */
+  private stepBloom(dt: number): void {
+    const air = this.atmosphere.air;
+    if (air) {
+      const [cx, cy] = this.airCell(BLOOM.center, air);
+      const f = focalPx(this.cssW, this.cssH);
+      /* The air within ~45 cm of the flower: the stems' tips and wherever
+         the pollen drifts before it fades (bloom/motion.ts POLLEN.reach). */
+      const half = Math.min(32, Math.ceil((0.45 * f) / (BLOOM.center[2] * air.cellPx)));
+      this.airSampler.update(air.target, cx - half, cy - half, 2 * half, 2 * half);
+    }
+    const p = this.params;
+    this.bloom.update(dt, {
+      clock: this.bloomClock,
+      open: p.bloomOpen,
+      seed: p.bloomSeed,
+      reduced: this.reduced,
+      air: this.airAt,
+    });
+  }
+
+  /** A world point's cell on the air's grid (its plane: the camera at rest). */
+  private airCell(p: readonly number[], air: NonNullable<Atmosphere["air"]>): [number, number] {
+    const f = focalPx(this.cssW, this.cssH);
+    const u = ((p[0] / p[2]) * f) / this.cssW + 0.5;
+    const v = (((p[1] - CAMERA.eyeHeight) / p[2]) * f) / this.cssH + 1 - CAMERA.horizon;
+    return [(u * air.map[0] + air.map[2]) * air.grid[0], (v * air.map[1] + air.map[3]) * air.grid[1]];
+  }
+
+  /** The air at a world point, from the patch read back: m/s, and churn. */
+  private airAt: AirAt = (p, out) => {
+    const air = this.atmosphere.air;
+    if (!air || !this.airSampler.ready) {
+      out[0] = out[1] = out[2] = 0;
+      return out;
+    }
+    const [cx, cy] = this.airCell(p, air);
+    this.airSampler.at(cx, cy, out);
+    /* Cells a second → metres a second, at the point's own depth. */
+    const metresPerCell = (air.cellPx * p[2]) / focalPx(this.cssW, this.cssH);
+    out[0] *= metresPerCell;
+    out[1] *= metresPerCell;
+    return out;
+  };
 
   private render(): void {
     if (!this.plates || this.lost) return;
     const camera = this.camera.pose([this.cssW, this.cssH], this.params);
     this.atmosphere.render(camera, this.params, this.reduced);
-    this.drawScene(camera);
+    this.drawSet(camera);
     this.drawGlow();
     this.drawFilm(camera);
+  }
+
+  /* What the set's programs read this frame: one object, refilled. */
+  private setFrame: SetFrame | null = null;
+
+  private frameOfSet(camera: CameraFrame): SetFrame | null {
+    const plates = this.plates;
+    const density = this.atmosphere.density;
+    const light = this.atmosphere.light;
+    const target = this.sceneTarget;
+    if (!plates || !density || !light || !target) return null;
+    const f = (this.setFrame ??= {
+      camera,
+      params: this.params,
+      colors: this.colors,
+      waterTime: 0,
+      plates,
+      density,
+      light,
+      unprint: this.unprintCache,
+      width: 1,
+      height: 1,
+    });
+    f.camera = camera;
+    f.colors = this.colors;
+    f.waterTime = this.waterTime;
+    f.plates = plates;
+    f.density = density;
+    f.light = light;
+    f.unprint = this.unprint();
+    f.width = target.width;
+    f.height = target.height;
+    return f;
+  }
+
+  /**
+   * The set: the plant, the stone and the photograph in the lake, each by
+   * its own program, then the scene pass, which reads them (shaders/
+   * scene.ts, the top).
+   */
+  private drawSet(camera: CameraFrame): void {
+    this.drawBloom(camera);
+    const f = this.frameOfSet(camera);
+    if (!f) return;
+    this.stone.render(f);
+    this.lake.render(f);
+    this.drawScene(f);
   }
 
   /* The print curve's inverse, rebuilt only when the print changes. */
@@ -612,106 +766,35 @@ class Stage implements StageEngine {
     return this.unprintCache;
   }
 
-  /** The photograph's place in the camera, for every pass that reads it. */
-  private setPlateUniforms(u: Record<string, WebGLUniformLocation | null>, camera: CameraFrame): void {
-    const gl = this.gl;
-    const [plateW, plateH] = BACKDROP.plate;
-    gl.uniform4f(
-      u.uPlateGeo,
-      BACKDROP.texelsPerTan / plateW,
-      BACKDROP.texelsPerTan / plateH,
-      BACKDROP.horizonRow / plateH,
-      BACKDROP.depthNear,
-    );
-    /* A frame too wide for the lens to close in on (camera.ts maxCloseIn)
-       reaches past the photograph's sides: there its edges fade into the
-       fog over a width that grows with how far past them it looks, so the
-       forest recedes into the fog instead of stopping at a line. */
-    const past = 0.5 * camera.view[0] / camera.focal + CAMERA.edge.lean - BACKDROP.reach;
-    const fade = Math.min(CAMERA.edge.widest, CAMERA.edge.fade + CAMERA.edge.grow * Math.max(0, past));
-    gl.uniform2f(u.uPlateAxis, BACKDROP.centerColumn / plateW, (fade * BACKDROP.texelsPerTan) / plateW);
-    gl.uniform1f(u.uBackdropNearest, BACKDROP.nearest);
+  /** The plant's own pass (bloom/), which the scene pass reads. */
+  private drawBloom(camera: CameraFrame): void {
+    const p = this.params;
+    this.bloom.render(camera, this.colors, { light: [p.stoneTop, p.stoneAway, p.stoneToward] });
   }
 
-  /** The scene pass, over the fog sheets the atmosphere just rendered. */
-  private drawScene(camera: CameraFrame): void {
-    const plates = this.plates;
-    const density = this.atmosphere.density;
-    const light = this.atmosphere.light;
+  /** The scene pass: the composite, over everything the set's own passes
+   *  and the atmosphere drew this frame. */
+  private drawScene(f: SetFrame): void {
     const target = this.sceneTarget;
-    if (!plates || !density || !light || !target) return;
+    if (!target) return;
     const gl = this.gl;
     const p = this.params;
-
     const u = this.scene.uniforms;
     gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
     gl.viewport(0, 0, target.width, target.height);
     gl.useProgram(this.scene.handle);
-    setCameraUniforms(gl, u, camera);
-
-    bindTexture(gl, u.uSheetDensity, 0, density);
-    bindTexture(gl, u.uSheetLight, 1, light);
-    bindTexture(gl, u.uPlate, 2, plates.backdrop);
-    bindTexture(gl, u.uBackdropDepth, 4, plates.depth);
-
-    const c = this.colors;
-    /* The fog. */
-    gl.uniform4f(u.uExtinction, p.nearExtinction, p.farExtinction, p.bankFrom, p.bankTo);
-    gl.uniform3f(u.uFogHeight, p.lift, EXTINCTION.liftFrom, EXTINCTION.liftTo);
-    gl.uniform4f(u.uSheetEdge, ...SHEET_EDGES);
-    gl.uniform4f(u.uSheetVeil, p.veil, SHEETS[1].veil, SHEETS[2].veil, SHEETS[3].veil);
-    gl.uniform3fv(u.uLit, c.lit);
-    gl.uniform3fv(u.uShade, c.shade);
-
-    /* The water. */
-    gl.uniform3fv(u.uWaterBody, c.water);
-    gl.uniform1f(u.uWaterR0, WATER_R0);
-    gl.uniform1f(u.uMinElevation, WATER.minElevation);
-    gl.uniform3f(u.uWaterClarity, WATER.clarity.beam, WATER.clarity.down, WATER_UNDER);
-    gl.uniform1f(u.uSubjectWaver, p.waver);
-    gl.uniform3fv(u.uLaps, LAP_DATA);
-    gl.uniform2f(u.uLapFade, WATER_MOTION.lapping.reach, p.lapping);
-    gl.uniform4fv(u.uWaves, WAVE_DATA);
-    gl.uniform1f(u.uWaterTime, this.waterTime);
-    gl.uniform3f(u.uWaterGain, p.swell, p.undulation, p.ripples);
-    const paws = WATER_MOTION.catsPaws;
-    gl.uniform4f(u.uCatsPaws, paws.scale, paws.drift, p.paws, paws.softness);
-    gl.uniform3f(u.uWind, Math.cos(WATER_MOTION.wind), Math.sin(WATER_MOTION.wind), p.glass);
-
-    /* The stone. */
-    const g = STONE.granite;
-    gl.uniform4f(u.uStonePlan, STONE.center[0], STONE.center[1], STONE.plan.across, STONE.plan.along);
-    gl.uniform2f(u.uStoneSpan, -STONE.depth, STONE.top);
-    gl.uniform3fv(u.uStoneAlbedo, c.stone);
-    gl.uniform3f(u.uStoneLight, p.stoneTop, p.stoneAway, p.stoneToward);
-    gl.uniform2f(u.uLightSide, ...STONE.lightSide);
-    gl.uniform3f(u.uStoneFoot, STONE.foot.height, p.footAway, p.footToward);
-    gl.uniform4f(u.uStoneSheen, STONE.sheen.headOn, STONE.sheen.grazing, p.sheenTop, p.sheenFace);
-    gl.uniform4f(u.uStoneGrain, g.cloud, g.cloudAmount, g.fleck, g.fleckAmount);
-    gl.uniform2f(u.uStoneFine, g.fine, g.fineAmount);
-    gl.uniform4f(u.uStoneWeather, STONE.edge, STONE.runs, STONE.lichen.size, STONE.lichen.cover);
-    gl.uniform2f(u.uStoneLichen, STONE.lichen.pale, STONE.lichen.dark);
-    gl.uniform4f(u.uStoneWater, STONE.stain.height, STONE.stain.darkening, STONE.wet.height, STONE.wet.darkening);
-    gl.uniform4f(u.uStoneWear, STONE.wear.polish, STONE.wear.chip, STONE.wear.chipTone, STONE.wear.pits);
-    gl.uniform1f(u.uStoneUnder, STONE.under);
-    gl.uniform2f(u.uStoneMeniscus, STONE.meniscus.height, STONE.meniscus.sky);
-    gl.uniform1f(u.uSubjectDepth, DEPTH.subject);
-
-    /* The shores: the photograph, and the fog's departure over it. */
-    this.setPlateUniforms(u, camera);
-    gl.uniform4f(u.uSheetMean, ...OVER_PHOTO.mean);
-    gl.uniform4f(u.uSheetLife, ...OVER_PHOTO.life);
-    gl.uniform1f(u.uFogLife, p.fogLife);
-    gl.uniform1f(u.uFogReach, OVER_PHOTO.reach);
-    gl.uniform4f(u.uAerial, p.aerial, AERIAL.pivot, AERIAL.nearer, AERIAL.most);
-    gl.uniform3f(u.uSoftBlack, p.softBlack, SOFT_BLACK.from, SOFT_BLACK.to);
-    gl.uniform4f(u.uMistSeen, MIST_SEEN.veil, p.mistSeen, ...MIST_SEEN.water);
+    setCameraUniforms(gl, u, f.camera);
+    setFogUniforms(gl, u, f);
+    setSheetUniforms(gl, u, f);
+    setWaterUniforms(gl, u, f);
+    setStoneUniforms(gl, u, f);
+    setPlateUniforms(gl, u, f.camera, f.plates);
+    setDevelopUniforms(gl, u, f);
     gl.uniform4f(u.uLakeBurn, p.lakeBurnHorizon, p.lakeBurnFoot, p.lakeBurnShape, p.lakeContrast);
-    /* The film, backwards, for the photograph. */
-    gl.uniform1f(u.uExposure, p.exposure);
-    gl.uniform1fv(u.uUnprint, this.unprint());
-
+    this.bloom.bindScene(u, UNITS.bloom);
+    this.stone.bindScene(u);
+    this.lake.bindScene(u);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
@@ -762,12 +845,10 @@ class Stage implements StageEngine {
     setCameraUniforms(gl, u, camera);
     bindTexture(gl, u.uScene, 0, scene.tex);
     bindTexture(gl, u.uGlow, 1, glow.tex);
-    bindTexture(gl, u.uPlate, 2, plates.backdrop);
-    bindTexture(gl, u.uBackdropDepth, 4, plates.depth);
     gl.uniform1f(u.uDiffusion, p.diffusion);
     gl.uniform1f(u.uHalation, p.halation);
     gl.uniform1f(u.uUpscale, this.upscale);
-    this.setPlateUniforms(u, camera);
+    setPlateUniforms(gl, u, camera, plates);
     gl.uniform1f(u.uExposure, p.exposure);
     gl.uniform4f(u.uPrint, FILM.print.pivot, p.shadows, p.highlights, p.toe);
     gl.uniform1f(u.uKnee, p.knee);
@@ -882,7 +963,7 @@ class Stage implements StageEngine {
       pending.push([
         timed(() => this.atmosphere.tick(1 / 60, this.params, this.params, tier.pressureIterations, this.reduced)),
         timed(() => this.atmosphere.render(camera, this.params, this.reduced)),
-        timed(() => this.drawScene(camera)),
+        timed(() => this.drawSet(camera)),
         timed(() => {
           this.drawGlow();
           this.drawFilm(camera);

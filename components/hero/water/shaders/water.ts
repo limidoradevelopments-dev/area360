@@ -47,6 +47,8 @@ uniform vec3 uWaterClarity;
 /* how much more the stone's reflection is moved by a tilt than its short
    path gives (water/optics.ts WATER.waver) */
 uniform float uSubjectWaver;
+/* the lowest a reflected ray may dip, as a share of its mirror elevation */
+uniform float uMinElevation;
 /* the lake lapping at the stone: wavenumber (rad/m), amplitude (m), phase;
    then how far it reaches (m) and its gain (1 = designed) */
 uniform vec3 uLaps[LAP_COUNT];

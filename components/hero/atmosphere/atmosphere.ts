@@ -9,7 +9,8 @@
  *   the sheets   the fog between the planes of the set, rendered at half
  *                resolution through the camera (shaders/sheets.ts): a
  *                density and a light per sheet, for the composite to put
- *                between things
+ *                between things — drawn packed into one target, then laid
+ *                out into the two the scene reads
  *
  * Input arrives in frame CSS px. The hand acts on the air in front of the
  * stone: the camera orbits it, so its plane never moves on screen, and a
@@ -17,7 +18,7 @@
  */
 
 import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
-import { bindTexture, createMultiTarget, createProgram, deleteTarget, type MultiTarget, type Program } from "../stage/gl";
+import { bindTexture, createProgram, createTarget, deleteTarget, type Program, type Target } from "../stage/gl";
 import { breathing, Gusts } from "./ambient";
 import { carryPhase, FluidSim, type AirParams } from "./fluid";
 import { Forcing } from "./forcing";
@@ -34,7 +35,7 @@ import {
   TURBULENCE,
 } from "./motion";
 import { LIGHT, SHEETS, VOLUME } from "./optics";
-import { SHEETS_FRAG } from "./shaders/sheets";
+import { SHEETS_FRAG, SHEETS_UNPACK_FRAG } from "./shaders/sheets";
 
 /** What the fog's look reads from the live tuning. */
 export interface FogLook {
@@ -69,8 +70,12 @@ export class Atmosphere {
   private readonly vao: WebGLVertexArrayObject;
   private readonly sim: FluidSim;
   private readonly program: Program;
+  private readonly unpack: Program;
   private readonly forcing = new Forcing();
-  private sheets: MultiTarget | null = null;
+  /* The sheets as drawn (both sets, packed), and laid out. */
+  private packed: Target | null = null;
+  private densityTarget: Target | null = null;
+  private lightTarget: Target | null = null;
 
   /* The air's own clock: it only advances while the stage runs. */
   private clock: number = AIR_CLOCK.start;
@@ -97,10 +102,11 @@ export class Atmosphere {
     this.gusts = new Gusts(AIR_CLOCK.start);
     this.program = createProgram(gl, SHEETS_FRAG, [
       ...CAMERA_UNIFORMS,
-      "uFluid", "uCarry", "uGridMap", "uGrid", "uPhase", "uCellPx", "uPivotZ", "uTime", "uBreath",
+      "uFluid", "uCarry", "uGridMap", "uGrid", "uPhase", "uCellPx", "uPivotZ", "uTime", "uBreath", "uCarriedSets",
       "uSheetPlane", "uSheetScale", "uSheetDetail", "uSheetResponse", "uSheetForm", "uSheetBlur", "uSheetSharp", "uSheetDrift",
       "uStrata", "uEvolve", "uLight", "uTurb", "uWaveA", "uWaveB",
     ]);
+    this.unpack = createProgram(gl, SHEETS_UNPACK_FRAG, ["uPacked", "uSet"]);
   }
 
   get time(): number {
@@ -112,14 +118,26 @@ export class Atmosphere {
     return this.clock - this.lastActive > AIR_CLOCK.calmAfter;
   }
 
+  /**
+   * The air as it stands — its target, and where the frame at rest lies on
+   * its grid (fluid uv = frame uv · map.xy + map.zw), the grid's size in
+   * cells and a cell's size in CSS px — for what answers it on the CPU
+   * (sampler.ts, bloom/).
+   */
+  get air(): { target: Target; map: readonly [number, number, number, number]; grid: [number, number]; cellPx: number } | null {
+    const target = this.sim.fieldTarget;
+    if (!target) return null;
+    return { target, map: this.sim.gridMap, grid: [this.sim.gridW, this.sim.gridH], cellPx: this.cellPx };
+  }
+
   /** The sheets' densities (one per channel, near → far). */
   get density(): WebGLTexture | null {
-    return this.sheets?.texs[0] ?? null;
+    return this.densityTarget?.tex ?? null;
   }
 
   /** The sheets' light: xyz sheets 0–2, w the plain light (far sheet, sky). */
   get light(): WebGLTexture | null {
-    return this.sheets?.texs[1] ?? null;
+    return this.lightTarget?.tex ?? null;
   }
 
   /**
@@ -134,10 +152,13 @@ export class Atmosphere {
       this.forcing.reset();
       this.press = null;
     }
-    const sheets = this.sheets;
-    if (!sheets || sheets.width !== volumeW || sheets.height !== volumeH) {
-      deleteTarget(this.gl, sheets);
-      this.sheets = createMultiTarget(this.gl, volumeW, volumeH, this.gl.RGBA16F, this.gl.LINEAR, 2);
+    const packed = this.packed;
+    if (!packed || packed.width !== volumeW || packed.height !== volumeH) {
+      const gl = this.gl;
+      this.deleteSheets();
+      this.packed = createTarget(gl, volumeW, volumeH, gl.RGBA32UI, gl.NEAREST);
+      this.densityTarget = createTarget(gl, volumeW, volumeH, gl.RGBA16F, gl.LINEAR);
+      this.lightTarget = createTarget(gl, volumeW, volumeH, gl.RGBA16F, gl.LINEAR);
     }
   }
 
@@ -182,12 +203,12 @@ export class Atmosphere {
     if (steps > 0) this.wakeFrom = hover;
   }
 
-  /** Renders the fog sheets through the camera, into the sheets target. */
+  /** Renders the fog sheets through the camera, into the sheets targets. */
   render(camera: CameraFrame, look: FogLook, reduced: boolean): void {
-    const sheets = this.sheets;
+    const sheets = this.packed;
     const field = this.sim.field;
     const carried = this.sim.carried;
-    if (!sheets || !field || !carried) return;
+    if (!sheets || !this.densityTarget || !this.lightTarget || !field || !carried) return;
     const gl = this.gl;
     const u = this.program.uniforms;
     gl.bindVertexArray(this.vao);
@@ -206,6 +227,9 @@ export class Atmosphere {
     const time = reduced ? AIR_CLOCK.start : this.clock;
     gl.uniform1f(u.uTime, time);
     gl.uniform1f(u.uBreath, 1 + (reduced ? 0 : BREATHING.amount * breathing(this.clock)));
+    /* The two carried sets (fluid.ts carryPhase), as a uniform: shaders/
+       sheets.ts, one call of billows a sheet. */
+    gl.uniform1f(u.uCarriedSets, 2);
 
     const per = <K extends keyof (typeof SHEETS)[number]>(key: K, scale = 1) =>
       SHEETS.map((s) => (s[key] as number) * scale) as [number, number, number, number];
@@ -237,6 +261,25 @@ export class Atmosphere {
     wave(0, u.uWaveA);
     wave(1, u.uWaveB);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    /* Laid out into the two textures the scene reads. */
+    const v = this.unpack.uniforms;
+    gl.useProgram(this.unpack.handle);
+    bindTexture(gl, v.uPacked, 0, sheets.tex);
+    for (const [target, set] of [[this.densityTarget, 0], [this.lightTarget, 1]] as const) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      gl.uniform1f(v.uSet, set);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  }
+
+  private deleteSheets(): void {
+    deleteTarget(this.gl, this.packed);
+    deleteTarget(this.gl, this.densityTarget);
+    deleteTarget(this.gl, this.lightTarget);
+    this.packed = null;
+    this.densityTarget = null;
+    this.lightTarget = null;
   }
 
   /**
@@ -245,16 +288,15 @@ export class Atmosphere {
    * Rows of four: sheets 0–3 (light: 0–2 and the plain light).
    */
   probe(): { density: number[][]; light: number[][] } {
-    const sheets = this.sheets;
-    if (!sheets) return { density: [], light: [] };
+    const density = this.densityTarget;
+    const light = this.lightTarget;
+    if (!density || !light) return { density: [], light: [] };
     const gl = this.gl;
-    const { width, height } = sheets;
-    const read = (index: number) => {
+    const { width, height } = density;
+    const read = (target: Target) => {
       const out = new Float32Array(width * height * 4);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, sheets.fbo);
-      gl.readBuffer(gl.COLOR_ATTACHMENT0 + index);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
       gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, out);
-      gl.readBuffer(gl.COLOR_ATTACHMENT0);
       const thirds = [0, 1, 2].map(() => [0, 0, 0, 0]);
       const counts = [0, 0, 0];
       for (let y = 0; y < height; y += 1) {
@@ -267,7 +309,7 @@ export class Atmosphere {
       }
       return thirds.map((t, i) => t.map((v) => Math.round((v / counts[i]) * 1000) / 1000));
     };
-    return { density: read(0), light: read(1) };
+    return { density: read(density), light: read(light) };
   }
 
   /* ── Input, in frame CSS px ─────────────────────────────────────────── */
@@ -321,7 +363,8 @@ export class Atmosphere {
 
   dispose(): void {
     this.gl.deleteProgram(this.program.handle);
-    deleteTarget(this.gl, this.sheets);
+    this.gl.deleteProgram(this.unpack.handle);
+    this.deleteSheets();
     this.sim.dispose();
   }
 }

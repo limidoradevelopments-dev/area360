@@ -1,9 +1,9 @@
 /**
  * ─── Stage · the scene ───
  *
- * The one full-resolution pass. For every pixel, one ray from the camera,
- * front to back: the fog in front of the stone, the stone (10 m), then
- * whatever lies behind — the lake, or the photograph of the shores
+ * The composite. For every pixel of the scene's target, one ray from the
+ * camera, front to back: the fog in front of the stone, the stone (10 m),
+ * then whatever lies behind — the lake, or the photograph of the shores
  * (stage/layers.ts BACKDROP), whichever the photograph's own shoreline says
  * the pixel shows.
  *
@@ -18,13 +18,9 @@
  *
  * THE LAKE. A ray that meets the water splits there (Fresnel): a share goes
  * into the dark lake, and the rest is reflected by the moving surface
- * (water/) — onto the stone if it stands in its way, and then onto
- * the photograph, found by marching the reflected ray against its depth.
- * By the mirror's symmetry, a reflected shore lies as far down the reflected
- * path as the shore itself lies from the camera, and so carries the same
- * fog: the photograph's value IS the reflection's, as the camera sees it.
- * Only the lake's own share (its body, under the reflection) takes the
- * stage's fog in front of the water.
+ * (water/) — onto the stone if it stands in its way, and then onto the
+ * photograph. Only the lake's own share (its body, under the reflection)
+ * takes the stage's fog in front of the water.
  *
  * The fog sheets are the half-resolution volume pass (atmosphere): a local
  * density and light per sheet. The direct ray reads them at its own pixel; a
@@ -34,15 +30,48 @@
  * OUT: linear light, and (alpha) how much of it is the photograph seen
  * straight. The film pass (post.ts) develops it at the screen's own
  * resolution, and uses the alpha to put the photograph's finer detail back.
+ *
+ * ONE SCENE, SEVERAL PROGRAMS. A first visit on Windows waited ~25 s for
+ * this shader to compile (a GTX 1050 Ti, an empty shader cache; repeat
+ * visits ~1.5 s): Direct3D's compiler, which every Windows browser runs,
+ * takes far longer over one big program than over its parts — the stone's
+ * shading alone cost ~15 s of it here and 0.6 s in a program of its own.
+ * So the heavy subjects are drawn by their own small programs first, and
+ * this one reads what they drew, at its own pixel:
+ *
+ *   stone/shaders/slots.ts   the stone as the camera sees it and as the
+ *                            lake mirrors it, one ray a pixel into slots,
+ *                            over a rect round where it can show
+ *   water/shaders/lake.ts    the photograph reflected in the lake
+ *   bloom/shaders/bloom.ts   the plant on the stone, and in the lake
+ *
+ * The same rays, the same sums in the same order: every pass draws the
+ * scene's own pixels (stage/shaders/pixel.ts), and what passes between them
+ * is kept in 32-bit floats. The programs compile side by side on the
+ * browser's threads — but only about two at once, so what counts is the
+ * work in all of them. Measure a change by its cold compile (an empty
+ * shader cache) as well as by its frame: a first visit waits once, every
+ * frame pays.
+ *
+ * EVERY READ NAMES ITS LEVEL (textureLod, textureGrad or texelFetch), never
+ * texture(). A plain texture() needs the screen's gradients, which do not
+ * exist inside a branch or a loop the pixels take differently — so
+ * Direct3D's compiler flattens the branches round it and every pixel runs
+ * both sides. The fog's sheets and the plant's pictures have one level, so
+ * level 0 IS what texture() read.
  */
 
 import { FOG_GLSL } from "../../atmosphere/shaders/fog";
+import { SLOTS_GLSL } from "../../stone/shaders/slots";
 import { STONE_GLSL } from "../../stone/shaders/stone";
+import { SURFACE_GLSL } from "../../water/shaders/surface";
 import { WATER_GLSL } from "../../water/shaders/water";
 import { WATER } from "../../water/optics";
 import { BACKDROP_GLSL } from "./backdrop";
 import { CAMERA_GLSL } from "./camera";
 import { FILM_GLSL } from "./film";
+import { PIXEL_GLSL } from "./pixel";
+import { SET_GLSL } from "./set";
 
 export const SCENE_FRAG = /* glsl */ `#version 300 es
 precision highp float;
@@ -57,281 +86,63 @@ ${WATER_GLSL}
 ${STONE_GLSL}
 ${FILM_GLSL}
 ${BACKDROP_GLSL}
+${SET_GLSL}
+${SURFACE_GLSL}
+${PIXEL_GLSL}
+${SLOTS_GLSL}
 
-/* the fog sheets: density per sheet; light on sheets 0–2 and the plain light */
-uniform sampler2D uSheetDensity;
-uniform sampler2D uSheetLight;
-/* each sheet's average density: the fog the photograph already holds */
-uniform vec4 uSheetMean;
-/* how much of each sheet's departure from that average shows over the
-   photograph, times the overall amount */
-uniform vec4 uSheetLife;
-uniform float uFogLife;
-/* the most any patch may thicken or thin, as optical depth (soft limit) */
-uniform float uFogReach;
-/* aerial depth (atmosphere/optics.ts AERIAL): optical depth per metre, the
-   depth it is zero at, the share kept nearer than that, the most it may add
-   or take (soft limit) */
-uniform vec4 uAerial;
-/* soft blacks (atmosphere/optics.ts SOFT_BLACK): optical depth added at a
-   black, by darkness squared; full nearer than y metres, gone by z */
-uniform vec3 uSoftBlack;
-/* the mist seen moving (atmosphere/optics.ts MIST_SEEN): its veil over the
-   dark, its self-shading over the open fog, and where it fades in over the
-   water (metres) */
-uniform vec4 uMistSeen;
-/* the stone's centre plane (DEPTH.subject, m): where the near fog ends */
-uniform float uSubjectDepth;
-/* the lowest a reflected ray may dip, as a share of its mirror elevation */
-uniform float uMinElevation;
 /* the lake burned in: stops at the horizon and at the frame's foot, the
    power of the ramp between (below 1: it deepens fast under the shores),
    and the harder paper it is printed on (contrast against the fog's glow) */
 uniform vec4 uLakeBurn;
+/* the photograph in the lake (water/lake.ts), at this target's pixels */
+uniform sampler2D uLakePhoto;
+/* The plant on the stone (bloom/), drawn by its own pass: as the camera sees
+   it, over a rect of this target's own pixels (corner and size, px) — its
+   light (premultiplied), and what it leaves of what lies behind it, the
+   stone's share of the sky under it taken in; and as the still lake mirrors
+   it, over a rect of the frame (uv: corner, size) that fills a share of its
+   texture; the plant's depth plane (m). */
+uniform sampler2D uBloomNear;
+uniform sampler2D uBloomMirror;
+uniform vec4 uBloomRect;
+uniform vec4 uBloomMirrorRect;
+uniform vec2 uBloomMirrorFill;
+uniform float uBloomPlane;
 
-struct Hit {
-  /* premultiplied */
-  vec3 color;
-  float alpha;
-  /* depth along the ray (metres), to order it against the water */
-  float depth;
-};
-
-Hit noHit() {
-  Hit h;
-  h.color = vec3(0.0);
-  h.alpha = 0.0;
-  h.depth = 1e6;
+/* The plant over the stone, as the camera sees it at this pixel: the stone
+   shaded where the plant rests on it, the plant laid over (its own pass
+   has already hidden what the stone hides of it). */
+Hit plantOver(Hit h) {
+  ivec2 at = ivec2(gl_FragCoord.xy) - ivec2(uBloomRect.xy);
+  if (any(lessThan(at, ivec2(0))) || any(greaterThanEqual(at, ivec2(uBloomRect.zw)))) return h;
+  vec4 plant = texelFetch(uBloomNear, at, 0);
+  h.color = plant.rgb + plant.a * h.color;
+  h.alpha = 1.0 - plant.a * (1.0 - h.alpha);
   return h;
 }
 
-/* A sheet's light: sheets 0–2 carry their own; the far sheet and the sky
-   share the plain light. */
-float lightOf(vec4 light, int k) {
-  return k >= 3 ? light.w : light[k];
-}
-
-/* The sheet just behind depth z: what a thing standing at z is seen
-   against (4: past the last edge, the sky). */
-int sheetBehind(float z) {
-  return int(z >= uSheetEdge.x) + int(z >= uSheetEdge.y) + int(z >= uSheetEdge.z) + int(z >= uSheetEdge.w);
-}
-
-/* The fog between depths za and zb, across whichever sheets lie there. */
-void fogSpan(inout vec3 color, inout float transmit, vec3 origin, vec3 ray, float za, float zb, float perDepth,
-             vec4 density, vec4 light) {
-  for (int k = 0; k < 4; k++) {
-    float a = max(za, sheetStart(k));
-    float b = min(zb, uSheetEdge[k]);
-    fogBetween(color, transmit, origin, ray, k, a, b, perDepth, density[k], lightOf(light, k));
-  }
-}
-
-/* The fog over the photograph between za and zb. Returns its DEPARTURE
-   from its average, as optical depth (positive: denser than the fog the
-   photograph holds), each sheet weighed by the average fog in front of it.
-   Adds the glow of that fog, weighed the same way, to \`glow\` and \`weight\`
-   (airOf turns them into the fog's colour): a reflection's fog is the sum
-   of two stretches, the one to the water and the one beyond it. */
-float fogDeparture(vec3 origin, vec3 ray, float za, float zb, float perDepth, vec4 density, vec4 light,
-                   inout vec3 glow, inout float weight) {
-  float departure = 0.0;
-  float held = 0.0;
-  for (int k = 0; k < 4; k++) {
-    float a = max(za, sheetStart(k));
-    float b = min(zb, uSheetEdge[k]);
-    if (b <= a) continue;
-    float zMid = 0.5 * (a + b);
-    float yMid = origin.y + ray.y * ((zMid - origin.z) / ray.z);
-    float share = (b - a) / (uSheetEdge[k] - sheetStart(k));
-    float base = ((opticalDepthTo(b) - opticalDepthTo(a)) * liftAt(yMid) + uSheetVeil[k] * share) * perDepth;
-    float front = exp(-held);
-    departure += front * base * uSheetLife[k] * (density[k] - uSheetMean[k]);
-    glow += front * base * fogRadiance(lightOf(light, k));
-    weight += front * base;
-    held += base * uSheetMean[k];
-  }
-  return departure * uFogLife;
-}
-
-/* The fog's colour from a gathered glow. A stretch past the last sheet
-   gathers none; there the fog is the plain light's (the sky's). */
-vec3 airOf(vec3 glow, float weight, vec4 light) {
-  return weight > 1e-4 ? glow / weight : fogRadiance(light.w);
-}
-
-/* The photograph's light, with the fog's departure laid over it. A pixel of
-   it is what stands there seen through the fog in front — T·thing +
-   (1 − T)·air — so thicken that fog by a departure d and the part of the
-   pixel that is not fog (air − photo) shows through e^(−d) of itself; thin
-   it, and e^(+d). ONE LAW BOTH WAYS: fog drifting about its average leaves
-   the forest, on average, as photographed. (A thinning that revealed less
-   than a thickening hid hazed the whole forest by ~18 levels.)
-   HOW FAR A PIXEL CAN COME FORWARD IS IN THE PIXEL: the sky, the fog's own
-   glow, does not move at all, since there is nothing behind fog but more
-   fog; and nothing clears past the photograph's own black, the darkest any
-   of its trees prints, so a gap reveals the dark forest and never a hole
-   darker than it. Softly limited (uFogReach): fog moves through a forest,
-   it does not swallow it or strip it. \`gain\` returns how much of the
-   photograph's own light comes through. */
-vec3 throughFog(vec3 photo, vec3 air, float departure, float depth, out float gain) {
-  /* Over the open sky the photograph's fog is smooth; there the movement is
-     a breath, not a bank. */
-  float far = smoothstep(250.0, 700.0, depth);
-  departure = uFogReach * tanh(departure / uFogReach) * mix(1.0, 0.35, far);
-  /* The still fog of distance, by the same law: far banks further in, near
-     ones out. */
-  float aerial = uAerial.x * (depth - uAerial.y);
-  departure += uAerial.w * tanh(aerial * (aerial < 0.0 ? uAerial.z : 1.0) / uAerial.w);
-  /* The near bank's darkest trees, a little further into the air. */
-  float dark = clamp(1.0 - photo.g / max(air.g, 1e-4), 0.0, 1.0);
-  departure += uSoftBlack.x * dark * dark * (1.0 - smoothstep(uSoftBlack.y, uSoftBlack.z, depth));
-  gain = exp(-departure);
-  vec3 c = air - (air - photo) * gain;
-  /* A smooth floor at the photograph's black (or the pixel itself, if
-     darker): the soft max of the two, so no contour where it takes hold. */
-  float floor_ = min(photo.g, undevelop(0.0).g);
-  float v = c.g - floor_;
-  float k = 0.25 * floor_ + 1e-5;
-  float r = sqrt(v * v + k * k);
-  gain *= 0.5 * (1.0 + v / r);
-  return c + 0.5 * (r - v);
-}
-
-/* The near bank of mist over light \`c\`: its density's departure from its
-   mean, as an overcast afternoon shows it — over the dark, a veil of its
-   light (denser: lighter); over the open fog, its self-shading (denser:
-   greyer). Smooth wherever the density is: no lit tops, whose gradient drew
-   hard bands. \`light.w\`: the light falling through the air here. */
-vec3 mistSeen(vec3 c, vec4 density, vec4 light) {
-  float m = clamp(density.y - uSheetMean.y, -0.7, 0.7);
-  vec3 plain = fogRadiance(light.w);
-  float open = clamp(c.g / max(plain.g, 1e-4), 0.0, 1.0);
-  return max(c + m * (uMistSeen.x * (plain - c) - uMistSeen.y * open * plain), vec3(0.0));
-}
-
-/* Four rays across a pixel, as shares of its steps (a rotated grid: no two
-   share a row or a column, so a near-level edge is resolved as well as a
-   near-vertical one). */
-const vec2 PIXEL_GRID[4] = vec2[4](vec2(-0.125, -0.375), vec2(0.375, -0.125), vec2(0.125, 0.375), vec2(-0.375, 0.125));
-
-/* Where a ray meets the stone above the water: t, or −1. \`rounded\`: its
-   edges rounded, as the camera sees them; a reflection, broken by the
-   ripples and blurred, never shows them, and the sharp block is cheaper
-   and never lets a grazing ray slip past a corner into the fog. */
-float stoneAbove(vec3 origin, vec3 ray, bool rounded, out vec3 local, out vec3 normal) {
-  float t = rounded ? hitStoneRound(origin, ray, local, normal) : hitStone(origin, ray, local, normal);
-  return t > 0.0 && origin.y + ray.y * t > 0.0 ? t : -1.0;
-}
-
-/* The stone's light where a ray meets it (at t). */
-vec3 stoneLight(vec3 origin, vec3 ray, float t, vec3 local, vec3 normal, float spread, vec3 sky) {
-  return shadeStone(origin + ray * t, local, normal, normalize(ray), spread * t * length(ray), sky);
-}
-
-/* The stone, where a ray meets it. \`rx\`, \`ry\`: the ray's step to the next
-   pixel across and up (zero: one ray, as in a reflection); \`spread\`: the
-   pixel's angular width. \`sky\` lights the stone.
-   THE STONE'S EDGES ARE RESOLVED, NOT STEPPED. One ray a pixel draws its
-   sloping edges as stairs, the surest mark of a render — at its silhouette
-   and as much where its bright top meets a dark face. So four rays cross
-   each pixel: where all four land on one face, it is shaded once; where
-   they disagree (an edge, the silhouette, the waterline), each is shaded
-   and the four averaged. Only what stands above the water counts: below
-   it, the lake is in front. */
-Hit subjectAt(vec3 origin, vec3 ray, vec3 rx, vec3 ry, float spread, vec3 sky) {
-  Hit h = noHit();
-  vec3 local;
-  vec3 normal;
-  bool grid = dot(rx, rx) > 0.0;
-  float t = stoneAbove(origin, ray, grid, local, normal);
-  float cover = t > 0.0 ? 1.0 : 0.0;
-  /* Do the four rays agree with the centre: all on its face, or all off? */
-  bool mixed = false;
-  /* Only near it: two pixels' width round the block. */
-  if (grid && nearStone(origin, ray, 2.0 * spread * uStonePlan.y)) {
-    float hits = 0.0;
-    for (int i = 0; i < 4; i++) {
-      vec3 l;
-      vec3 n;
-      float ti = stoneAbove(origin, ray + rx * PIXEL_GRID[i].x + ry * PIXEL_GRID[i].y, true, l, n);
-      hits += ti > 0.0 ? 1.0 : 0.0;
-      mixed = mixed || (ti > 0.0) != (t > 0.0) || (ti > 0.0 && dot(n, normal) < 0.5);
-    }
-    cover = 0.25 * hits;
-  }
-
-  /* Shaded once where the rays agree — nearly every pixel of it — and only
-     on its edges once a ray. */
-  vec3 stone = vec3(0.0);
-  float stoneDepth = 1e6;
-  if (mixed) {
-    for (int i = 0; i < 4; i++) {
-      vec3 d = ray + rx * PIXEL_GRID[i].x + ry * PIXEL_GRID[i].y;
-      vec3 l;
-      vec3 n;
-      float ti = stoneAbove(origin, d, true, l, n);
-      if (ti > 0.0) {
-        stone += 0.25 * stoneLight(origin, d, ti, l, n, spread, sky);
-        stoneDepth = min(stoneDepth, origin.z + d.z * ti);
-      }
-    }
-  } else if (t > 0.0) {
-    stone = stoneLight(origin, ray, t, local, normal, spread, sky);
-    stoneDepth = origin.z + ray.z * t;
-  }
-  h.color = stone;
-  h.alpha = cover;
-  h.depth = stoneDepth;
+/* The plant in the lake, over the stone's reflection: where the reflected
+   ray (from \`surface\`, along \`dir\`) crosses the plant's depth, mirrored
+   under the water, is where the mirror pass drew it — so the lake's tilt
+   moves its reflection exactly as it moves the stone's. */
+Hit plantMirrored(Hit h, vec3 surface, vec3 dir) {
+  if (dir.z <= 1e-4) return h;
+  vec3 q = surface + dir * ((uBloomPlane - surface.z) / dir.z);
+  q.y = -q.y;
+  vec2 at = (projectUv(q) - uBloomMirrorRect.xy) / uBloomMirrorRect.zw;
+  if (any(lessThan(at, vec2(0.0))) || any(greaterThan(at, vec2(1.0)))) return h;
+  vec4 plant = textureLod(uBloomMirror, at * uBloomMirrorFill, 0.0);
+  h.color = plant.rgb + plant.a * h.color;
+  h.alpha = 1.0 - plant.a * (1.0 - h.alpha);
   return h;
-}
-
-/* The stone in a reflection. The ripples too fine to draw spread
-   the reflected ray over a small cone (\`rough\`, radians across and up);
-   the stone is solved in closed form, so the cone is sampled: four
-   rays at the quartiles of its spread, mostly up and down. Without it the
-   stone's reflection is a second stone, every seam in place. */
-Hit subjectReflected(vec3 origin, vec3 ray, vec2 rough) {
-  /* The cone's width is the footprint the stone's grain is filtered to. */
-  float spread = max(rough.y, 0.002);
-  if (rough.y < 0.001) return subjectAt(origin, ray, vec3(0.0), vec3(0.0), spread, uLit);
-  vec3 dir = normalize(ray);
-  vec3 across = normalize(vec3(dir.z, 0.0, -dir.x));
-  vec3 up = cross(dir, across);
-  Hit sum = noHit();
-  for (int i = 0; i < 4; i++) {
-    /* The quartile midpoints of a unit Gaussian, ±0.32 and ±1.15. */
-    float v = (i < 2 ? -1.0 : 1.0) * (i == 0 || i == 3 ? 1.15 : 0.32);
-    float a = (i == 1 || i == 3 ? 0.6 : -0.6);
-    Hit h = subjectAt(origin, dir + across * (a * rough.x) + up * (v * rough.y), vec3(0.0), vec3(0.0), spread, uLit);
-    sum.color += 0.25 * h.color;
-    sum.alpha += 0.25 * h.alpha;
-    sum.depth = min(sum.depth, h.depth);
-  }
-  return sum;
-}
-
-/* The sheets where a reflected ray crosses the middle of each one's
-   stretch, projected back into the frame. */
-void sheetsAlong(vec3 origin, vec3 ray, float zEnd, out vec4 density, out vec4 light) {
-  density = vec4(0.0);
-  light = vec4(0.0);
-  for (int k = 0; k < 4; k++) {
-    float a = max(origin.z, sheetStart(k));
-    float b = min(zEnd, uSheetEdge[k]);
-    if (b <= a) continue;
-    float zMid = 0.5 * (a + b);
-    vec2 at = clamp(projectUv(origin + ray * ((zMid - origin.z) / ray.z)), 0.0, 1.0);
-    density[k] = texture(uSheetDensity, at)[k];
-    vec4 l = texture(uSheetLight, at);
-    light[k] = k == 3 ? l.w : l[k];
-  }
 }
 
 /* What the lake gives back where this ray meets it, in two parts: its own
    light, as seen at the water (the stone reflected, and the dark
    body under the reflection), and the photograph reflected — already as the
-   camera sees it (see the top) — with the share of it the water returns. */
+   camera sees it (water/shaders/lake.ts) — with the share of it the water
+   returns. */
 struct Lake {
   vec3 own;
   /* the part of \`own\` that is the stage's: the stone reflected,
@@ -341,70 +152,32 @@ struct Lake {
   float share;
 };
 
-Lake lakeAt(vec3 origin, vec3 ray, float zWater, vec2 sigma, float departureNear, vec3 glowNear, float weightNear,
-            vec4 lightNear, vec2 dx, vec2 dy) {
-  vec3 surface = origin + ray * ((zWater - origin.z) / ray.z);
-  surface.y = 0.0;
-  vec3 d = normalize(ray);
-  vec2 roughness;
-  vec3 n = waterNormal(surface.xz, sigma, roughness);
-  /* The lake's own tilt and blur, kept apart: the stone's reflection is
-     drawn from them (below). */
-  vec3 lakeTilt = reflect(d, n);
-  vec2 lakeRoughness = roughness;
-  /* The lake laps at the stone: small wavelets thrown back off its faces,
-     dying within half a metre (water/motion.ts lapping). */
-  vec2 away;
-  float fromStone = stoneWaterline(surface.xz, away);
-  vec3 tilted = n / n.y;
-  tilted.xz -= lapSlope(fromStone, away, sigma, roughness);
-  n = normalize(tilted);
-  vec3 r = reflect(d, n);
-  r.y = max(r.y, uMinElevation * -d.y);
-  /* The unseen ripples spread the reflection: tilting the mirror toward the
-     camera moves it ~2× the tilt up or down, tilting it across moves it
-     only by the sine of the grazing angle — the vertical smear of every
-     calm lake's reflections. */
-  vec2 rough = 2.0 * sqrt(roughness) * vec2(-d.y, 1.0);
-  float reflectance = waterReflectance(dot(-d, n));
-  float perDepth = length(r) / r.z;
+Lake lakeAt(vec3 origin, vec3 ray, float zWater, vec2 sigma) {
+  LakeSurface s = lakeSurface(origin, ray, zWater, sigma);
 
   /* The stone, from the water in front of it. */
   vec3 subject = vec3(0.0);
   float cover = 1.0;
-  /* Water anywhere short of the stone's far corner can see it: its side
-     corners stand behind its centre's plane (stone/optics.ts STONE). */
-  if (surface.z < max(uSubjectDepth, uStonePlan.y + uStonePlan.w)) {
-    vec4 density;
-    vec4 light;
-    float zSubject = max(uSubjectDepth, surface.z);
-    sheetsAlong(surface, r, zSubject, density, light);
-    vec3 fog = vec3(0.0);
-    float transmit = 1.0;
-    fogSpan(fog, transmit, surface, r, surface.z, zSubject, perDepth, density, light);
-    /* THE STONE'S REFLECTION WAVERS AS THE TREES' DO. A tilt of the water
-       moves a reflection by the tilt times the reflected path: for the
-       shores, a hundred metres, so the lake's undulation slices their
-       reflections into drifting bands; for the stone, half a metre, so the
-       same lake left its reflection a still block under a wavering world —
-       pasted, not mirrored. Its tilt is drawn larger by \`uSubjectWaver\`:
-       still nothing at the waterline, where the path is nothing and the
-       reflection meets the stone, and growing away from it, the way a post's
-       reflection is whole at its foot and broken further out. The lapping
-       is drawn at its own size, its tilt and its blur: it lives at the
-       stone, where the path is short anyway, and drawn larger it threw the
-       rays from round the stone's narrow front corner past it, into the
-       fog — light dashes under the corner. */
-    vec3 mirror = reflect(d, vec3(0.0, 1.0, 0.0));
-    vec3 wavering = normalize(mirror + (lakeTilt - mirror) * uSubjectWaver + (r - lakeTilt));
-    wavering.y = max(wavering.y, uMinElevation * -d.y);
-    vec2 roughSubject = 2.0 * sqrt(lakeRoughness * uSubjectWaver * uSubjectWaver + roughness - lakeRoughness)
-                      * vec2(-d.y, 1.0);
-    Hit hit = subjectReflected(surface, wavering, roughSubject);
-    /* The fog in front of the stone is its own: the photograph behind
-       carries its own. */
-    subject = fog * hit.alpha + transmit * hit.color;
-    cover = 1.0 - hit.alpha;
+  if (beforeStone(s)) {
+    /* The stone's slots in the lake (stone/shaders/slots.ts) — and where
+       nothing is reflected, the fog in front of it weighs nothing: fogged
+       only where it shows. */
+    Hit hit = noHit();
+    if (reflectsStone(s)) hit = stoneMirrored(s);
+    hit = plantMirrored(hit, s.surface, s.wavering);
+    if (hit.alpha > 0.0) {
+      vec4 density;
+      vec4 light;
+      float zSubject = max(uSubjectDepth, s.surface.z);
+      sheetsAlong(s.surface, s.r, zSubject, density, light);
+      vec3 fog = vec3(0.0);
+      float transmit = 1.0;
+      fogSpan(fog, transmit, s.surface, s.r, s.surface.z, zSubject, s.perDepth, density, light);
+      /* The fog in front of the stone is its own: the photograph behind
+         carries its own. */
+      subject = fog * hit.alpha + transmit * hit.color;
+      cover = 1.0 - hit.alpha;
+    }
   }
 
   /* INTO THE WATER. What the surface lets through is the lake's dark body —
@@ -420,13 +193,13 @@ Lake lakeAt(vec3 origin, vec3 ray, float zWater, vec2 sigma, float departureNear
      sways it — as much as it sways the bent ray. HOW DIM: by the path its
      light takes up through the water, which is the bent one. */
   vec3 under = uWaterBody;
-  vec3 bentLevel = refract(d, vec3(0.0, 1.0, 0.0), 1.0 / ${WATER.ior.toFixed(3)});
-  vec3 into = normalize(d + refract(d, n, 1.0 / ${WATER.ior.toFixed(3)}) - bentLevel);
+  vec3 bentLevel = refract(s.d, vec3(0.0, 1.0, 0.0), 1.0 / ${WATER.ior.toFixed(3)});
+  vec3 into = normalize(s.d + refract(s.d, s.n, 1.0 / ${WATER.ior.toFixed(3)}) - bentLevel);
   vec3 footLocal;
   vec3 footNormal;
-  float tFoot = hitStone(surface, into, footLocal, footNormal);
+  float tFoot = hitStone(s.surface, into, footLocal, footNormal);
   if (tFoot > 0.0) {
-    vec3 q = surface + into * tFoot;
+    vec3 q = s.surface + into * tFoot;
     float depth = max(-q.y, 0.0);
     float reach = uWaterClarity.z * exp(-uWaterClarity.y * depth);
     float seen = exp(-uWaterClarity.x * depth / max(-bentLevel.y, 0.1));
@@ -437,30 +210,11 @@ Lake lakeAt(vec3 origin, vec3 ray, float zWater, vec2 sigma, float departureNear
   /* The stage's own light in the water — the stone mirrored, its foot
      through it — kept apart from the photograph's (see the harder paper,
      in shade). */
-  lake.subject = reflectance * subject + (1.0 - reflectance) * (under - uWaterBody);
-  lake.own = reflectance * subject + (1.0 - reflectance) * under;
-  lake.share = reflectance * cover;
+  lake.subject = s.reflectance * subject + (1.0 - s.reflectance) * (under - uWaterBody);
+  lake.own = s.reflectance * subject + (1.0 - s.reflectance) * under;
+  lake.share = s.reflectance * cover;
   lake.photo = vec3(0.0);
-  if (lake.share > 0.002) {
-    float depth;
-    vec2 uv = reflectBackdrop(surface, r, depth);
-    /* A mirror keeps scale: the pixel's own footprint on the photograph,
-       widened by the ripples' spread over the reflected path. */
-    float path = max(min(depth, 2000.0) - surface.z, 0.0) / max(depth, 1.0);
-    vec2 spread = rough * path * uPlateGeo.xy;
-    vec2 gx = vec2(max(length(dx), spread.x), 0.0);
-    vec2 gy = vec2(0.0, max(length(dy), spread.y));
-    vec4 density;
-    vec4 light;
-    sheetsAlong(surface, r, depth, density, light);
-    vec3 glow = glowNear;
-    float weight = weightNear;
-    float departure = departureNear + fogDeparture(surface, r, surface.z, depth, perDepth, density, light, glow, weight);
-    vec3 air = airOf(glow, weight, lightNear);
-    vec3 photo = mix(air, plateRadiance(uv, gx, gy), plateCover(uv));
-    float gain;
-    lake.photo = throughFog(photo, air, departure, depth, gain);
-  }
+  if (lake.share > 0.002) lake.photo = texelFetch(uLakePhoto, ivec2(gl_FragCoord.xy), 0).rgb;
   return lake;
 }
 
@@ -473,8 +227,8 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
   vec3 ray = cameraRay(uv);
   float perDepth = length(ray) / ray.z;
   float zWater = waterDepth(origin, ray);
-  vec4 density = texture(uSheetDensity, uv);
-  vec4 light = texture(uSheetLight, uv);
+  vec4 density = textureLod(uSheetDensity, uv, 0.0);
+  vec4 light = textureLod(uSheetLight, uv, 0.0);
 
   float zBack;
   vec2 backUv = locateBackdrop(origin, ray, zBack);
@@ -489,8 +243,8 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
   fogSpan(color, transmit, origin, ray, origin.z, zFront, perDepth, density, light);
   vec3 fogFront = color;
   float transmitFront = transmit;
-  Hit hit = subjectAt(origin, ray, rx, ry, length(rx) / length(ray), uLit);
-  /* The stone counts only above the water (subjectAt): what it covers of
+  Hit hit = plantOver(stoneSeen(origin, ray, rx, length(rx) / length(ray)));
+  /* The stone counts only above the water (stoneAbove): what it covers of
      this pixel stands in front of whatever lies behind. */
   if (hit.alpha > 0.0) {
     color += transmit * hit.color;
@@ -505,10 +259,7 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
     vec3 fog = fogFront;
     float fogTransmit = transmitFront;
     fogSpan(fog, fogTransmit, origin, ray, zFront, zWater, perDepth, density, light);
-    vec3 glow = vec3(0.0);
-    float weight = 0.0;
-    float departure = fogDeparture(origin, ray, origin.z, zWater, perDepth, density, light, glow, weight);
-    Lake lake = lakeAt(origin, ray, zWater, sigma, departure, glow, weight, light, dx, dy);
+    Lake lake = lakeAt(origin, ray, zWater, sigma);
     /* R·photo + (1 − R)·(fog + T·body), with the stone in it, then
        burned in (stage/optics.ts FILM.lakeBurn). The harder paper is for
        the photograph's reflections, whose darks the moving ripples fill
@@ -548,16 +299,13 @@ void main() {
   /* This pixel's footprints — on the water, from how the water point moves
      between neighbouring pixels, and on the photograph — taken here, in
      uniform control flow, where screen derivatives are defined. */
-  vec3 ray = cameraRay(vUv);
-  float t = ray.y < 0.0 ? uCamPos.y / -ray.y : 0.0;
-  vec2 onWater = (uCamPos + ray * t).xz;
-  vec2 wx = dFdx(onWater);
-  vec2 wy = dFdy(onWater);
-  vec2 sigma = min(0.5 * sqrt(wx * wx + wy * wy), vec2(50.0));
+  vec2 uv = vUv;
+  vec3 ray = cameraRay(uv);
+  vec2 sigma = waterFootprint(ray);
   vec2 onPlate = plateUvAt(ray);
   vec2 dx = dFdx(onPlate);
   vec2 dy = dFdy(onPlate);
 
-  outColor = shade(vUv, sigma, dx, dy, dFdx(ray), dFdy(ray));
+  outColor = shade(uv, sigma, dx, dy, dFdx(ray), dFdy(ray));
 }
 `;

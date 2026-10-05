@@ -25,42 +25,19 @@
    the flecks' mean, taken out so they darken nothing on average. */
 const FLECK_MEAN = 0.1876;
 
-export const STONE_GLSL = /* glsl */ `
+/**
+ * The block's shape alone — where a ray meets it — for the programs that
+ * only need to know what it hides (bloom/: the plant's pass). The rest of
+ * the stone (STONE_GLSL) begins with this.
+ */
+export const STONE_SHAPE_GLSL = /* glsl */ `
 /* the plan: centre (x, z), half-diagonal across the lens's axis, along it */
 uniform vec4 uStonePlan;
 /* its foot and top above the water (m) */
 uniform vec2 uStoneSpan;
-/* granite reflectance (linear) */
-uniform vec3 uStoneAlbedo;
-/* irradiance share: the top, a face turned from the light, one turned to it */
-uniform vec3 uStoneLight;
-/* the light's side, as a direction on the water (x, z) */
-uniform vec2 uLightSide;
-/* the foot's shade: up to this height (m), down to this share on the face
-   turned from the light, on the face turned to it */
-uniform vec3 uStoneFoot;
-/* sheen: reflectance head-on, at grazing; the share of the sky light its
-   reflection gathers on the top, on a face */
-uniform vec4 uStoneSheen;
-/* granite: cloud size (m) and amount, fleck size (m) and amount */
-uniform vec4 uStoneGrain;
-/* granite: fine grain size (m) and amount */
-uniform vec2 uStoneFine;
 /* weathering: the arrises' radius (m), the runs, lichen size (m) and its
    cover of the top */
 uniform vec4 uStoneWeather;
-/* lichen tone against the stone's: the pale, the dark */
-uniform vec2 uStoneLichen;
-/* wear: how unevenly rough (share), the deepest chip (m) and a chip's tone,
-   the pits' darkening */
-uniform vec4 uStoneWear;
-/* the lake's stain band height (m) and darkening, the soaked line's height
-   (m) and darkening */
-uniform vec4 uStoneWater;
-/* the coat on it under the water: its darkening */
-uniform float uStoneUnder;
-/* the meniscus: its height (m), and the share of the sky light it mirrors */
-uniform vec2 uStoneMeniscus;
 
 /* Half the side of the plan's square in the block's frame. */
 const float STONE_HALF_SIDE = 0.70710678;
@@ -170,6 +147,40 @@ bool nearStone(vec3 origin, vec3 ray, float grow) {
   vec3 tmax = max(t0, t1);
   return min(min(tmax.x, tmax.y), tmax.z) >= max(max(max(tmin.x, tmin.y), tmin.z), 0.0);
 }
+`;
+
+export const STONE_GLSL = /* glsl */ `
+${STONE_SHAPE_GLSL}
+/* granite reflectance (linear) */
+uniform vec3 uStoneAlbedo;
+/* irradiance share: the top, a face turned from the light, one turned to it */
+uniform vec3 uStoneLight;
+/* the light's side, as a direction on the water (x, z) */
+uniform vec2 uLightSide;
+/* the foot's shade: up to this height (m), down to this share on the face
+   turned from the light, on the face turned to it */
+uniform vec3 uStoneFoot;
+/* sheen: reflectance head-on, at grazing; the share of the sky light its
+   reflection gathers on the top, on a face */
+uniform vec4 uStoneSheen;
+/* granite: cloud size (m) and amount, fleck size (m) and amount */
+uniform vec4 uStoneGrain;
+/* granite: fine grain size (m) and amount */
+uniform vec2 uStoneFine;
+/* lichen tone against the stone's: the pale, the dark */
+uniform vec2 uStoneLichen;
+/* wear: how unevenly rough (share), the deepest chip (m) and a chip's tone,
+   the pits' darkening */
+uniform vec4 uStoneWear;
+/* the lake's stain band height (m) and darkening, the soaked line's height
+   (m) and darkening */
+uniform vec4 uStoneWater;
+/* the coat on it under the water: its darkening */
+uniform float uStoneUnder;
+/* the meniscus: its height (m), and the share of the sky light it mirrors */
+uniform vec2 uStoneMeniscus;
+/* the stone's centre plane (DEPTH.subject, m): where the near fog ends */
+uniform float uSubjectDepth;
 
 /* Distance (m) from a point on the water (x, z) to the stone's waterline —
    its diamond plan — and the unit direction away from it there. */
@@ -311,22 +322,27 @@ vec3 shadeStone(vec3 world, vec3 local, vec3 normal, vec3 view, float footprint,
   float soaked = 0.0;
   float wet = 0.0;
   float toward = dot(n.xz, uLightSide) * 0.5 + 0.5;
+  /* The lake's stain line, on a face: a band where the water stands half the
+     year, its top level and ragged, with tongues where it ran down. */
+  float line = uStoneWater.x + 0.02 * stoneNoise(vec2(across * 6.0, face * 3.1))
+             + 0.03 * max(stoneNoise(vec2(across * 37.0, face * 1.7)), 0.0);
+  /* The lichen: on the top where frost has not chipped it; on a face above
+     the stain, half the top's and thinning toward it. ONE CALL for both: a
+     GPU program has no calls, each is a copy (stage/shaders/scene.ts, the
+     top), and the lichen is six noises. */
+  float tone = lichen(st, top ? 1.0 - chip : (1.0 - chip) * 0.5 * smoothstep(line + 0.02, uStoneSpan.y - 0.05, height),
+                      spread);
   if (top) {
-    albedo *= lichen(st, 1.0 - chip, spread);
+    albedo *= tone;
   } else {
-    /* The lake's stain: a band where the water stands half the year, its
-       top level and ragged, with tongues where it ran down; its grain
-       drowned, darker and glossier toward the water. */
-    float line = uStoneWater.x + 0.02 * stoneNoise(vec2(across * 6.0, face * 3.1))
-               + 0.03 * max(stoneNoise(vec2(across * 37.0, face * 1.7)), 0.0);
+    /* The stain: its grain drowned, darker and glossier toward the water. */
     float stain = 1.0 - smoothstep(line - 0.04, line + 0.01, height);
     float deep = clamp(height / max(line, 0.01), 0.0, 1.0);
     albedo = mix(albedo, 1.0, 0.4 * stain) * mix(1.0, uStoneWater.y * mix(0.8, 1.2, deep), stain);
     soaked = 1.0 - smoothstep(uStoneWater.z - 0.01, uStoneWater.z + 0.01, height);
     albedo *= mix(1.0, uStoneWater.w, soaked);
     wet = max(soaked, 0.5 * stain * (1.0 - deep));
-    /* Lichen above the stain, half the top's and thinning toward it. */
-    albedo *= lichen(st, (1.0 - chip) * 0.5 * smoothstep(line + 0.02, uStoneSpan.y - 0.05, height), spread);
+    albedo *= tone;
     /* Rain's runs, off the top's edge and down the faces: dark streaks,
        fast across, slow down, strongest under the edge. */
     float runs = smoothstep(0.1, 0.8, stoneNoise(vec2(across * 9.0 + face * 3.0, height * 0.6)))
@@ -368,5 +384,19 @@ vec3 shadeStoneUnder(vec3 world, vec3 local, vec3 normal, float reach, vec3 sky)
   /* The water blurs it far past its grain: only its clouds show. */
   float albedo = granite(st, 0.02) * uStoneWater.w * uStoneUnder;
   return uStoneAlbedo * albedo * reach * sky;
+}
+
+/* Where a ray meets the stone above the water: t, or −1. \`rounded\`: its
+   edges rounded, as the camera sees them; a reflection, broken by the
+   ripples and blurred, never shows them, and the sharp block is cheaper
+   and never lets a grazing ray slip past a corner into the fog. */
+float stoneAbove(vec3 origin, vec3 ray, bool rounded, out vec3 local, out vec3 normal) {
+  float t = rounded ? hitStoneRound(origin, ray, local, normal) : hitStone(origin, ray, local, normal);
+  return t > 0.0 && origin.y + ray.y * t > 0.0 ? t : -1.0;
+}
+
+/* The stone's light where a ray meets it (at t). */
+vec3 stoneLight(vec3 origin, vec3 ray, float t, vec3 local, vec3 normal, float spread, vec3 sky) {
+  return shadeStone(origin + ray * t, local, normal, normalize(ray), spread * t * length(ray), sky);
 }
 `;

@@ -112,6 +112,11 @@ export class FluidSim {
     return this.fluid?.[this.fluidIndex].tex ?? null;
   }
 
+  /** The air's current target, to be read back (sampler.ts). */
+  get fieldTarget(): Target | null {
+    return this.fluid?.[this.fluidIndex] ?? null;
+  }
+
   /** The billows' carried coordinates: two sets, in cells. */
   get carried(): WebGLTexture | null {
     return this.carry?.[this.carryIndex].tex ?? null;
