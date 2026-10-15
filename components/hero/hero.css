@@ -47,7 +47,17 @@
   --color-hero-sepal: #C9CCC0;
   --color-hero-leaf: #7A8075;
   --color-hero-tube: #A0A597;
-  --color-hero-anther: #DFD6B5;
+  --color-hero-anther: #E2D5AC;
+  /* The clump it grows from: the moss over its crack, a dark olive (moss
+   * on wet stone is darker than a leaf, and greyer); the bark of its old
+   * stem and its roots, a grey-brown — both as quiet as the stems. */
+  --color-hero-moss: #6A6D5D;
+  --color-hero-bark: #7C766C;
+  /* Its pollen: motes of pale gold, each holding a little light (bloom/
+   * optics.ts BLOOM.pollen) — the warmest small note in the frame, the
+   * user's choice over white (2026-10-05). As light, not as a reflectance:
+   * a mote is a point too fine to be lit, only seen glowing. */
+  --color-hero-pollen: #EBD49B;
 
   /* ── The static first paint ──
    * The rendered frame's own light, measured: the mean of each tenth of its

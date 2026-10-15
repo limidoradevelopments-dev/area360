@@ -104,8 +104,62 @@ The traced flower (flat pieces hinged together, found by rays in `BLOOM_FRAG`) w
 
 **When you add to the flower:**
 - More shape is more CPU posing or more vertices, not more shader. Keep the vertex stage's branches by kind, and keep the posing allocation-free (`Pose`: write floats, make no arrays per sample).
-- Anything finer than a sample (filaments, anthers, pollen) is drawn a sample wide at least and as faint as it is narrow, blended after the solid parts. At its true width it would flicker as it moves.
+- Anything finer than a sample (filaments, anthers) is drawn a sample wide at least and as faint as it is narrow, blended after the solid parts. At its true width it would flicker as it moves. (The pollen is now drawn into the scene's light instead: see the evening's section below.)
 - The rules below still hold: one output a draw, loops to uniform counts, levels named.
+
+## The flower grown into a clump, and drawn at 4K (2026-10-05, later)
+
+The user asked for a larger flower, a base that is not two stems pushed into bare stone, and a better 4K picture. What changed, and what it cost:
+
+- **More shape, same two programs.** A larger flower (`BLOOM.scale` 1.45 → 1.75), five stems instead of two, a round woody old stem, four roots laid onto the stone's rounded surface (`shape.ts onStone`), a second bud with its bracts, bracts on the tube, and four moss cushions (a still mesh). The tepals have 20 × 9 vertices instead of 14 × 7. All of it is pose samples and mesh vertices. The mesh is ~21k vertices; the pose texture is 22 rows (~67 KB a frame).
+- **4K: the plant at the screen's own pixels.** On a screen finer than the scene (a 4K screen's scene is 2565 wide), the plant is drawn and resolved at the screen's pixels (FINE). That picture is box-filtered down to the scene's pixels (NEAR, so the scene and the film see the same plant). The film pass puts the difference back (`post.ts`, THE PLANT PUT BACK): what lies behind the plant is the scene's light with the coarse plant taken out of it. It matches a true full-4K render to within grain. The film pays nothing measurable for it. Drawing the plant at 4K costs ~0.05 ms more than at 2565.
+- **The contact shade read in chunks.** With roots and five stems, the shade under them read 80 points for every pixel. At 4K's pixel count that alone was 0.4 ms. Now the points are read in chunks of four, each with a bounding sphere (`uChunks`), and a pixel reads only the chunks whose shade reaches it. The cost is ~0 ms, and the picture is unchanged.
+- **Noise from a texture, not from arithmetic.** The new textures (the stems' mottle, the bark, the moss) first called a hashed value noise 12 times. That made the plant program's cold compile 2.6× longer (0.46 → 1.2 s). Hoisting it to four calls still gave ~0.9 s. Each call is pasted whole into the program, so the noise is now two reads of a 32³ RGBA8 volume (`NOISE_SIZE`): four values each, the texture unit doing the filtering.
+- **Pose.** ~0.45–0.5 ms a frame (from ~0.3 ms), mostly the 760 tepal samples. The tepals' small sideways sweep uses a cubic sine and cosine instead of `Math.sin`/`Math.cos` (exact to under a micron), which saved a third of the tepals' time.
+
+**Measured (GTX 1050 Ti + i7-8750H), old and new in the same session:**
+
+| | before (two stems) | now (the clump) |
+|---|---|---|
+| plant program, cold compile alone | 0.30–0.36 s | 0.54–0.61 s |
+| resolve program, cold compile alone | 0.22–0.43 s | 0.24–0.29 s |
+| film program, cold compile alone | 0.15–0.20 s | 0.17–0.21 s |
+| first live frame, cold, production (8 rounds each, alternating, CPU hot) | 5.0–9.5 s, median ~7.6 | 3.8–9.0 s, median ~5.1 |
+| GPU, the plant's pass, 1440×810 | | ~0.25–0.3 ms |
+| GPU, the plant's pass, 1920×1080 | ~0.21 ms | ~0.42 ms |
+| GPU, the plant's pass, 2560×1440 | ~0.3 ms | ~0.54 ms |
+| GPU, the plant's pass, 3840×2160 (FINE) | | ~0.68 ms |
+| main thread a frame (pose) | ~0.3 ms | ~0.45–0.5 ms |
+
+The plant program compiles in parallel with the scene (~1.5 s), so its extra 0.25 s did not lengthen the first frame. The CPU was hot that day, and both builds took longer than the 3.4 s measured earlier. The first-frame timing script had a race: before the stylesheet applied, the stage's opacity read 1. It now waits until it has seen the stage hidden.
+
+**A bug this exposed.** On a wide frame the lens closes in, and the plant's reflection can fall wholly below the frame. With no mirror picture, `bindScene` used to drop the near one too, and the plant vanished from the 21:9 still. Each picture is now bound on its own.
+
+## The flower's light, its pollen, and the base set into the stone (2026-10-05, evening)
+
+The user asked for the bloom to start sooner, for a subtle glow that draws the eye without pulling it from the title, for the hand's touch to be noticeable (glowing pollen, their idea), and for the root to sit in the moss instead of floating. What changed, and what it cost:
+
+- **The light it holds: one tiny new program.** The cup is lit from within (a few lines in `PLANT_FRAG`, `BLOOM.glow.lantern`). The soft light in the fog round it is a HALO picture: the near picture's light past a threshold (the petals, never the stems), gathered to a few scene pixels a texel round the flower's box, then blurred one way and the other (`HALO_FRAG`, three small draws, `bloom.ts drawHalo`). The film adds it (`post.ts`), mostly round the plant and only a quarter over it: laid evenly over the flower it looked out of focus. It is its own program, not a mode of the resolve, because the resolve carries the stone's shape and the contact shade. It compiles cold in ~0.04 s.
+- **The pollen drawn into the scene's light, not into the plant's pictures.** The motes drift up to ~70 cm from the flower now. Kept in the plant's supersampled pictures, they would have grown the rect wherever they went and cost the flower its samples. They are drawn by `PLANT_*` as points, added straight into the scene's half-float target after the scene pass, before the diffusion (`bloom.ts drawMotes`, ONE + ONE on light, alpha untouched). Then again mirrored for the lake. A mote's core is never drawn finer than 0.6 px; finer, its light swam as it crossed the pixel grid. Its brightness is scaled by the share of its true size, so it is the same speck on every screen. Its halo has its own brightness: tied to the core's, the halo swelled into bokeh orbs at 4K.
+- **The stems laid on the stone** (`shape.ts layOnStone`, `StemDesign.rest`). Like the roots: drawn freely, then eased onto the stone (`onStone`), smoothed, resampled to equal steps, and laid once more. The last lay is needed because the steps' chords cut into the stone over an arris. Which margin touches is chosen once per stem; chosen per sample, it switched sides over an arris and the blade folded over itself. The sway is held where a stem rests. All of it is computed once at load, in the rest pose.
+- **The moss** climbs the old stem (`collar`). Its back is several soft rises, not one dome. It has a thin grit apron past its outline, nearly invisible from this eye line (a 3 cm apron at 4° is about a pixel), but it softens the line where the moss meets the stone. The small cushions use a coarser mesh than the mat (36 spokes, 9 rings): the mesh is ~23.5k vertices.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate five rounds between this round's programs and the same programs with this round's additions cut out. GPU timings interleave their variants frame by frame: run back to back, every run after the first read 2–5× slower, whatever was switched off, because the GPU drops its clock under a light load.
+
+| | before | now |
+|---|---|---|
+| plant program, cold compile alone | ~0.40 s | ~0.43 s |
+| resolve program, cold compile alone | ~0.20 s | ~0.20 s |
+| film program, cold compile alone | ~0.13 s | ~0.15 s |
+| halo program, cold compile alone | | ~0.04 s |
+| first live frame, cold, production (4 runs, CPU cool) | | 2.4–3.0 s |
+| GPU, the halo (three small draws) | | ~0.02–0.05 ms |
+| GPU, 220 motes (the most at once) | | 0.01–0.03 ms |
+| GPU, the plant's pass, 1440×810 | ~0.25–0.3 ms | ~0.27 ms |
+| GPU, the plant's pass, 3840×2160 (FINE) | ~0.64 ms at 3×3 samples | ~0.80–0.86 ms at 4×4 |
+| main thread a frame (pose and pollen) | ~0.45–0.5 ms | ~0.25–0.43 ms, +0.07 ms with 220 motes |
+
+At 4K the plant's rect is now a little smaller (391 × 358 px against 425 × 361): the stems hug the stone. That brings it under the sample budget for 4 × 4 samples a pixel instead of 3 × 3. The extra ~0.2 ms is the plant drawn finer. The same geometry, sampled the same way, costs the same as before; this was checked by putting last round's base back and timing both.
 
 ## Tried in phase 2 and not kept
 

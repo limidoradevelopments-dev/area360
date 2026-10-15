@@ -349,7 +349,7 @@ function unprintTable(pivot: number, shadows: number, highlights: number, toe: n
 /* The diffusion's pyramid: half the scene, then each level half again. */
 const GLOW_LEVELS = 5;
 
-const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "sepal", "leaf", "tube", "anther"] as const;
+const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "sepal", "leaf", "tube", "anther", "moss", "bark", "pollen"] as const;
 type ColorToken = (typeof COLOR_TOKENS)[number];
 
 class Stage implements StageEngine {
@@ -398,6 +398,9 @@ class Stage implements StageEngine {
     leaf: [0.1, 0.1, 0.1],
     tube: [0.3, 0.3, 0.3],
     anther: [0.7, 0.7, 0.7],
+    moss: [0.1, 0.1, 0.1],
+    bark: [0.2, 0.2, 0.2],
+    pollen: [0.8, 0.65, 0.35],
   };
 
   /* Clock. `time` only advances while the loop runs; the lake's own time
@@ -449,6 +452,7 @@ class Stage implements StageEngine {
       ...CAMERA_UNIFORMS,
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
       "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uGrain",
+      "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
     ]);
     this.down = createProgram(gl, DOWN_FRAG, ["uSource", "uTexel"]);
     this.up = createProgram(gl, UP_FRAG, ["uCoarse", "uFine", "uTexel", "uSpread"]);
@@ -576,7 +580,9 @@ class Stage implements StageEngine {
     const sceneScale = Math.min(1, Math.sqrt((this.sceneCap || tier.scenePixels) / (w * h)));
     this.resizeTargets(Math.max(1, Math.round(w * sceneScale)), Math.max(1, Math.round(h * sceneScale)));
     this.upscale = w / (this.sceneTarget?.width ?? w);
-    this.bloom.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h, this.cssW, this.cssH);
+    /* The plant at the screen's own pixels where they are finer than the
+       scene's (a 4K screen), except on the slowest tier. */
+    this.bloom.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h, this.cssW, this.cssH, w, h, this.tier < RENDER.tiers.length - 1);
     this.stone.resize();
     this.lake.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
 
@@ -657,9 +663,9 @@ class Stage implements StageEngine {
     if (air) {
       const [cx, cy] = this.airCell(BLOOM.center, air);
       const f = focalPx(this.cssW, this.cssH);
-      /* The air within ~45 cm of the flower: the stems' tips and wherever
+      /* The air within ~75 cm of the flower: the stems' tips and wherever
          the pollen drifts before it fades (bloom/motion.ts POLLEN.reach). */
-      const half = Math.min(32, Math.ceil((0.45 * f) / (BLOOM.center[2] * air.cellPx)));
+      const half = Math.min(48, Math.ceil((0.75 * f) / (BLOOM.center[2] * air.cellPx)));
       this.airSampler.update(air.target, cx - half, cy - half, 2 * half, 2 * half);
     }
     const p = this.params;
@@ -750,6 +756,8 @@ class Stage implements StageEngine {
     this.stone.render(f);
     this.lake.render(f);
     this.drawScene(f);
+    /* The pollen's motes, into the scene's light (bloom/bloom.ts drawMotes). */
+    if (this.sceneTarget) this.bloom.drawMotes(camera, this.sceneTarget, this.colors);
   }
 
   /* The print curve's inverse, rebuilt only when the print changes. */
@@ -858,6 +866,7 @@ class Stage implements StageEngine {
     gl.uniform3f(u.uVignette, p.vignette, ...FILM.vignette.at);
     gl.uniform3f(u.uPaper, FILM.paper.black, p.paperWhite, p.paperGamma);
     gl.uniform4f(u.uGrain, p.grain, FILM.fps, this.time, FILM.grainSize);
+    this.bloom.bindFilm(u, UNITS.bloom);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 

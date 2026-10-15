@@ -51,7 +51,7 @@ export const UNITS = {
   sheetLight: 1,
   plate: 2,
   depth: 4,
-  /** bloom/bloom.ts bindScene: two, from here. (7 is free.) */
+  /** bloom/bloom.ts bindScene: two, from here; bindFilm: three (5–7). */
   bloom: 5,
   /** stone/stone.ts bindScene: two, from here. */
   stone: 8,
