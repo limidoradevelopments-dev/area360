@@ -20,9 +20,11 @@
  * the nearest fog ~9 px the other way; the stone moves 0. Felt, not seen.
  */
 export const PARALLAX = {
-  /* The lean at the frame's edge, metres: sideways, and up/down. Vertical is
-   * smaller: a person leans sideways far more readily than they bob. */
-  sway: [0.05, 0.02] as const,
+  /* The lean at the frame's edge, metres: sideways, and up/down. No
+   * up/down since 2026-10-17, the user's own setting (it was 0.02: a
+   * person leans sideways far more readily than they bob, and the user
+   * wanted the horizon to hold still). */
+  sway: [0.05, 0] as const,
   /* +1: the camera leans toward the pointer. −1 inverts it. */
   lean: 1,
   /* The spring, rad/s. Critically damped: it arrives and stops, no

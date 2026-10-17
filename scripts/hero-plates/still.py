@@ -60,26 +60,41 @@ QUALITY = 82
 # The bands of screen shape (width ÷ height) each still serves, and the
 # widths written of it (the common screens land on one exactly: a still a
 # few pixels narrower than the screen makes the browser take the next size
-# up). The lens's own edges, from stage/camera.ts focalPx: below 0.8793 it
-# holds 22° across; up to 1.7732 it frames by height (a narrower screen sees
-# the middle of a wider one: crop at the sides, exact); past that it closes
-# in, up to 1.29×, so to 2.2874; past that it frames by height again.
-# The last still is the fallback, the desktop's.
+# up). The lens's own edges, from stage/camera.ts focalPx (with the user's
+# crop, CAMERA.zoom 1.093, since 2026-10-17): below 0.8793 it holds its
+# narrowest view across, so a taller screen sees more above and below; up
+# to 1.9381 it frames by height, so a wider screen sees more at the sides;
+# past that it closes in, up to 1.29×, so to 2.5002, every frame the same
+# width of the world, a wider one seeing less above and below; past that it
+# frames by height again. `cover` about the horizon is exact where the
+# screen is a crop of the still: so a band that frames by height takes its
+# widest shape, one that frames by width its narrowest — and at 1.9381 the
+# two meet, one still serving both sides. But the print's frame-fixed
+# filters (above) do not crop, so no band reaches far from its still's
+# shape where the crop is top and bottom. The last still is the fallback.
 STILLS = [
-    # Super-wide (32:9) and ultra-wide (21:9): framed by height, but the
-    # photograph's edges fade into the fog the further past it the frame
-    # looks (CAMERA.edge.grow), so each is taken at its own shape (the 32:9
-    # still on a 21:9 screen: 17 levels mean, the trees at the sides gone).
+    # Super-wide (32:9): framed by height, but the photograph's edges fade
+    # into the fog the further past it the frame looks (CAMERA.edge.grow),
+    # so it is taken at its own shape (the 32:9 still on a 21:9 screen: 17
+    # levels mean, the trees at the sides gone).
     {"name": "superwide", "min": 2.9, "max": None, "widths": (3840, 2560)},
-    {"name": "ultra", "min": 2.2874, "max": None, "widths": (2580, 1720)},
-    # Wide (2:1 and so): the lens closing in, cropped top and bottom.
-    {"name": "wide", "min": 1.95, "max": None, "widths": (2376, 1584)},
-    # Tablets upright (3:4, 2:3).
+    # 2.5–2.9 (a 21:9 monitor's browser window, ~2.64–2.8): framed by
+    # height, but just past 2.5 the photograph's edge comes into the frame
+    # and its fade widens the further past it looks, so no shape here is a
+    # crop of another; taken at 2.7, among those windows (taken at 2.9, a
+    # 2.62 window's outer twentieth was 25 levels light).
+    {"name": "ultra", "min": 2.5002, "max": None, "widths": (2916, 1944)},
+    # 2.2–2.5 (21:9 full screen): the lens closing in, taken at the band's
+    # narrowest.
+    {"name": "wide", "min": 2.2, "max": None, "widths": (2376, 1584)},
+    # Tablets upright: framed by width, taken at 0.68 (a 16:10 tablet's
+    # browser window), so an iPad's (0.70–0.79) is a crop of it.
     {"name": "tablet", "min": 0.62, "max": 0.8793, "widths": (1080, 720)},
     # Phones upright.
     {"name": "phone", "min": None, "max": 0.62, "widths": (1170, 828, 480)},
-    # Desktops and laptops, 0.88–1.95: the widest frame the lens takes whole.
-    {"name": "landscape", "min": None, "max": None, "widths": (2553, 1920, 1280)},
+    # Desktops and laptops, 0.88–2.2: taken at 1.9381, where the lens stops
+    # framing by height and starts closing in.
+    {"name": "landscape", "min": None, "max": None, "widths": (2791, 2094, 1396)},
 ]
 
 

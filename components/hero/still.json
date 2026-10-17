@@ -12,18 +12,18 @@
     },
     {
       "name": "ultra",
-      "aspect": 2.3889,
-      "min": 2.2874,
+      "aspect": 2.7,
+      "min": 2.5002,
       "max": null,
       "widths": [
-        2580,
-        1720
+        2916,
+        1944
       ]
     },
     {
       "name": "wide",
       "aspect": 2.2,
-      "min": 1.95,
+      "min": 2.2,
       "max": null,
       "widths": [
         2376,
@@ -32,7 +32,7 @@
     },
     {
       "name": "tablet",
-      "aspect": 0.75,
+      "aspect": 0.6801,
       "min": 0.62,
       "max": 0.8793,
       "widths": [
@@ -53,15 +53,15 @@
     },
     {
       "name": "landscape",
-      "aspect": 1.7729,
+      "aspect": 1.9382,
       "min": null,
       "max": null,
       "widths": [
-        2553,
-        1920,
-        1280
+        2791,
+        2094,
+        1396
       ]
     }
   ],
-  "version": "3af5479039"
+  "version": "6e7fe9333e"
 }

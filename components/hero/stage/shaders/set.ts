@@ -8,6 +8,12 @@
  *
  * Needs CAMERA_GLSL, FOG_GLSL and FILM_GLSL (undevelop) before it.
  */
+import { LOCAL_AIR } from "../../atmosphere/optics";
+
+const CLEAR = LOCAL_AIR.clear;
+const SOFT = LOCAL_AIR.soft;
+const vec2Of = (v: readonly [number, number]) => `vec2(${v[0].toFixed(4)}, ${v[1].toFixed(4)})`;
+
 export const SET_GLSL = /* glsl */ `
 /* the fog sheets: density per sheet; light on sheets 0–2 and the plain light */
 uniform sampler2D uSheetDensity;
@@ -91,6 +97,23 @@ float fogDeparture(vec3 origin, vec3 ray, float za, float zb, float perDepth, ve
   return departure * uFogLife;
 }
 
+/* THE AIR BY PLACE (atmosphere/optics.ts LOCAL_AIR), at a direction (tan,
+   the camera at rest): x, the optical depth laid there (below zero, the
+   photograph's own haze taken away); y, how much of the fog's movement is
+   held still there. */
+vec2 localAir(vec2 t) {
+  vec2 c = (t - ${vec2Of(CLEAR.center)}) / ${vec2Of(CLEAR.size)};
+  float clear = exp(-dot(c, c));
+  vec2 s = (t - ${vec2Of(SOFT.center)}) / ${vec2Of(SOFT.size)};
+  float soft = exp(-dot(s, s));
+  return vec2(${CLEAR.tau.toFixed(3)} * clear + ${SOFT.tau.toFixed(3)} * soft, ${CLEAR.still.toFixed(3)} * clear);
+}
+
+/* A point of the photograph as a direction from the camera at rest. */
+vec2 tanOfPlate(vec2 uv) {
+  return vec2((uv.x - uPlateAxis.x) / uPlateGeo.x, (uPlateGeo.z - uv.y) / uPlateGeo.y);
+}
+
 /* The fog's colour from a gathered glow. A stretch past the last sheet
    gathers none; there the fog is the plain light's (the sky's). */
 vec3 airOf(vec3 glow, float weight, vec4 light) {
@@ -109,13 +132,14 @@ vec3 airOf(vec3 glow, float weight, vec4 light) {
    fog; and nothing clears past the photograph's own black, the darkest any
    of its trees prints, so a gap reveals the dark forest and never a hole
    darker than it. Softly limited (uFogReach): fog moves through a forest,
-   it does not swallow it or strip it. \`gain\` returns how much of the
+   it does not swallow it or strip it. \`placed\`: the still optical depth
+   the air by place lays here (localAir). \`gain\` returns how much of the
    photograph's own light comes through. */
-vec3 throughFog(vec3 photo, vec3 air, float departure, float depth, out float gain) {
+vec3 throughFog(vec3 photo, vec3 air, float departure, float depth, float placed, out float gain) {
   /* Over the open sky the photograph's fog is smooth; there the movement is
      a breath, not a bank. */
   float far = smoothstep(250.0, 700.0, depth);
-  departure = uFogReach * tanh(departure / uFogReach) * mix(1.0, 0.35, far);
+  departure = uFogReach * tanh(departure / uFogReach) * mix(1.0, 0.35, far) + placed;
   /* The still fog of distance, by the same law: far banks further in, near
      ones out. */
   float aerial = uAerial.x * (depth - uAerial.y);

@@ -28,12 +28,13 @@
  */
 
 import { Atmosphere, type FogLook, type HandGains } from "../atmosphere/atmosphere";
+import { createWisps } from "../atmosphere/wisps";
 import type { AirParams } from "../atmosphere/fluid";
 import { FLUID, WIND } from "../atmosphere/motion";
 import { AirSampler } from "../atmosphere/sampler";
 import { BloomPass, type AirAt } from "../bloom/bloom";
 import { BLOOM } from "../bloom/optics";
-import { AERIAL, EXTINCTION, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
+import { AERIAL, EXTINCTION, MIST, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
 import { SLOT_UNIFORMS, StonePass } from "../stone/stone";
 import { LakePass } from "../water/lake";
@@ -62,6 +63,7 @@ import { SCENE_FRAG } from "./shaders/scene";
 import {
   DEVELOP_UNIFORMS,
   FOG_UNIFORMS,
+  MIST_UNIFORMS,
   PLATE_UNIFORMS,
   SHEET_UNIFORMS,
   STONE_UNIFORMS,
@@ -69,6 +71,7 @@ import {
   WATER_UNIFORMS,
   setDevelopUniforms,
   setFogUniforms,
+  setMistUniforms,
   setPlateUniforms,
   setSheetUniforms,
   setStoneUniforms,
@@ -105,6 +108,8 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   /** The afternoon paper's white and gamma (FILM.paper). */
   paperWhite: number;
   paperGamma: number;
+  /** The user's regrade over the paper (FILM.regrade): 0 none, 1 theirs. */
+  regrade: number;
   /** The lens's glow: strength, and how far it reaches (FILM.diffusion). */
   diffusion: number;
   /** Bright air spilling over the photograph's dark edges (FILM.halation). */
@@ -140,6 +145,17 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   glass: number;
   /** The near bank's drifting self-shade over the open fog (MIST_SEEN.grey). */
   mistSeen: number;
+  /** The low mist (atmosphere/optics.ts MIST): how much of it, 1 = the
+   *  user's reference; and how far it moves with the fog, 1 = designed
+   *  (0 holds it still: the fit in scripts/hero-plates/mist.py). */
+  mistAmount: number;
+  mistMotion: number;
+  /** Its light, from the fog's shadow (0) to its glow (1): MIST.light. */
+  mistLight: number;
+  /** How much of it lies round the stone, 1 = designed (MIST.stone). */
+  mistStone: number;
+  /** How much it is lit as a volume, 1 = designed (MIST.volume). */
+  mistVolume: number;
   /** The bloom (bloom/): how open, 0 bud … 1 full — below 0, as the visit's
    *  clock opens it (bloom/motion.ts OPENING) — and which flower, 0–1 (a new
    *  one each visit). */
@@ -169,6 +185,11 @@ export function defaultParams(): StageParams {
     veil: SHEETS[0].veil,
     wisps: SHEETS[0].sharpness,
     mistSeen: MIST_SEEN.grey,
+    mistAmount: 1,
+    mistMotion: 1,
+    mistLight: MIST.light,
+    mistStone: 1,
+    mistVolume: 1,
     fogLife: OVER_PHOTO.amount,
     aerial: AERIAL.perMetre,
     swayX: PARALLAX.sway[0],
@@ -184,6 +205,7 @@ export function defaultParams(): StageParams {
     vignette: FILM.vignette.amount,
     paperWhite: FILM.paper.white,
     paperGamma: FILM.paper.gamma,
+    regrade: 1,
     diffusion: FILM.diffusion.amount,
     halation: FILM.halation,
     softBlack: SOFT_BLACK.amount,
@@ -309,10 +331,9 @@ function printCurve(c: number, pivot: number, shadows: number, highlights: numbe
   return v;
 }
 
-/** The design's grade (FILM.grade), on a print value 0–1. */
-function grade(x: number): number {
+/** A measured curve (print values, 0–255 knots), on a print value 0–1. */
+function throughKnots(knots: readonly (readonly [number, number])[], x: number): number {
   const v = x * 255;
-  const knots = FILM.grade;
   for (let i = 1; i < knots.length; i += 1) {
     const [x1, y1] = knots[i];
     if (v <= x1) {
@@ -321,6 +342,25 @@ function grade(x: number): number {
     }
   }
   return knots[knots.length - 1][1] / 255;
+}
+
+/** The design's grade (FILM.grade), on a print value 0–1. */
+function grade(x: number): number {
+  return throughKnots(FILM.grade, x);
+}
+
+/**
+ * The user's regrade (FILM.regrade) as 65 samples of the print value (film.ts
+ * regrade reads them): `amount` of the way from the afternoon paper alone
+ * (0) to the regrade (1).
+ */
+function regradeTable(amount: number): Float32Array<ArrayBuffer> {
+  const table = new Float32Array(65);
+  for (let i = 0; i <= 64; i += 1) {
+    const x = i / 64;
+    table[i] = x + (throughKnots(FILM.regrade, x) - x) * amount;
+  }
+  return table;
 }
 
 /**
@@ -367,6 +407,9 @@ class Stage implements StageEngine {
   private readonly airSampler: AirSampler;
   private readonly stone: StonePass;
   private readonly lake: LakePass;
+  /* The steam's patches, drifting through the low mist (atmosphere/wisps.ts):
+     not made while it is off (MIST.on). */
+  private readonly wisps: WebGLTexture | null;
   private readonly camera = new CameraRig();
   private readonly stillness = new StillnessClock();
   private plates: Plates | null = null;
@@ -407,6 +450,8 @@ class Stage implements StageEngine {
      stands still under reduced motion (the water holds its last shape). */
   private time = 0;
   private waterTime = 0;
+  /* The low mist's drift: slowed as the air's is under reduced motion. */
+  private mistTime = 0;
   /* Seconds the scene has been on screen this visit: the bloom opens on it. */
   private bloomClock = 0;
   private lastTime = 0;
@@ -442,16 +487,17 @@ class Stage implements StageEngine {
     this.airSampler = new AirSampler(gl);
     this.stone = new StonePass(gl, vao);
     this.lake = new LakePass(gl, vao);
+    this.wisps = MIST.on ? createWisps(gl) : null;
     this.scene = createProgram(gl, SCENE_FRAG, [
       ...CAMERA_UNIFORMS, ...FOG_UNIFORMS, ...SHEET_UNIFORMS, ...WATER_UNIFORMS,
-      ...STONE_UNIFORMS, ...PLATE_UNIFORMS, ...DEVELOP_UNIFORMS, ...SLOT_UNIFORMS,
+      ...STONE_UNIFORMS, ...PLATE_UNIFORMS, ...DEVELOP_UNIFORMS, ...SLOT_UNIFORMS, ...MIST_UNIFORMS,
       "uLakePhoto", "uLakeBurn",
       "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
     ]);
     this.film = createProgram(gl, FILM_FRAG, [
       ...CAMERA_UNIFORMS,
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
-      "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uGrain",
+      "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uRegrade", "uGrain",
       "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
     ]);
     this.down = createProgram(gl, DOWN_FRAG, ["uSource", "uTexel"]);
@@ -538,9 +584,11 @@ class Stage implements StageEngine {
     this.airSampler.dispose();
     this.stone.dispose();
     this.lake.dispose();
+    if (this.wisps) gl.deleteTexture(this.wisps);
     if (this.plates) {
       gl.deleteTexture(this.plates.backdrop);
       gl.deleteTexture(this.plates.depth);
+      if (this.plates.mist) gl.deleteTexture(this.plates.mist);
     }
     gl.deleteVertexArray(this.vao);
     /* The context itself is NOT lost on purpose: React's development
@@ -645,6 +693,7 @@ class Stage implements StageEngine {
   private tick(dt: number, paint: boolean): void {
     this.time += dt;
     if (!this.reduced) this.waterTime += dt;
+    this.mistTime += this.reduced ? dt * 0.25 : dt;
     this.camera.update(dt, this.params.swayRate);
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
@@ -725,6 +774,8 @@ class Stage implements StageEngine {
       params: this.params,
       colors: this.colors,
       waterTime: 0,
+      mistTime: 0,
+      wisps: this.wisps,
       plates,
       density,
       light,
@@ -735,6 +786,7 @@ class Stage implements StageEngine {
     f.camera = camera;
     f.colors = this.colors;
     f.waterTime = this.waterTime;
+    f.mistTime = this.mistTime;
     f.plates = plates;
     f.density = density;
     f.light = light;
@@ -763,6 +815,17 @@ class Stage implements StageEngine {
   /* The print curve's inverse, rebuilt only when the print changes. */
   private unprintKey = "";
   private unprintCache = new Float32Array(65);
+  /* The regrade's table, rebuilt only when its amount changes. */
+  private regradeAmount = Number.NaN;
+  private regradeCache = new Float32Array(65);
+
+  private regrade(): Float32Array<ArrayBuffer> {
+    if (this.params.regrade !== this.regradeAmount) {
+      this.regradeCache = regradeTable(this.params.regrade);
+      this.regradeAmount = this.params.regrade;
+    }
+    return this.regradeCache;
+  }
 
   private unprint(): Float32Array<ArrayBuffer> {
     const p = this.params;
@@ -799,6 +862,7 @@ class Stage implements StageEngine {
     setStoneUniforms(gl, u, f);
     setPlateUniforms(gl, u, f.camera, f.plates);
     setDevelopUniforms(gl, u, f);
+    setMistUniforms(gl, u, f);
     gl.uniform4f(u.uLakeBurn, p.lakeBurnHorizon, p.lakeBurnFoot, p.lakeBurnShape, p.lakeContrast);
     this.bloom.bindScene(u, UNITS.bloom);
     this.stone.bindScene(u);
@@ -865,6 +929,7 @@ class Stage implements StageEngine {
     gl.uniform2f(u.uFoot, p.footFrom, p.footStops / (below * below));
     gl.uniform3f(u.uVignette, p.vignette, ...FILM.vignette.at);
     gl.uniform3f(u.uPaper, FILM.paper.black, p.paperWhite, p.paperGamma);
+    gl.uniform1fv(u.uRegrade, this.regrade());
     gl.uniform4f(u.uGrain, p.grain, FILM.fps, this.time, FILM.grainSize);
     this.bloom.bindFilm(u, UNITS.bloom);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

@@ -60,8 +60,17 @@ export const CAMERA = {
    * top (the rising front). 0.5 is a centred lens. The design's. */
   horizon: 0.5876,
   /* Degrees, the frame's full height: the reference's 40° horizontal at
-   * its aspect. */
+   * its aspect. The design's lens, which the photograph was registered to
+   * (scripts/hero-plates/backdrop.py TAN_HALF_V): change `zoom`, not this. */
   verticalFov: 24.93,
+  /* THE USER'S CROP (2026-10-17: "zoom or crop our existing frame and match
+   * this one's tree placement"): their frame is the design's drawn 9.3%
+   * larger about the lens's axis and the horizon — registered, an affine
+   * fit of the left bank's and the stone's edges (correlation 0.959), its
+   * centre within 2 px of the axis and the horizon. A longer lens from the
+   * same place: the same perspective, every shape the same, only larger. On
+   * every screen (phones included: their 22° across narrows with it). */
+  zoom: 1.093,
   /* Degrees: the narrowest the view may get across a portrait frame. */
   minHorizontalFov: 22,
   /* The point the camera orbits: over the stone's centre, a little above
@@ -84,10 +93,9 @@ const tanHalf = (degrees: number) => Math.tan(((degrees / 2) * Math.PI) / 180);
 
 /** Focal length in CSS px for a frame `widthPx × heightPx`. */
 export function focalPx(widthPx: number, heightPx: number): number {
-  const framed = Math.min(
-    (0.5 * heightPx) / tanHalf(CAMERA.verticalFov),
-    (0.5 * widthPx) / tanHalf(CAMERA.minHorizontalFov),
-  );
+  const framed =
+    Math.min((0.5 * heightPx) / tanHalf(CAMERA.verticalFov), (0.5 * widthPx) / tanHalf(CAMERA.minHorizontalFov)) *
+    CAMERA.zoom;
   /* Closed in until the frame's edges are inside the photograph. */
   const inside = (0.5 * widthPx) / (BACKDROP.reach - CAMERA.edge.lean - CAMERA.edge.fade);
   return Math.min(Math.max(framed, inside), framed * CAMERA.maxCloseIn);

@@ -14,6 +14,7 @@
  */
 
 import { DEPTH } from "../stage/layers";
+import mist from "./mist.json";
 
 /**
  * EXTINCTION, per metre, as a bank: thin air near the shore the camera
@@ -56,6 +57,31 @@ export const EXTINCTION = {
   lift: 2,
   liftFrom: 1,
   liftTo: 12,
+} as const;
+
+/**
+ * THE AIR, BY PLACE (2026-10-17: the user's own marks on their frame,
+ * assets/sources/grade/reference-2.webp). Two soft regions of the frame,
+ * as directions from the camera at rest (tan: across, up), so they stay on
+ * the shores on every screen and the lake mirrors them:
+ *   `clear`  the left bank's foot at the frame's left edge, and the water
+ *            under it (their red mark: "make darker and no noticeable mist
+ *            going there"): the photograph's own haze cleared (`tau`
+ *            negative) and the fog's movement held still there (`still`) —
+ *            the fog the hand stirs and the wind drifts showed most against
+ *            that dark corner. It reaches on past the frame's left edge.
+ *   `soft`   behind the bare snag at the right bank's near end (their green
+ *            mark: "add a soft mist"): a little more fog (`tau`) on the
+ *            trees there, soft-edged, so the snag stands in front of air.
+ * `center` and `size` (tan): each a Gaussian, `size` its 1/e reach — no
+ * edge anywhere. A first build drew them as the marks were drawn: the
+ * clearing (τ −0.4 inside a firm ellipse) cut a dark hole with an outline,
+ * the mist (the mark's tall narrow shape) stood as a beam of light. Mist
+ * spreads sideways and fades without a border; so do these.
+ */
+export const LOCAL_AIR = {
+  clear: { center: [-0.31, -0.012] as const, size: [0.1, 0.042] as const, tau: -0.1, still: 1 },
+  soft: { center: [0.2175, 0.052] as const, size: [0.036, 0.04] as const, tau: 0.25 },
 } as const;
 
 export interface Sheet {
@@ -228,6 +254,97 @@ export const MIST_SEEN = {
   veil: 0.035,
   grey: 0.15,
   water: [14, 40] as const,
+} as const;
+
+/**
+ * THE LOW MIST (2026-10-16, the user's reference: assets/sources/mist/
+ * reference.webp). Steam fog lying along both shores — cold air over the
+ * warmer lake — round the trees' feet and over the water near them, thinning
+ * up into a faint veil over the treetops; the open channel and the stone
+ * left clear. THE USER'S OWN MIST, NOT A GUESS AT IT: its optical depth was
+ * read off their frame against the engine's own (scripts/hero-plates/
+ * mist.py, `npm run mist`), per direction from the camera at rest, and is
+ * laid over everything behind the stone by the fog law (shaders/mist.ts):
+ * what lies behind dimmed by e^(−τ), the mist's light filling in. The
+ * simulation keeps it alive (motion.ts MIST_MOTION). The user asked for it
+ * to match the reference, the treetops' veil included: a half dose read as
+ * too little.
+ *   `amount`   τ × this: 1 is the reference
+ *   `light`    the mist's own light — what an endless depth of it shows —
+ *              from the fog in its own shadow (0: hero.css shade) to the
+ *              fog's glow over the lake (1). The reference's is grey: its
+ *              veil lowers the treetops' contrast without lightening them
+ *              (lying low on the water, the mist is in the fog's shadow;
+ *              at the glow it lit the treetops ~13 levels past the
+ *              reference). The veil was fitted against the engine's frame
+ *              with this value, so change it only with a refit
+ *   `edge`     past the reference's frame (a 32:9 screen looks wider than
+ *              it), how far its edge is carried on, fading, as a share of
+ *              its width; inside the frame it is whole (faded there too, the
+ *              first build bared a strip of dark trees at the frame's edge)
+ *   `volume`   LIT AS A VOLUME (2026-10-16, the user: "it feels a white
+ *              colour something moves, not like a real mist"). Lit by one
+ *              flat grey, the mist only changed how much it hid: a sheet.
+ *              Its light now comes from the sky above, leaning toward the
+ *              open lake (shaders/mist.ts), as a share of that grey:
+ *              `facing`, how much brighter a drifting patch is on its side
+ *              toward that light (and darker on the other); `core`, how much
+ *              its dense middle is in its own shade; `toward`, how far the
+ *              light leans to the opening, across per unit up; `opening`,
+ *              the opening's direction (tan across: the open channel,
+ *              backdrop.py CORRIDOR); and the whole mist's lean — `side`
+ *              brighter toward the opening (within `width`, tan) and dimmer
+ *              away, `up` brighter over the trees and dimmer low on the
+ *              water (over `height`, tan). The still mist is refitted under
+ *              that light (scripts/hero-plates/mist.py), so it lies where
+ *              and as thick as the reference's; the patches' light is what
+ *              moves.
+ *   `stone`    THE STEAM ROUND THE STONE (2026-10-16, the user: the stone
+ *              read as a separate element, the moving mist on the water
+ *              never touching it). The stone stands in the misty water, so
+ *              the mist over the water round it lies over it too: `foot`,
+ *              the share of that mist at its waterline (1: exactly the
+ *              water's beside it — and its reflection's, so the two meet
+ *              without a seam), thinning up its faces over `height` metres
+ *              (steam lies low), `up` of it all the way up — the air it
+ *              stands in. Measured against the reference's stone: its faces
+ *              ~51 and ~56 printed, its foot running into a reflection
+ *              darker than itself (ours were 32 and 43, the darkest things
+ *              in the frame, under a reflection at 44).
+ */
+export const MIST = {
+  /**
+   * OFF (2026-10-16, later): the user's new reference (stage/optics.ts
+   * FILM.regrade) carries the mist of the frame before the low mist —
+   * registered, it is the engine's frame without it to ~2 levels over the
+   * trees' feet, the water and the stone — and they asked for exactly that
+   * level ("less mist… exact like this attached image mist level"). Off, the
+   * veil is not fetched, the patches are not made and the scene compiles
+   * without it (shaders/mist.ts): it costs nothing. Kept, whole and fitted,
+   * to be turned on again.
+   */
+  on: false,
+  url: `/hero/mist/veil.webp?v=${mist.version}`,
+  /** The veil's size, texels, and the directions it covers (tan, the
+   *  camera at rest): left, top, right, bottom. */
+  size: mist.size as [number, number],
+  tan: mist.tan as [number, number, number, number],
+  /** τ at a full texel (the veil stores √(τ / tauMax)). */
+  tauMax: mist.tauMax,
+  amount: 1,
+  light: 0.15,
+  edge: 0.06,
+  stone: { foot: 0.44, height: 0.3, up: 0.16 },
+  volume: {
+    facing: 0.25,
+    core: 0.1,
+    toward: 0.6,
+    opening: 0.011,
+    width: 0.25,
+    side: 0.06,
+    height: 0.15,
+    up: 0.06,
+  },
 } as const;
 
 /** The fog sheets as a volume pass. */

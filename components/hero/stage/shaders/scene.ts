@@ -22,6 +22,12 @@
  * photograph. Only the lake's own share (its body, under the reflection)
  * takes the stage's fog in front of the water.
  *
+ * THE LOW MIST (atmosphere/shaders/mist.ts): the user's reference's steam
+ * fog along the shores, read per direction, laid over all that lies behind
+ * the stone — here, not in a pass of its own, because it is one read and a
+ * few multiplies: measured, ~0.07 s more of this program's cold compile and
+ * 0.07–0.2 ms of its frame, where its own full-frame pass would cost more.
+ *
  * The fog sheets are the half-resolution volume pass (atmosphere): a local
  * density and light per sheet. The direct ray reads them at its own pixel; a
  * reflected ray reads each where it crosses it, projected back into the
@@ -62,6 +68,7 @@
  */
 
 import { FOG_GLSL } from "../../atmosphere/shaders/fog";
+import { MIST_GLSL } from "../../atmosphere/shaders/mist";
 import { SLOTS_GLSL } from "../../stone/shaders/slots";
 import { STONE_GLSL } from "../../stone/shaders/stone";
 import { SURFACE_GLSL } from "../../water/shaders/surface";
@@ -87,6 +94,7 @@ ${STONE_GLSL}
 ${FILM_GLSL}
 ${BACKDROP_GLSL}
 ${SET_GLSL}
+${MIST_GLSL}
 ${SURFACE_GLSL}
 ${PIXEL_GLSL}
 ${SLOTS_GLSL}
@@ -228,6 +236,9 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
   float perDepth = length(ray) / ray.z;
   float zWater = waterDepth(origin, ray);
   vec4 density = textureLod(uSheetDensity, uv, 0.0);
+  /* Where the air by place holds the fog still (LOCAL_AIR), its sheets are
+     their average: no movement, over the shore or the water. */
+  density = mix(density, uSheetMean, localAir(ray.xy / ray.z).y);
   vec4 light = textureLod(uSheetLight, uv, 0.0);
 
   float zBack;
@@ -243,7 +254,26 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
   fogSpan(color, transmit, origin, ray, origin.z, zFront, perDepth, density, light);
   vec3 fogFront = color;
   float transmitFront = transmit;
+  /* THE LOW MIST (atmosphere/shaders/mist.ts): steam fog along the shores
+     and lying on the water, in a grey light of its own. */
+  float mistLit;
+  float mist = mistDepth(ray, density, mistLit);
+  vec3 mistLight = mix(uShade, fogRadiance(light.w), uMistLook.w) * mistLit;
   Hit hit = plantOver(stoneSeen(origin, ray, rx, length(rx) / length(ray)));
+  /* THE STEAM ROUND THE STONE'S FOOT. The mist on the water round it lies
+     on the water the stone stands in: as thick at its foot as over the
+     water beside it (and its reflection) — read here, where the veil is the
+     water's round it — thinning up its faces by the steam's height, a
+     little of it all the way up (atmosphere/optics.ts MIST.stone). Laid
+     only behind it, the moving mist stopped at its waterline and greyed its
+     reflection under a dark stone: a cut-out. The plant above it, by the
+     stone's plane. */
+  if (hit.alpha > 0.0 && mist > 0.0) {
+    float along = hit.depth < 1e5 ? hit.depth : (uSubjectDepth - origin.z) * perDepth;
+    float above = max(origin.y + ray.y / length(ray) * along, 0.0);
+    float through = exp(-mist * (uMistStone.x * exp(-above / uMistStone.y) + uMistStone.z));
+    hit.color = hit.color * through + hit.alpha * (1.0 - through) * mistLight;
+  }
   /* The stone counts only above the water (stoneAbove): what it covers of
      this pixel stands in front of whatever lies behind. */
   if (hit.alpha > 0.0) {
@@ -285,9 +315,17 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
     float cover = plateCover(backUv);
     vec3 photo = mix(air, plateRadiance(backUv, dx, dy), cover);
     float gain;
-    vec3 seen = throughFog(photo, air, departure, zBack, gain);
+    vec3 seen = throughFog(photo, air, departure, zBack, localAir(tanOfPlate(backUv)).x, gain);
     behind += land * mistSeen(seen, density, light);
     straight = land * gain * cover;
+  }
+  /* The low mist over all that lies behind the stone — the trees' feet,
+     the water by them, the treetops faintly; and the photograph's finer
+     detail (post.ts) as dimmed as what it sharpens. */
+  if (mist > 0.0) {
+    float through = exp(-mist);
+    behind = behind * through + (1.0 - through) * mistLight;
+    straight *= through;
   }
   /* The stone over it: the fog in front of what lies behind is the
      photograph's own, so only the stone's share of the near fog stays. */

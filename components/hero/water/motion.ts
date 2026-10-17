@@ -95,12 +95,14 @@ export const WATER_MOTION = {
    * a metre (`reach`, the distance over which they fall to a third). They
    * soften and stir the water hugging its foot and break its reflection
    * there — and stop, with no rings running out across the lake (those read
-   * as a disturbance, not a still morning). `slope` at the waterline.
+   * as a disturbance, not a still morning). `slope` at the waterline: 0.08
+   * since 2026-10-17, the user's own setting (4× the 0.02 first designed,
+   * on the tuner), so the stone's foot reads as standing in moving water.
    */
   lapping: {
     count: 3,
     wavelengths: [0.1, 0.3],
-    slope: 0.02,
+    slope: 0.08,
     reach: 0.45,
   },
   catsPaws: {

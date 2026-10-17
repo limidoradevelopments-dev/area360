@@ -8,6 +8,7 @@ import { useGSAP } from "@gsap/react";
 import { cx } from "@/components/ui/cx";
 import { usePrefersReducedMotion } from "@/components/ui/usePrefersReducedMotion";
 
+import { MIST } from "./atmosphere/optics";
 import HeroStill from "./HeroStill";
 import { BACKDROP } from "./stage/layers";
 import StageCanvas from "./stage/StageCanvas";
@@ -33,11 +34,11 @@ gsap.registerPlugin(useGSAP);
  * canvas is fully opaque they leave the visibility tree; if the context is
  * ever lost they come straight back.
  *
- * THE SHORES ARE ASKED FOR WITH THE PAGE. The engine fetches its two images
- * itself, but only once its code has arrived; preloaded from the page's own
- * head they download alongside the script and are waiting when it asks
- * (fetch, CORS, as the engine's own request is — or the browser fetches
- * them twice).
+ * THE SHORES ARE ASKED FOR WITH THE PAGE. The engine fetches its images (the
+ * shores' two, the low mist's veil) itself, but only once its code has
+ * arrived; preloaded from the page's own head they download alongside the
+ * script and are waiting when it asks (fetch, CORS, as the engine's own
+ * request is — or the browser fetches them twice).
  *
  * PHASES 0–1: the stage — the camera, the fog, the parallax, the film — the
  * shores (one photograph with a depth for every pixel, framed and graded as
@@ -60,6 +61,7 @@ export interface HeroSectionProps {
 export default function HeroSection({ className, respectReducedMotion = false }: HeroSectionProps) {
   preload(BACKDROP.plateUrl, { as: "fetch", crossOrigin: "anonymous" });
   preload(BACKDROP.depthUrl, { as: "fetch", crossOrigin: "anonymous" });
+  if (MIST.on) preload(MIST.url, { as: "fetch", crossOrigin: "anonymous" });
 
   const scope = useRef<HTMLElement>(null);
   const [ready, setReady] = useState(false);

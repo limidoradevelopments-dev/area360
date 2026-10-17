@@ -4,7 +4,7 @@
  * Linear radiance in, display values out: exposure, the sRGB encode, the
  * print curve with its toe and shoulder, then — on the print, as filters
  * over a print are — the foot's burn and the burn toward the rim — the
- * paper it is printed on, and grain.
+ * paper it is printed on, the user's regrade of it, and grain.
  * The order is the order a real frame goes through them.
  *
  * `undevelop` runs it backwards for the one thing that is ALREADY a print:
@@ -71,6 +71,9 @@ uniform vec2 uFoot;
 uniform vec3 uVignette;
 /* the afternoon paper (stage/optics.ts FILM.paper): black, white, gamma */
 uniform vec3 uPaper;
+/* the user's regrade (stage/optics.ts FILM.regrade): the print value i/64
+   → theirs (engine.ts regradeTable) */
+uniform float uRegrade[65];
 /* grain amount, grain fps, time, grain size (CSS px) */
 uniform vec4 uGrain;
 
@@ -93,6 +96,12 @@ float grainNoise(vec2 p) {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y) - 0.5;
 }
 
+float regrade(float v) {
+  float x = clamp(v, 0.0, 1.0) * 64.0;
+  int i = min(int(x), 63);
+  return mix(uRegrade[i], uRegrade[i + 1], x - float(i));
+}
+
 /* \`px\` is this pixel in CSS px, so the grain has the same size on every
    screen: it belongs to the film, not to the display. */
 vec3 finish(vec3 c, vec2 uv, vec2 px) {
@@ -103,6 +112,8 @@ vec3 finish(vec3 c, vec2 uv, vec2 px) {
   c *= 1.0 - uVignette.x * smoothstep(0.35, 1.05, d);
   /* The paper the whole print is made on. */
   c = uPaper.x + (uPaper.y - uPaper.x) * pow(clamp(c, 0.0, 1.0), vec3(uPaper.z));
+  /* And the user's regrade of the whole print. */
+  c = vec3(regrade(c.r), regrade(c.g), regrade(c.b));
 
   /* Re-seeded at film rate, strongest in the midtones as on real stock
      (the paper white and the deepest black carry least). Two octaves: the

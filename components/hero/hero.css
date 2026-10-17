@@ -65,17 +65,26 @@
    * canvas fades in over an image of the same light, so nothing jumps.
    * Re-measure if the grade changes (the engine's dev handle:
    * __kaviStage.measure(20), averaged in pairs). Re-measured 2026-10-02 for
-   * the afternoon paper (stage/optics.ts FILM.paper), six drifts averaged. */
-  --color-hero-still-05: #CBCBCB;
-  --color-hero-still-15: #C9C9C9;
-  --color-hero-still-25: #BFBFBF;
-  --color-hero-still-35: #A4A4A4;
-  --color-hero-still-45: #858585;
-  --color-hero-still-55: #6F6F6F;
-  --color-hero-still-65: #595959;
-  --color-hero-still-75: #424242;
-  --color-hero-still-85: #313131;
-  --color-hero-still-95: #252525;
+   * the afternoon paper (stage/optics.ts FILM.paper), and 2026-10-16 for
+   * the low mist along the shores (atmosphere/optics.ts MIST: the middle
+   * bands 11–46 levels lighter) and again that day for the right bank a
+   * tenth shorter (scripts/hero-plates/backdrop.py BANK_HEIGHT: the bands
+   * at 25–35% 2–4 lighter, more sky), and that evening for the user's
+   * regrade with the low mist off (stage/optics.ts FILM.regrade,
+   * atmosphere/optics.ts MIST.on: the whole frame darker, the sky ~165), and
+   * on 2026-10-17 for their next print and their crop (FILM.regrade again,
+   * the sky ~143; stage/camera.ts CAMERA.zoom: the trees 9.3% larger),
+   * six drifts averaged. */
+  --color-hero-still-05: #8F8F8F;
+  --color-hero-still-15: #8D8D8D;
+  --color-hero-still-25: #848484;
+  --color-hero-still-35: #737373;
+  --color-hero-still-45: #636363;
+  --color-hero-still-55: #4E4E4E;
+  --color-hero-still-65: #3C3C3C;
+  --color-hero-still-75: #2F2F2F;
+  --color-hero-still-85: #212121;
+  --color-hero-still-95: #191919;
 
   /* Registered below as <length>, so getComputedStyle hands the engine a
    * resolved px value rather than an unevaluated calc(). */

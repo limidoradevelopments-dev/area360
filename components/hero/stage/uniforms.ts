@@ -11,7 +11,8 @@
  * nothing.
  */
 
-import { AERIAL, EXTINCTION, MIST_SEEN, OVER_PHOTO, SHEETS, SOFT_BLACK } from "../atmosphere/optics";
+import { MIST_MOTION } from "../atmosphere/motion";
+import { AERIAL, EXTINCTION, MIST, MIST_SEEN, OVER_PHOTO, SHEETS, SOFT_BLACK } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
 import { LAPS, WATER_MOTION, WAVES } from "../water/motion";
 import { WATER, WATER_R0, WATER_UNDER } from "../water/optics";
@@ -31,6 +32,12 @@ export interface SetFrame {
   colors: { readonly lit: Rgb; readonly shade: Rgb; readonly stone: Rgb; readonly water: Rgb };
   /** Seconds of the lake's own time. */
   waterTime: number;
+  /** Seconds of the low mist's drift (slowed under reduced motion, as the
+   *  air's is). */
+  mistTime: number;
+  /** The steam's patches (atmosphere/wisps.ts); none while the low mist is
+   *  off (MIST.on). */
+  wisps: WebGLTexture | null;
   plates: Plates;
   /** The fog sheets this frame (atmosphere/): density, and light. */
   density: WebGLTexture;
@@ -44,7 +51,7 @@ export interface SetFrame {
 
 /**
  * TEXTURE UNITS, one table for every program of the set, so no pass binds
- * over another's. (3 and 7 are free.)
+ * over another's. (7 is free.)
  */
 export const UNITS = {
   sheetDensity: 0,
@@ -56,6 +63,10 @@ export const UNITS = {
   /** stone/stone.ts bindScene: two, from here. */
   stone: 8,
   lake: 10,
+  /** The low mist's veil (atmosphere/shaders/mist.ts). */
+  mist: 11,
+  /** The wisps drifting through it (atmosphere/wisps.ts). */
+  wisps: 3,
 } as const;
 
 /* Constant per build: packed once, not per frame. */
@@ -94,6 +105,46 @@ export function setSheetUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
   gl.uniform4f(u.uAerial, p.aerial, AERIAL.pivot, AERIAL.nearer, AERIAL.most);
   gl.uniform3f(u.uSoftBlack, p.softBlack, SOFT_BLACK.from, SOFT_BLACK.to);
   gl.uniform4f(u.uMistSeen, MIST_SEEN.veil, p.mistSeen, ...MIST_SEEN.water);
+}
+
+/* ── atmosphere/shaders/mist.ts: the low mist ───────────────────────────── */
+
+export const MIST_UNIFORMS = [
+  "uMistVeil", "uMistRect", "uMistLook", "uMistMotion", "uMistWisps", "uMistDrift", "uMistWisp", "uMistStone",
+  "uMistVolume",
+] as const;
+
+/* The veil's texels per tan across: its detail, against the screen's. */
+const MIST_TEXELS_PER_TAN = MIST.size[0] / (MIST.tan[2] - MIST.tan[0]);
+
+export function setMistUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: SetFrame): void {
+  /* Off, the scene compiled without it (atmosphere/shaders/mist.ts). */
+  if (!MIST.on) return;
+  const p = f.params;
+  const veil = f.plates.mist;
+  const [left, top, right, bottom] = MIST.tan;
+  gl.uniform4f(u.uMistRect, left, top, 1 / (right - left), 1 / (top - bottom));
+  gl.uniform4f(u.uMistLook, veil ? MIST.amount * p.mistAmount : 0, MIST.tauMax, MIST.edge, p.mistLight);
+  /* Read at the level whose texels are this target's pixels: on a small
+     screen the veil's finer wisps would shimmer, read finer. */
+  const pixelsPerTan = f.camera.focal * (f.width / f.camera.view[0]);
+  const level = Math.max(0, Math.log2(MIST_TEXELS_PER_TAN / pixelsPerTan));
+  gl.uniform3f(u.uMistMotion, MIST_MOTION.breathe * p.mistMotion, MIST_MOTION.near, level);
+  if (veil) bindTexture(gl, u.uMistVeil, UNITS.mist, veil);
+  /* Each layer's drift, in tiles, kept within one (they repeat): along the
+     shore and up, the same wind at both depths — the near layer, read at
+     its nearer distance, crosses the screen the faster. */
+  const w = MIST_MOTION.wisps;
+  const far = f.mistTime / w.tile;
+  const near = f.mistTime / w.near.tile;
+  gl.uniform4f(u.uMistDrift, (w.drift * far) % 1, (-w.rise * far) % 1, (w.drift * near) % 1, (-w.rise * near) % 1);
+  gl.uniform3f(u.uMistWisp, w.amount * p.mistMotion, 1 / w.tile, w.near.distance / w.near.tile);
+  /* The patches' light moves with them: none when they are held still. */
+  const v = MIST.volume;
+  const patches = p.mistVolume * Math.min(p.mistMotion, 1);
+  gl.uniform4f(u.uMistVolume, v.facing * patches, v.core * patches, v.side * p.mistVolume, v.up * p.mistVolume);
+  gl.uniform3f(u.uMistStone, MIST.stone.foot * p.mistStone, MIST.stone.height, MIST.stone.up * p.mistStone);
+  if (f.wisps) bindTexture(gl, u.uMistWisps, UNITS.wisps, f.wisps, gl.TEXTURE_2D_ARRAY);
 }
 
 /* ── water/shaders/water.ts ───────────────────────────────────────────── */

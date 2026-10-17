@@ -41,9 +41,11 @@ THE STEPS
                   the stage's agree at the one place they touch
   5. refinement   a guided filter snaps the depth's soft edges to the
                   photograph's own silhouettes
-  6. sky          fog continued above the photograph's top edge, for frames
+  6. right bank   its trees drawn a tenth shorter about their waterline, the
+                  sky above stretched over what they leave (BANK_HEIGHT)
+  7. sky          fog continued above the photograph's top edge, for frames
                   taller than it (phones)
-  7. crop         only what a frame can ever show, at the photograph's own
+  8. crop         only what a frame can ever show, at the photograph's own
                   resolution: the left bank the user's frame cuts off, and
                   the photograph's own lake under the shores (the stage draws
                   its own), are never on screen, so they are not shipped —
@@ -117,6 +119,19 @@ EDGE = 1.5
 CORRIDOR_FADE = 24
 # How much farther than its bank a solid tree may stand (see metric_depth).
 TREE_SPREAD = 1.25
+# THE RIGHT BANK, SHORTER (the user, 2026-10-16: it stood too tall, its
+# tallest spruce 10% from the frame's top against the left bank's 21%; they
+# chose a tenth off over a fifth). Everything above its waterline is drawn
+# at this share of its height, the waterline held — the shore, the open
+# channel and the stone's place unchanged; the fog sky closes over what the
+# crowns leave (see shorten_bank). The lake mirrors the photograph, so the
+# reflections shorten with it. Comes in over BANK_FROM (source columns) at
+# the bank's far tip, where the open corridor ends.
+BANK_HEIGHT = 0.9
+BANK_FROM = (2760, 2900)
+# The source row above every crown, before and after: the sky above it is
+# stretched over what the crowns leave.
+BANK_SKY = 230
 
 # ── The outputs ─────────────────────────────────────────────────────────────
 SKY_ROWS = 160  # source rows of fog continued above the top edge
@@ -308,6 +323,46 @@ def metric_depth(img, disp, line, land) -> np.ndarray:
     return np.clip(inv_z, 1.0 / DEPTH_FAR, 1.0 / DEPTH_NEAR).astype(np.float32)
 
 
+def bank_height(cols: np.ndarray) -> np.ndarray:
+    """The share of its height each source column's bank keeps."""
+    f = np.clip((cols - BANK_FROM[0]) / (BANK_FROM[1] - BANK_FROM[0]), 0.0, 1.0)
+    return 1.0 - (1.0 - BANK_HEIGHT) * f * f * (3 - 2 * f)
+
+
+def bank_rows(rows: np.ndarray, cols: np.ndarray, line: np.ndarray) -> np.ndarray:
+    """The source row each row of the shortened photograph is drawn from, at
+    each column (`line`: that column's waterline). Also the mist's
+    (mist.py): its reference is shortened with the photograph."""
+    keep = bank_height(cols)
+    joint = line - (line - BANK_SKY) / keep  # where row BANK_SKY now comes from
+    src = np.where(rows >= BANK_SKY, line - (line - rows) / keep, rows * joint / BANK_SKY)
+    return np.where(rows < line, src, rows)
+
+
+def shorten_bank(img: np.ndarray, inv_z: np.ndarray, line: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The right bank at BANK_HEIGHT of its height, about its own waterline.
+
+    THE FOREST IS SHORTENED, THE SKY ABOVE IT STRETCHED. From the waterline
+    up to BANK_SKY every row is drawn from BANK_HEIGHT as far up (the trees
+    shorter, every crown with them); above that, the sky from there to the
+    top is drawn over the rows freed. The sky is fog — smooth, its grain
+    running up and down — so a stretch of it has nothing to show; the first
+    try instead laid the moved trees over an estimate of the fog behind
+    them, and the estimate stepped at the top of the frame. Every row comes
+    from the photograph itself. The depth moves with them."""
+    H, W = img.shape
+    rows = np.arange(H, dtype=np.float32).reshape(-1, 1)
+    cols = np.tile(np.arange(W, dtype=np.float32), (H, 1))
+    src = bank_rows(rows, cols, np.tile(line.astype(np.float32), (H, 1))).astype(np.float32)
+    moved = cv2.remap(img, cols, src, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    depth = cv2.remap(inv_z, cols, src, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    crowns = lambda a: int(np.argmax((a[:, BANK_FROM[1]:] < 0.3).any(axis=1)))
+    if crowns(img) <= BANK_SKY:
+        raise SystemExit(f"a crown stands above BANK_SKY ({crowns(img)}): raise it")
+    log(f"right bank {BANK_HEIGHT:.2f} of its height: its crowns from row {crowns(img)} to {crowns(moved)}")
+    return np.clip(moved, 0, 1).astype(np.float32), depth.astype(np.float32)
+
+
 def extend_sky(img: np.ndarray, rows: int) -> np.ndarray:
     """Fog above the top edge: the top rows' trend, smoothed across."""
     H, W = img.shape
@@ -338,6 +393,7 @@ def main():
     land = land_mask(img.shape, line)
     disp = relative_depth(img)
     inv_z = metric_depth(img, disp, line, land)
+    img, inv_z = shorten_bank(img, inv_z, line)
 
     # Debug views (not shipped).
     vis = cv2.cvtColor((img * 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)

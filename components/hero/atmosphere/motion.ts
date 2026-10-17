@@ -305,6 +305,59 @@ export const GUST = {
 } as const;
 
 /**
+ * THE LOW MIST, ALIVE (optics.ts MIST: its look is the user's reference;
+ * this is what keeps it from being a painted veil). It thickens and thins
+ * with the simulated fog's own billows, read where they are at each pixel:
+ * mostly the bank over the far shores (SHEETS[2], 46 m, where the steam fog
+ * lies: soft, slow, a hand's pass a broad thinning), a little the one
+ * behind the stone (SHEETS[1]), by `near`. Led by that nearer bank (0.6),
+ * a hand's wake tore the mist in thin dark threads. `breathe`: how far the
+ * mist's optical depth follows their departure from their mean — zero-mean,
+ * so the frame keeps the reference's look on average and only the mist
+ * moves in it: measured, ~6 levels over 9 s across the mist band, ~19 at
+ * the most.
+ *
+ * AND IT DRIFTS (the user, 2026-10-16: "natural mist is moving but this
+ * isn't"). Breathing in place, nothing in it ever went anywhere, and the
+ * eye reads only travel as motion. So broad, soft patches of it — thicker,
+ * thinner — drift along the shores the way the air does (right to left,
+ * motion.ts WIND) at `drift` m/s, rising off the water at `rise` (wisps.ts,
+ * shaders/mist.ts). Two layers of them AT TWO DEPTHS: patches ~7 m across
+ * against the shores, and `near` ones over the water at `distance` of the
+ * shore's distance, `tile` their square, `weight` their share — larger on
+ * the screen and faster across it, as nearer mist is, so the two slide past
+ * each other and the eye reads depth in it (the user asked for it to feel
+ * a volume, 2026-10-16; the near layer was first smaller and faster, which
+ * no depth gives).
+ * BROAD AND SOFT ON PURPOSE, the look being the reference's. A first build
+ * ran finer curls through it, bent by the patches and stretched tall like
+ * rising steam: the user saw a wavy pattern over their mist ("keep the
+ * previous look"), its fine texture +65% over the left shore. A second,
+ * one gentle layer (`amount` 0.35, 0.4 m/s) kept the look but nobody saw
+ * it move ("you remove that mist movement too"): ~4 levels over 9 s, ~12
+ * px a second, in patches ~200 px wide. Now the patches are strong enough
+ * to see travel (`amount`: how far they move its opacity's odds, ~10 levels
+ * over 9 s), faster (~21 px a second at 1440 over the right shore, ~13 over
+ * the left), and still nothing finer than the mist's own texture: in
+ * motion, the frame keeps the previous look's averages within ~3 levels.
+ * Sized in metres on the shore they lie along — `distance`, the left
+ * shore's and the right's (backdrop.py: ~95 m and ~60 m) — so the farther
+ * shore's are smaller and slower, as the fog banks' are.
+ */
+export const MIST_MOTION = {
+  breathe: 1.4,
+  near: 0.2,
+  wisps: {
+    amount: 0.8,
+    drift: 0.7,
+    rise: 0.08,
+    tile: 60,
+    near: { distance: 0.62, tile: 45, weight: 0.8 },
+    distance: [95, 60] as const,
+  },
+} as const;
+
+/**
  * THE BREATH OF THE FOG: its overall thickness rises and falls, barely.
  * Two sines at the golden ratio, so the swell never loops.
  */

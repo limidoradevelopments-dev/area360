@@ -2,7 +2,8 @@
  * ─── Stage · plates ───
  *
  * Builds every image the set stands on and hands it to the GPU: the backdrop
- * photograph and its depth.
+ * photograph and its depth, and the low mist's veil (atmosphere/optics.ts
+ * MIST, built by scripts/hero-plates/mist.py, `npm run mist`).
  *
  * The backdrop is built offline (scripts/hero-plates/backdrop.py, `npm run
  * backdrop`) and served from public/hero/backdrop: the photograph as lossy
@@ -12,9 +13,11 @@
  * the main thread.
  *
  * If the backdrop cannot be fetched or decoded, there is no stage: the
- * static paint stays, rather than a lake with no shore.
+ * static paint stays, rather than a lake with no shore. If only the mist's
+ * veil cannot, the stage runs without it.
  */
 
+import { MIST } from "../atmosphere/optics";
 import { createBackdrop, createDataTexture } from "./gl";
 import { BACKDROP } from "./layers";
 
@@ -23,6 +26,8 @@ export interface Plates {
   readonly backdrop: WebGLTexture;
   /** Its inverse depth (red) and land (green), RG16F. */
   readonly depth: WebGLTexture;
+  /** The low mist's veil (R8, mipmapped), or none. */
+  readonly mist: WebGLTexture | null;
 }
 
 const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -60,8 +65,19 @@ function unpackDepth(bitmap: ImageBitmap): Float32Array {
 export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boolean): Promise<Plates | null> {
   let photo: ImageBitmap;
   let depthMap: ImageBitmap;
+  let veil: ImageBitmap | null;
   try {
-    [photo, depthMap] = await Promise.all([loadBitmap(BACKDROP.plateUrl), loadBitmap(BACKDROP.depthUrl)]);
+    [photo, depthMap, veil] = await Promise.all([
+      loadBitmap(BACKDROP.plateUrl),
+      loadBitmap(BACKDROP.depthUrl),
+      /* Not fetched while the low mist is off (MIST.on). */
+      MIST.on
+        ? loadBitmap(MIST.url).catch((error: unknown) => {
+            console.warn(error);
+            return null;
+          })
+        : null,
+    ]);
   } catch (error) {
     console.warn(error);
     return null;
@@ -69,6 +85,7 @@ export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boole
   const close = () => {
     photo.close();
     depthMap.close();
+    veil?.close();
   };
   await yieldToMain();
   if (!alive()) {
@@ -83,12 +100,15 @@ export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boole
   }
   const backdrop = createBackdrop(gl, photo);
   const depth = createDataTexture(gl, depthData, depthMap.width, depthMap.height);
+  /* One channel, mipmapped, as the photograph is. */
+  const mist = veil ? createBackdrop(gl, veil) : null;
   close();
   await yieldToMain();
   if (!alive()) {
     gl.deleteTexture(backdrop);
     gl.deleteTexture(depth);
+    if (mist) gl.deleteTexture(mist);
     return null;
   }
-  return { backdrop, depth };
+  return { backdrop, depth, mist };
 }

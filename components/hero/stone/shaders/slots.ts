@@ -97,7 +97,9 @@ void main() {
   }
   vec3 light = vec3(0.0);
   if (t > 0.0) light = stoneLight(uCamPos, d, t, local, normal, spread, uLit);
-  outColor = vec4(light, hit);
+  /* Hit, as how far along the ray (in its own lengths): the scene lays the
+     steam on the water over the stone by the height it meets it at. */
+  outColor = vec4(light, max(t, 0.0));
 }
 `;
 
@@ -156,7 +158,8 @@ void main() {
  */
 export const SLOTS_GLSL = /* glsl */ `
 /* the stone's slots (stone/stone.ts): as the camera sees it, light and
-   hit (slots 0–4) and normal (5–9); as the lake mirrors it, light and hit */
+   hit — how far along its ray, 0 for none — (slots 0–4) and normal (5–9);
+   as the lake mirrors it, light and hit */
 uniform sampler2D uStoneSeen;
 uniform sampler2D uStoneMirror;
 /* each set of slots: its rect's corner in the scene's target and one
@@ -205,14 +208,23 @@ Hit stoneSeen(vec3 origin, vec3 ray, vec3 rx, float spread) {
     }
     h.alpha = 0.25 * hits;
   }
+  float along = centre.a;
   if (mixed) {
+    float on = 0.0;
+    along = 0.0;
     for (int i = 1; i <= 4; i++) {
       vec4 edge = texelFetch(uStoneSeen, at + i * next, 0);
-      if (edge.a > 0.0) h.color += 0.25 * edge.rgb;
+      if (edge.a > 0.0) {
+        h.color += 0.25 * edge.rgb;
+        along += edge.a;
+        on += 1.0;
+      }
     }
+    along /= max(on, 1.0);
   } else if (hit) {
     h.color = centre.rgb;
   }
+  if (h.alpha > 0.0) h.depth = along * length(ray);
   return h;
 }
 

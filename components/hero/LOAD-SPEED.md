@@ -161,6 +161,122 @@ The user asked for the bloom to start sooner, for a subtle glow that draws the e
 
 At 4K the plant's rect is now a little smaller (391 × 358 px against 425 × 361): the stems hug the stone. That brings it under the sample budget for 4 × 4 samples a pixel instead of 3 × 3. The extra ~0.2 ms is the plant drawn finer. The same geometry, sampled the same way, costs the same as before; this was checked by putting last round's base back and timing both.
 
+## The low mist (2026-10-16)
+
+The user asked for the steam fog of their reference frame (`assets/sources/mist/reference.webp`), and for a hybrid: the real mist and the simulation both. What it is, and what it cost:
+
+- **The real mist is a small image, not a simulation.** The reference's mist is read off as optical depth per direction from the camera at rest, and fitted through the engine's own film until the engine's frame matches the reference. The fit is `npm run mist` (`scripts/hero-plates/mist.py`), run on captures of the engine itself. The result is one veil, `public/hero/mist/veil.webp`: one channel, 2000 × 1158, ~60 KB, preloaded with the shores and loaded beside them (`stage/plates.ts`; without it the stage runs bare).
+- **No new program.** The veil is one read and a few multiplies inside the scene program (`atmosphere/shaders/mist.ts`, applied in `scene.ts` to what lies behind the stone). Its own full-frame pass would have cost a pass's fill and a second read of the sheets for less.
+- **The simulation moves it for free.** It breathes with the fog sheets' densities, which the scene already reads at every pixel. There is no new texture and no new pass.
+- **Measuring through the engine, not a model.** The engine's print curve and the mist's light differ from any formula. So each fit round captures, at the same instant, the frame without the mist, with it, and under endless mist (the mist's own light, per pixel), and steps the veil toward the reference. A first fit with one assumed light flipped sign where the real light was brighter, and left a patch of trees bare.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate between the scene program with and without the mist code (five rounds each, twice). GPU timings interleave mist on and off frame by frame.
+
+| | without | with the mist |
+|---|---|---|
+| scene program, cold compile alone (CPU cool) | 1.14–1.25 s, median 1.17 | 1.16–1.42 s, median 1.25 |
+| scene program, cold compile alone (CPU warm) | 2.5–3.4 s, median 2.9 | 1.9–4.4 s, median 2.8 |
+| GPU, the scene pass, 1440×810 | 2.25 ms | 2.32 ms |
+| GPU, the scene pass, 1920×1080 | 3.98 ms | 4.09 ms |
+| GPU, the scene pass, 3840×2160 (scene 2565×1443) | 6.03 ms | 6.24 ms |
+| download | | +60 KB, in parallel with the shores |
+| first live frame, cold, production (5 rounds each, alternating) | 2.89–4.18 s, median 3.01 | 2.91–3.37 s, median 2.95 |
+
+The scene is the longest program, so its extra ~0.07 s is what a first visit waits for, and it is lost in the noise of a whole first visit. Nothing else is added.
+
+**A measuring trap this hit.** A test page left open after a first-frame run keeps the live scene running in the headless browser's GPU process. With that, and the machine busy, the same build's first frame read 5–14 s. Each run now blanks its page as soon as it has measured, and old and new are run alternately, so both see the same machine.
+
+## The mist moving, the stone in it, the right bank shorter (2026-10-16, later)
+
+Three changes the user asked for, and what each costs:
+
+- **The right bank a tenth shorter** is in the photograph itself (`backdrop.py` `BANK_HEIGHT`). It costs nothing at run time; the plate and depth came out 8 KB and 7 KB smaller.
+- **The patches that drift through the low mist** are one small texture made at start (`atmosphere/wisps.ts`: 128 × 128, two half-float channels, 64 KB of GPU memory) and two reads of it in the scene program, only where there is mist.
+  - Making it takes ~17 ms of cold JavaScript on a first visit, most of it V8 warming to the code, while the shaders compile. Three running-sum boxes in indexed loops; a plain Gaussian took ~40 ms.
+  - The first build's second layer was finer (curls, bent by the patches and stretched tall). The user saw it as a wavy pattern over their mist and asked for the previous look back, and one gentle layer alone did not read as moving. Now both layers are broad, unbent and stronger: the mist moves ~10 levels over 9 s, and its fine texture and averages stay within a few percent and ~3 levels of the previous look in motion (+65% fine texture with the curls).
+- **The mist round the stone** is a few multiplies on the stone's pixels. Its height comes from the stone's own slots, whose alpha now carries how far along the ray the stone was met, not just that it was.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate old and new scene sources (five rounds). GPU timings interleave three states frame by frame: no mist, the mist held still, and the mist moving.
+
+| | before | now |
+|---|---|---|
+| scene program, cold compile alone | 1.24–1.56 s, median 1.32 | 1.30–1.42 s, median 1.32 |
+| GPU, the scene pass, 1440×810 (300 frames, twice) | no mist 2.43 ms, still 2.53 | moving 2.56 ms (+0.03 for the patches; +0.08 with the curls) |
+| GPU, the scene pass, 3840×2160 (scene 2565×1443, 300 frames) | no mist 6.1–7.1 ms, still 6.4–6.9 | moving 6.4–7.3 ms (the patches under the noise) |
+| downloads | | −18 KB (plate, depth, veil) |
+| first live frame, cold, production, alternating, 4 rounds with the CPU cool | 2.95–4.39 s, median 3.38 | 2.99–3.77 s, median 3.42 |
+| the same, all 10 rounds (6 more as the CPU heated: 3.4–8.8 s for both) | | new − old, paired: median −0.18 s |
+| longest main-thread task on a first visit | median ~280 ms | median ~310 ms |
+
+"Before" for the first frame is the committed site, without any of the low mist. A first visit is unchanged within its noise. The longest main-thread task grew ~30 ms, ~17 ms of it making the patches; it runs while the shaders compile, so the first frame does not wait for it. (Measured with the first build's two layers; one layer takes the same time cold.)
+
+**Measuring the 4K pass needs long runs.** At 90 frames the GPU's clock changes put "still" under "no mist" in two runs of three; at 300 frames the order held.
+
+## The mist lit as a volume (2026-10-16, later)
+
+The user found the drifting mist "a white colour something moves, not like a real mist": it was lit by one flat grey, so a patch only changed how much of the trees it hid. Three cues of a real volume were added, all from what the scene already reads:
+
+- **Lit from the sky, shaded in itself.** Each patch is brighter on its side toward the light (the sky above, leaning toward the open lake) and darker on the other, and its dense core is in its own shade (`MIST.volume` in `atmosphere/optics.ts`, `shaders/mist.ts`).
+  - The light needs the patches' slopes. They are precomputed with the patches at start (`wisps.ts`: a two-layer RGBA16F array of density and its slope across and up), so no read is added. Finding the slope by reading again a step away would have doubled the patches' reads.
+- **Two depths.** The two layers of patches lie at two distances: the nearer one larger on the screen and faster across it, as nearer mist is.
+- **The sky's lean.** The whole mist is a little brighter toward the opening and up toward the sky, greyer low on the water: a few multiplies.
+
+**A true volume was ruled out:** stepping through a 3D fog many times per pixel costs a read per step, and its compile is paid on every first visit.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate the scene source before and after (five rounds). GPU timings interleave no mist, the mist held still, and the mist moving, frame by frame, 300 frames.
+
+| | before | now |
+|---|---|---|
+| scene program, cold compile alone | 1.24–1.81 s, median 1.50 | 1.31–1.60 s, median 1.36 |
+| GPU, the scene pass, 1440×810, the moving mist over the still | +0.03 ms | +0.07 ms (twice: 2.60/2.52 and 2.60/2.53 ms) |
+| GPU, the scene pass, 3840×2160 (scene 2565×1443) | | no mist 6.32 ms, still 6.41, moving 6.63 |
+| making the patches at start, cold JavaScript | ~17 ms | ~22 ms (the slopes), while the shaders compile |
+| texture memory | 64 KB | 256 KB |
+
+The still mist was refitted under its new light (three steps, held still): over trees and water −0.3 and −0.4 levels from the reference on average, the same contrast. In motion, the averages stay within ~3 levels of the previous look, and nothing finer than the patches is added.
+
+## The low mist off, and the user's regrade (2026-10-16, evening)
+
+The user brought a new reference: their own frame of this scene, made before the low mist, printed darker and harder. Registered onto the engine's frame, its mist is the engine's frame without the low mist, to ~2 levels; its tones are one curve on every pixel. So:
+
+- **The low mist is off** (`MIST.on` in `atmosphere/optics.ts`). Off, nothing of it is paid: the veil is not fetched (−56 KB), the patches are not made (−~22 ms of JavaScript at start), and the scene compiles without its code.
+- **The print goes through their curve** (`FILM.regrade` in `stage/optics.ts`): a 65-sample table, three reads of it per pixel in the film pass (`film.ts` `regrade`), after the paper and before the grain.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate old and new sources (five rounds). The film pass's GPU time was read with the curve's line in and out, alternated; the GPU was shared with a live page, so the absolute times are high.
+
+| | before | now |
+|---|---|---|
+| scene program, cold compile alone | 1.34–1.71 s, median 1.53 (with the low mist) | 1.26–1.60 s, median 1.27 (without) |
+| film program, cold compile alone | 0.16–0.18 s, median 0.16 | 0.18–0.32 s, median 0.19 (with the curve) |
+| GPU, the film pass, 3840×2160 | 3.29–3.63 ms (without the curve) | 3.29–3.66 ms (with it) |
+| downloads | | −56 KB (the veil) |
+
+The film program compiles beside the much longer scene program, so its extra ~0.03 s is not on a first visit's path.
+
+## The fog lifted off the water (2026-10-17) — rolled back
+
+A lifted bank of fog (thicker above a base ~6 m over the water, the air under it cleared and in its shade) was built after a reference of the user's and rolled back the same day at their word: not good enough. Two lessons from it stand:
+
+- **Keep work out of the fog sheets' loop.** `fogBetween` is copied into the shader once per sheet at every place fog is drawn: a few lines there added ~0.1 s to the scene's first compile.
+- **No `log`/`exp` pair where a cheaper curve will do.** Direct3D's compiler is slower over the transcendental pair.
+
+## The air by place, the user's crop and their next print (2026-10-17)
+
+The user brought their next print of this scene (`assets/sources/grade/reference-2.webp`) with two marks on it, and asked for their tree placement too:
+
+- **Their print.** ~15% darker again, composed onto the first curve (`FILM.regrade`): the same 65-sample table, new values. No new cost.
+- **Their crop.** A longer lens from the same place (`CAMERA.zoom` 1.093): one constant in `focalPx`. No cost. The first-paint stills were retaken (`still.py`): the bands moved with the lens, and each is now taken where every screen in its band is a crop of it. The first paint on a 1080p screen is 46 KB, as before (45 KB).
+- **The air by place** (`LOCAL_AIR` in `atmosphere/optics.ts`): two soft regions in the directions of the camera at rest, as `set.ts` `localAir` — two `exp`s and a few multiplies, no reads — called twice in the scene (the fog held still by the ray's direction, the haze laid on the photograph's point) and twice in the lake.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate the source with `localAir` returning zero (which the compiler folds away: the build without it) and the source as built. GPU times are medians of 300 frames each, the shader edited in and out between runs, alternated three times.
+
+| | without | with |
+|---|---|---|
+| scene program, cold compile alone (6 rounds; then 8 with the CPU warmer) | median 1.52 s; 1.99 s | median 1.64 s; 2.01 s (within the rounds' spread) |
+| lake program, cold compile alone (6 rounds) | median 0.76 s | median 0.74 s |
+| GPU, the scene pass, 1440×810 | 2.02–2.10 ms | 1.99–2.02 ms |
+| GPU, the lake pass, 1440×810 | 1.75–1.78 ms | 1.70–1.73 ms |
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

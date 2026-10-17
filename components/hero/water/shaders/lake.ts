@@ -67,6 +67,9 @@ void main() {
   float perDepth = length(ray) / ray.z;
   float zWater = waterDepth(origin, ray);
   vec4 densityNear = textureLod(uSheetDensity, uv, 0.0);
+  /* Held still where the air by place says (LOCAL_AIR), as in the scene. */
+  float still = localAir(ray.xy / ray.z).y;
+  densityNear = mix(densityNear, uSheetMean, still);
   vec4 lightNear = textureLod(uSheetLight, uv, 0.0);
   /* The fog over the photograph from the camera to the water... */
   vec3 glow = vec3(0.0);
@@ -86,10 +89,12 @@ void main() {
   vec4 density;
   vec4 light;
   sheetsAlong(s.surface, s.r, depth, density, light);
+  density = mix(density, uSheetMean, still);
   departure += fogDeparture(s.surface, s.r, s.surface.z, depth, s.perDepth, density, light, glow, weight);
   vec3 air = airOf(glow, weight, lightNear);
   vec3 photo = mix(air, plateRadiance(at, gx, gy), plateCover(at));
   float gain;
-  outColor = vec4(throughFog(photo, air, departure, depth, gain), 1.0);
+  /* The shore it mirrors carries the air by place it carries over it. */
+  outColor = vec4(throughFog(photo, air, departure, depth, localAir(tanOfPlate(at)).x, gain), 1.0);
 }
 `;

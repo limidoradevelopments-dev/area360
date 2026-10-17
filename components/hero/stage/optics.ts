@@ -93,6 +93,30 @@ export const FILM = {
    */
   paper: { black: 0.047, white: 0.855, gamma: 1.33 },
   /**
+   * THE USER'S REGRADE (2026-10-16): their own frame of this scene, printed
+   * darker and harder (assets/sources/grade/reference.webp, 2000 × 1032,
+   * neutral grey) — the sky from ~210 down to ~170, the midtones about a
+   * fifth darker, the blacks held at ~19. REGISTERED, NOT JUDGED: laid onto
+   * the engine's frame by an affine fit of the left bank's and the stone's
+   * edges (correlation 0.978; their right bank is the taller one of before
+   * BANK_HEIGHT, so it was left out), and read as ONE curve on every pixel:
+   * the print as the paper leaves it → theirs (0–255), the median of theirs
+   * for each 4 levels of ours over the frame, smoothed and held rising, the
+   * top lifted 1.5 levels onto their sky (the median left it 2 under). With
+   * it the frame is within ~2 levels of theirs over the sky, the water, the
+   * stone and the trees' feet; their left bank's crowns sit 8 levels under
+   * the engine's moment, inside the range its drifting fog passes through
+   * (113–128 against their 116). On the print, after the paper and before
+   * the grain (film.ts finish).
+   * AND THEIR NEXT (2026-10-17, assets/sources/grade/reference-2.webp, the
+   * frame with the crop of CAMERA.zoom): ~15% darker again — the sky ~170
+   * → ~145, the blacks ~19 → ~16. Registered the same way (0.965) and read
+   * as one more curve, the table is the two in turn: within ~1 level of
+   * theirs over the sky and the water, the stone 3, the trees within the
+   * range their fog drifts through.
+   */
+  regrade: [[0, 15.5], [12, 15.5], [24, 17.4], [40, 23.5], [56, 33.7], [72, 43.4], [88, 53.2], [104, 64.8], [120, 77.5], [136, 93.1], [152, 108.8], [168, 118.9], [184, 132.1], [200, 143.4], [212, 145.2], [218, 145.9], [255, 145.9]] as readonly (readonly [number, number])[],
+  /**
    * DIFFUSION: the glow a lens (and a diffusion filter in front of it) puts
    * around everything bright — light from the bright fog spilling a little
    * over the darks beside it, the way every frame shot in fog has it. It is
