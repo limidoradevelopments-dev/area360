@@ -125,8 +125,9 @@ export const WATER_MOTION = {
    * drawn, and stay. At 0 the lake of before.
    */
   exposure: {
-    averaged: 1,
-    smear: 2.5,
+    /* the user's own values, 2026-10-20 (tuner): a third averaged, the rest drawn. */
+    averaged: 0.3,
+    smear: 1.6,
   },
   catsPaws: {
     /* Size of a patch, metres, and how fast the patches drift with the air
@@ -135,13 +136,15 @@ export const WATER_MOTION = {
     drift: 0.22,
     /* How much of the lake is under a paw at once (0–1), and how soft a
      * paw's edge is. */
-    coverage: 0.38,
+    /* 0.13: the user's own values, 2026-10-20 (tuner). */
+    coverage: 0.13,
     softness: 0.22,
     /* What the ripples keep between paws. Not glass: the reference's water
      * is alive everywhere, and its reflections soft everywhere — at 0.12
      * the stone's reflection kept every seam. The paws are the rougher
      * patches over that. */
-    glass: 0.4,
+    /* 0.44: the user's own values, 2026-10-20 (tuner). */
+    glass: 0.44,
   },
 } as const;
 

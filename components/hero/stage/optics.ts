@@ -46,7 +46,8 @@ export const FILM = {
    * banks barely. Eased from the design's 1.04 stops for the afternoon
    * paper, whose gamma already sinks the dark water.
    */
-  foot: { from: 0.45, stops: 0.9 },
+  /* `from` 0.7: the user's own values, 2026-10-20 (tuner). */
+  foot: { from: 0.7, stops: 0.9 },
   /**
    * THE LAKE, BURNED IN. The photograph's own lake prints far darker than
    * Fresnel gives still water under that sky — its reflections sit well
@@ -82,7 +83,8 @@ export const FILM = {
    * longer below the shores (`shape` 1.6), so the far water keeps the
    * previous print's light and the foot the halfway dodge.
    */
-  lakeBurn: { atHorizon: 0.1, atFoot: -0.7, shape: 1.6, contrast: 0.5 },
+  /* Since 2026-10-20 the user's own values, 2026-10-20 (tuner): no burn or dodge, the harder paper only. */
+  lakeBurn: { atHorizon: 0, atFoot: 0, shape: 1.8, contrast: 0.73 },
   /**
    * THE LIGHT POOLS OVER THE OPENING. Under an overcast the sky is one soft
    * light overhead, brightest where the most of it is open — over the lake,
@@ -93,7 +95,8 @@ export const FILM = {
    * a little right of centre, over the open water. The foot has its own
    * burn (`foot`).
    */
-  vignette: { amount: 0.16, at: [0.55, 0.36] as const },
+  /* `amount` 0.27: the user's own values, 2026-10-20 (tuner). */
+  vignette: { amount: 0.27, at: [0.55, 0.36] as const },
   /**
    * THE AFTERNOON PAPER. The design was printed high-key — a near-white sky,
    * a morning fog glowing. The direction is now an overcast afternoon in a
@@ -147,7 +150,8 @@ export const FILM = {
    * SMALL: against near-white fog even 1.5% lifts a black by several levels
    * at its edge; at 6% a near-black shape on the stone printed ~80, grey.
    */
-  diffusion: { amount: 0.015, spread: 0.6 },
+  /* `amount` 0.01: the user's own values, 2026-10-20 (tuner). */
+  diffusion: { amount: 0.01, spread: 0.6 },
   /**
    * HALATION OVER THE PHOTOGRAPH: the bright air beside a dark edge spilling
    * over it, as fog and a lens give it — what keeps a near bank against
@@ -156,7 +160,8 @@ export const FILM = {
    * photograph's own lens gave it little: its trees were drawn crisp by the
    * upscaler that made it.
    */
-  halation: 0.1,
+  /* 0.14: the user's own values, 2026-10-20 (tuner). */
+  halation: 0.14,
   /**
    * The print, in display values: midtones hold, shadows and highlights are
    * pushed by their own amounts, blended smoothly across the pivot; a toe
@@ -165,7 +170,8 @@ export const FILM = {
    * crowns keep their shape against a near-white sky. A clipped highlight is
    * the surest sign of a video frame; film never has one.
    */
-  print: { pivot: 0.56, shadows: 1.1, highlights: 1.1, toe: 0.02, knee: 0.8 },
+  /* shadows, highlights and toe: the user's own values, 2026-10-20 (tuner). */
+  print: { pivot: 0.56, shadows: 1.11, highlights: 1.14, toe: 0.07, knee: 0.8 },
   /* Monochrome grain, strongest in the midtones, re-seeded at film rate;
    * soft-edged clumps about a CSS px across at every resolution, as a
    * scanned negative's are, not a hard pixel noise. Also the dither that

@@ -183,7 +183,8 @@ export function defaultParams(): StageParams {
     spell: 1,
     wake: 1,
     detail: 1,
-    form: 1,
+    /* 3: the user's own value, 2026-10-20 (tuner). */
+    form: 3,
     selfShadow: VOLUME.selfShadow,
     lightExtinction: LIGHT.extinction,
     ambient: LIGHT.ambient,
@@ -196,7 +197,7 @@ export function defaultParams(): StageParams {
     wisps: SHEETS[0].sharpness,
     mistSeen: MIST_SEEN.grey,
     mistAmount: 1,
-    mistMotion: 1,
+    mistMotion: 0.95,
     mistLight: MIST.light,
     mistStone: 1,
     mistVolume: 1,
@@ -216,8 +217,8 @@ export function defaultParams(): StageParams {
     paperWhite: FILM.paper.white,
     paperGamma: FILM.paper.gamma,
     /* 0.81 of the way to it: the user's own setting (2026-10-18), a touch
-       lighter than their print. */
-    regrade: 0.81,
+       lighter than their print; 0.92 since 2026-10-20, theirs again. */
+    regrade: 0.92,
     diffusion: FILM.diffusion.amount,
     halation: FILM.halation,
     softBlack: SOFT_BLACK.amount,
@@ -228,7 +229,9 @@ export function defaultParams(): StageParams {
     toe: FILM.print.toe,
     knee: FILM.print.knee,
     grain: FILM.grain,
-    rain: 1,
+    /* The user's own values (2026-10-20, tuner): the rain ×1.25; the
+       lake's swell off, undulation ×0.45, ripples ×1.45, lapping ×0.95. */
+    rain: 1.25,
     stoneTop: STONE.light.top,
     stoneAway: STONE.light.sideAway,
     stoneToward: STONE.light.sideToward,
@@ -236,11 +239,11 @@ export function defaultParams(): StageParams {
     sheenFace: STONE.sheen.face,
     footAway: STONE.foot.away,
     footToward: STONE.foot.toward,
-    swell: 1,
-    undulation: 1,
-    ripples: 1,
+    swell: 0,
+    undulation: 0.45,
+    ripples: 1.45,
     waver: WATER.waver,
-    lapping: 1,
+    lapping: 0.95,
     longExposure: WATER_MOTION.exposure.averaged,
     smear: WATER_MOTION.exposure.smear,
     paws: WATER_MOTION.catsPaws.coverage,

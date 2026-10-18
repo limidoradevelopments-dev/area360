@@ -47,7 +47,8 @@ export const WATER = {
    * the stone's reflection stands still in a moving lake; past ~10 it tears
    * off the stone's foot.
    */
-  waver: 4,
+  /* 5: the user's own values, 2026-10-20 (tuner). */
+  waver: 5,
 } as const;
 
 /** Reflectance at normal incidence, from the index. */

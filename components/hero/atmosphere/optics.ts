@@ -49,12 +49,16 @@ export const EXTINCTION = {
   near: 0.0004,
   /* β over the open lake, at the water. Visibility (3.912 / β) ≈ 830 m. */
   far: 0.0047,
-  /* Where the thickening begins, and where it is full (smoothstep). */
-  bankFrom: 12.5,
-  bankTo: 40,
+  /* Where the thickening begins, and where it is full (a smooth ramp).
+   * the user's own values, 2026-10-20 (tuner): full at 4.5 m, before `bankFrom` — the ramp
+   * (atmosphere/shaders/fog.ts) then has the bank's β from ~4.5 m on,
+   * which is what the user saw and kept. */
+  bankFrom: 11.5,
+  bankTo: 4.5,
   /* The lift: β × (1 + lift) at `liftTo` metres up and above: the tree
    * tops fade into the fog while the banks stand clear. */
-  lift: 2,
+  /* 0: the user's own values, 2026-10-20 (tuner) — no thickening up the trees. */
+  lift: 0,
   liftFrom: 1,
   liftTo: 12,
 } as const;
@@ -146,9 +150,10 @@ export const LIGHT = {
   /* In frame uv of the camera at rest, y up: above the top edge. */
   position: [0.56, 1.35] as const,
   /* Extinction per frame height of simulated fog, along the march. */
-  extinction: 1.1,
-  /* Sky light reaching the fog from every side, however deep. */
-  ambient: 0.45,
+  extinction: 4,
+  /* Sky light reaching the fog from every side, however deep. Both
+   * the user's own values, 2026-10-20 (tuner). */
+  ambient: 0.57,
 } as const;
 
 /**
@@ -227,7 +232,8 @@ export const AERIAL = {
  * bank 11 levels, 0.18 raised it 54 and the whole forest went flat grey.
  * Measured at 1200×700, the fog still.
  */
-export const SOFT_BLACK = { amount: 0.035, from: 85, to: 125 } as const;
+/* `amount` 0.02: the user's own values, 2026-10-20 (tuner). */
+export const SOFT_BLACK = { amount: 0.02, from: 85, to: 125 } as const;
 
 /**
  * CLARITY (2026-10-19, the user's brief after their fine-art reference,
@@ -247,7 +253,8 @@ export const SOFT_BLACK = { amount: 0.035, from: 85, to: 125 } as const;
  * reference and the previous"): 0.05 — the law is steep here, a little
  * clears a lot — the banks ~26 and ~34.
  */
-export const CLARITY = { amount: 0.05, near: 120, far: 260 } as const;
+/* `amount` 0.08: the user's own values, 2026-10-20 (tuner). */
+export const CLARITY = { amount: 0.08, near: 120, far: 260 } as const;
 
 
 /**
@@ -352,7 +359,8 @@ export const MIST = {
   /** τ at a full texel (the veil stores √(τ / tauMax)). */
   tauMax: mist.tauMax,
   amount: 1,
-  light: 0.15,
+  /* 0: the user's own values, 2026-10-20 (tuner). */
+  light: 0,
   edge: 0.06,
   stone: { foot: 0.44, height: 0.3, up: 0.16 },
   volume: {
@@ -370,7 +378,8 @@ export const MIST = {
 /** The fog sheets as a volume pass. */
 export const VOLUME = {
   /* Thick billows darken themselves (e^(−k·(ρ − 1))): the grey cores. */
-  selfShadow: 0.25,
+  /* 0: the user's own values, 2026-10-20 (tuner). */
+  selfShadow: 0,
   /* Evolution per second: banks re-form in place, very slowly. */
   evolve: 0.02,
   /* Rendered at this share of CSS resolution: fog has no detail finer than

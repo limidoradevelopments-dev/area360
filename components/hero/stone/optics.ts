@@ -45,7 +45,8 @@ export const STONE = {
    * still the brightest. Printed on the afternoon paper: top ~120, faces
    * ~47 and ~37.
    */
-  light: { top: 0.8, sideAway: 0.08, sideToward: 0.32 },
+  /* the user's own values, 2026-10-20 (tuner). */
+  light: { top: 0.83, sideAway: 0.185, sideToward: 0.555 },
   /** The light's side, as a direction on the water (x, z): the open lake
    *  and its sky lie to the left; the design lights the left face. */
   lightSide: [-1, 0] as const,
@@ -58,7 +59,8 @@ export const STONE = {
    * design's faces fall so: the lit one to 0.81 of its top, the shaded one
    * to 0.69.
    */
-  foot: { height: 0.54, away: 0.35, toward: 0.75 },
+  /* `away`, `toward`: the user's own values, 2026-10-20 (tuner). */
+  foot: { height: 0.54, away: 0.35, toward: 0.67 },
   /**
    * SHEEN. Granite is a dielectric (reflectance 4% head-on), but weathered
    * it is rough — its feldspar etched, its surface crusted — and its
@@ -68,7 +70,8 @@ export const STONE = {
    * light its blurred reflection gathers there — on the top, the fog ahead;
    * on a face, the horizon's fog above and as much dark lake below.
    */
-  sheen: { headOn: 0.04, grazing: 0.15, top: 1.15, face: 0.45 },
+  /* `top`, `face`: the user's own values, 2026-10-20 (tuner). */
+  sheen: { headOn: 0.04, grazing: 0.15, top: 1.19, face: 0.1 },
   /**
    * THE GRANITE, at its true size (m), on a stone ~10 m away: one pixel of
    * a 1200×700 frame covers 6 mm of it, one of a 4K frame 2 mm. Each pattern

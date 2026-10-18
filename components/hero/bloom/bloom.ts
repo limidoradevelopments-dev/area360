@@ -865,9 +865,12 @@ export class BloomPass {
     gl.uniform3f(u.uPoints, 0, BLOOM.pollen.radius, samplesPerCss);
     this.setStone(u);
     gl.uniform3fv(u.uLit, colors.lit);
-    /* The dome, scaled as the stone's light is tuned (stage/StageTuner). */
+    /* The dome, scaled as the stone's light is tuned (stage/StageTuner),
+       against the top light it was fitted under (0.8: the stone's own was
+       since set to the user's 0.83, under which they saw the plant ~4%
+       brighter — kept). */
     const dome = BLOOM.light.dome;
-    const k = light.light[0] / STONE.light.top;
+    const k = light.light[0] / 0.8;
     gl.uniform3f(u.uBloomDome, dome[0] * k, dome[1] * k, dome[2] * k);
     gl.uniform2f(u.uLightSide, STONE.lightSide[0], STONE.lightSide[1]);
     gl.uniform3fv(u.uPetal, colors.petal);

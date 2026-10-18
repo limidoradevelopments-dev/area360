@@ -82,17 +82,18 @@
    * ~154), and on 2026-10-19 for the fine-art print (the long-exposure
    * lake, lighter toward the foot; the banks cleared to charcoal; the
    * rain), and on 2026-10-20 for that print taken halfway back (CLARITY,
-   * FILM.lakeBurn), six drifts averaged. */
-  --color-hero-still-05: #9A9A9A;
-  --color-hero-still-15: #989898;
-  --color-hero-still-25: #8E8E8E;
-  --color-hero-still-35: #7B7B7B;
-  --color-hero-still-45: #696969;
-  --color-hero-still-55: #515151;
-  --color-hero-still-65: #424242;
-  --color-hero-still-75: #3D3D3D;
+   * FILM.lakeBurn), and that day again for the user's own tuner values,
+   * six drifts averaged. */
+  --color-hero-still-05: #909090;
+  --color-hero-still-15: #8F8F8F;
+  --color-hero-still-25: #868686;
+  --color-hero-still-35: #747474;
+  --color-hero-still-45: #616161;
+  --color-hero-still-55: #4E4E4E;
+  --color-hero-still-65: #464646;
+  --color-hero-still-75: #444444;
   --color-hero-still-85: #313131;
-  --color-hero-still-95: #282828;
+  --color-hero-still-95: #1F1F1F;
 
   /* Registered below as <length>, so getComputedStyle hands the engine a
    * resolved px value rather than an unevaluated calc(). */
