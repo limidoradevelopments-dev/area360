@@ -229,6 +229,26 @@ export const AERIAL = {
  */
 export const SOFT_BLACK = { amount: 0.035, from: 85, to: 125 } as const;
 
+/**
+ * CLARITY (2026-10-19, the user's brief after their fine-art reference,
+ * assets/sources/grade/reference-3.webp: "the first image's clarity with
+ * the second image's atmosphere — deep charcoal shadows, silver-grey
+ * mist"). The photograph carries its own haze, baked in: its banks print
+ * grey where their reference's are charcoal. `amount` of optical depth is
+ * taken back from the photograph and its reflection everywhere (stage/
+ * shaders/set.ts throughFog), by the fog law run the other way: its darks
+ * deepen, toward the photograph's black and never past it; its fog —
+ * the sky and the channel, as light as the air — does not move; and the
+ * stage's own moving mist over it is untouched, so the atmosphere stays.
+ * Full on the banks, nearer than `near` metres, and gone by `far`: the far
+ * shore down the channel stays in its fog. At 0.3 the banks printed ~17
+ * (left) and ~25 (right), the reference's 17 and 26; they were 35 and 39.
+ * Since 2026-10-20 HALFWAY between (the user: "a version between my
+ * reference and the previous"): 0.05 — the law is steep here, a little
+ * clears a lot — the banks ~26 and ~34.
+ */
+export const CLARITY = { amount: 0.05, near: 120, far: 260 } as const;
+
 
 /**
  * THE MIST, SEEN MOVING. Real lake mist on an overcast afternoon drifts

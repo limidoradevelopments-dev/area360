@@ -34,8 +34,12 @@ uniform float uWaterR0;
 uniform vec4 uWaves[WAVE_COUNT];
 /* seconds of the lake's own time */
 uniform float uWaterTime;
-/* swell, undulation and ripple gains (1 = designed) */
+/* swell, undulation and ripple gains (1 = designed; what the long exposure
+   averages is no longer drawn: water/motion.ts exposure) */
 uniform vec3 uWaterGain;
+/* the long exposure's smear, as slope variance per axis: of the undulation
+   (everywhere), and of the ripples (under a cat's paw) */
+uniform vec2 uWaterSmear;
 /* cat's paws: patch size (m), drift (m/s, along the wind), coverage,
    softness; then the wind direction (unit, xz) and the glass between */
 uniform vec4 uCatsPaws;
@@ -92,9 +96,13 @@ float catsPaw(vec2 p) {
 
 /* The surface normal at \`p\` (x, z on the water), seen by a pixel whose
    footprint there has standard deviation \`sigma\` (metres, x and z).
-   \`roughness\` returns the slope variance the pixel could not resolve. */
-vec3 waterNormal(vec2 p, vec2 sigma, out vec2 roughness) {
+   \`roughness\` returns the slope variance the pixel could not resolve;
+   \`smear\`, the variance the long exposure averaged (water/motion.ts
+   exposure), kept apart: it spreads the shores' reflections, not the
+   stone's (surface.ts). */
+vec3 waterNormal(vec2 p, vec2 sigma, out vec2 roughness, out vec2 smear) {
   float paw = mix(uWind.z, 1.0, catsPaw(p));
+  smear = vec2(uWaterSmear.x + uWaterSmear.y * paw);
   vec2 slope = vec2(0.0);
   roughness = vec2(0.0);
   for (int i = 0; i < WAVE_COUNT; i++) {

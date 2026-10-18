@@ -105,6 +105,29 @@ export const WATER_MOTION = {
     slope: 0.08,
     reach: 0.45,
   },
+  /**
+   * THE LONG EXPOSURE (2026-10-19, the user's reference
+   * assets/sources/grade/reference-3.webp: "use the water"). Their lake is a
+   * fine-art print's: a mirror, its reflections drawn down in long soft
+   * streaks, its open water as light as the fog it mirrors, no level bands.
+   * That is what a shutter held open over this same lake gives: the
+   * undulation and the ripples move too fast to be drawn, and what they do
+   * to a reflection in that time is SMEAR it, mostly up and down (a tilt
+   * toward the camera moves a reflection ~2× the tilt; across, only the
+   * grazing sine of it). So `averaged` of those two bands is no longer drawn
+   * but kept as the spread of every reflection — by its own slope, the
+   * physical smear of a held shutter — times `smear` (2.5: at 1, a shutter
+   * of a second or so, the streaks were a third as long as the
+   * reference's); under a cat's paw, as
+   * the ripples are, so the duller patches still drift. The swell (whole
+   * trunks swaying, slowly) and the lapping at the stone (the user: "keep
+   * that water ripple on stone placement") are slow or close enough to be
+   * drawn, and stay. At 0 the lake of before.
+   */
+  exposure: {
+    averaged: 1,
+    smear: 2.5,
+  },
   catsPaws: {
     /* Size of a patch, metres, and how fast the patches drift with the air
      * (m/s): they wander, they do not race. */

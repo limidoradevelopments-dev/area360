@@ -37,7 +37,8 @@ LakeSurface lakeSurface(vec3 origin, vec3 ray, float zWater, vec2 sigma) {
   surface.y = 0.0;
   vec3 d = normalize(ray);
   vec2 roughness;
-  vec3 n = waterNormal(surface.xz, sigma, roughness);
+  vec2 smear;
+  vec3 n = waterNormal(surface.xz, sigma, roughness, smear);
   /* The lake's own tilt and blur, kept apart: the stone's reflection is
      drawn from them (below). */
   vec3 lakeTilt = reflect(d, n);
@@ -54,13 +55,17 @@ LakeSurface lakeSurface(vec3 origin, vec3 ray, float zWater, vec2 sigma) {
   s.surface = surface;
   s.d = d;
   s.n = n;
-  s.roughness = roughness;
+  /* The long exposure's smear (water/motion.ts exposure) on the shores'
+     reflections only: on the stone's, its foot's rays spread down past
+     the waterline into the open fog, and drew a light rim along it. Its
+     reflection stays the dark block a long exposure leaves of a post. */
+  s.roughness = roughness + smear;
   s.r = r;
   /* The unseen ripples spread the reflection: tilting the mirror toward the
      camera moves it ~2× the tilt up or down, tilting it across moves it
      only by the sine of the grazing angle — the vertical smear of every
      calm lake's reflections. */
-  s.rough = 2.0 * sqrt(roughness) * vec2(-d.y, 1.0);
+  s.rough = 2.0 * sqrt(s.roughness) * vec2(-d.y, 1.0);
   s.reflectance = waterReflectance(dot(-d, n));
   s.perDepth = length(r) / r.z;
 

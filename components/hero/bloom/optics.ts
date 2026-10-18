@@ -468,6 +468,23 @@ export const BLOOM = {
   glow: { lantern: 0.18, halo: 0.75, threshold: 0.42, reach: 0.07 },
 
   /**
+   * THE DODGE (2026-10-19, the user's brief: "a delicate glow around the
+   * focal point", after their fine-art reference, where the flower is the
+   * cleanest white in the print). Lit as it truly is, by the overcast dome
+   * alone, a white petal standing upright in fog prints darker than the
+   * fog behind it (~198 against the sky's ~212 before the paper): honest,
+   * and lost — and no light could lift it past the fog, which the print
+   * already lays at the paper's white. So it is DODGED, on the print, as a
+   * printer holds back the light over the one white thing the eye should
+   * go to: `lift` of print value laid over the plant where its light
+   * passes the halo's threshold (BLOOM.glow: its petals, its style, its
+   * threads; never its stems), in the film pass (stage/shaders/post.ts),
+   * after the paper — its whites printing over the fog, the regrade's top
+   * rising past the sky for them (stage/optics.ts FILM.regrade).
+   */
+  dodge: { lift: 0.22 },
+
+  /**
    * THE POLLEN: motes of pale gold (hero.css --color-hero-pollen), each a
    * soft point of light: its core `radius` m (larger than a grain, which is
    * under a pixel at 10 m — what shows of pollen in a draught is a few

@@ -277,6 +277,26 @@ The user brought their next print of this scene (`assets/sources/grade/reference
 | GPU, the scene pass, 1440×810 | 2.02–2.10 ms | 1.99–2.02 ms |
 | GPU, the lake pass, 1440×810 | 1.75–1.78 ms | 1.70–1.73 ms |
 
+## The fine-art print: long-exposure water, clarity, the rain (2026-10-19)
+
+After the user's fine-art reference (`assets/sources/grade/reference-3.webp`), taken in part: the water, the rain, darker shadows, and their brief — clarity, silver mist, a held light at the flower, pure monochrome.
+
+- **The long exposure** (`WATER_MOTION.exposure`): the undulation and the ripples are no longer drawn but kept as a smear of the shores' reflections. Same wave loop, same cost there; the lake pass now reads the photograph four times along the streak (`water/shaders/lake.ts`), since one read is filtered at most 8:1.
+- **Clarity, monochrome, the dodge**: a line of the fog law (`set.ts`), a line of the print (`film.ts`), and one read of the plant's picture in the film pass.
+- **The rain** (`weather/rain.ts`): drawn as a few thousand instanced quads over the finished print, after the film. The first build searched for drops at every pixel inside the film pass: +0.16 ms at 1440×810 and +1.1 ms at 4K, the GPU running every layer at every pixel whatever the early exits. Drawn as drops, it is under the timer's noise.
+
+**Measured (GTX 1050 Ti + i7-8750H), the same session.** Cold compiles alternate the sources before and after (six rounds; the film's "before" is its source with the rain, the dodge and the monochrome line taken out). GPU times are medians of 240 frames, the rain switched off and on in alternate frames.
+
+| | before | now |
+|---|---|---|
+| scene program, cold compile alone | median 1.16 s | median 1.17 s |
+| lake program, cold compile alone | median 0.60 s | median 0.61 s |
+| film program, cold compile alone | median 0.16 s | median 0.24 s (compiles beside the scene's 1.17 s: not on a first visit's path) |
+| rain program | — | a small vertex and fragment pair, beside the others |
+| GPU, film pass + rain, 1440×810 | 0.351 ms | 0.359 ms |
+| GPU, film pass + rain, 3840×2160 | 2.941 ms | 2.949 ms |
+| GPU, lake pass, one read against four | | within the GPU's clock drift (alternated twice; at 4K the drift was ±0.5 ms) |
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

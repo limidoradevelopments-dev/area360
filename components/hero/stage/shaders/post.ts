@@ -103,6 +103,9 @@ uniform vec2 uSceneSize;
 uniform sampler2D uBloomHalo;
 uniform vec4 uBloomHaloRect;
 uniform vec4 uBloomHaloSize;
+/* print value laid over the flower's whites (bloom/optics.ts BLOOM.dodge),
+   and the light its whites pass (BLOOM.glow.threshold) */
+uniform vec2 uBloomDodge;
 
 void main() {
   /* The photograph's footprint for this device pixel, taken here, in uniform
@@ -178,6 +181,19 @@ void main() {
      softens its edge — never the other way, which would grey the fog. */
   light += uHalation * clamp(straight, 0.0, 1.0) * max(glow - light, vec3(0.0));
 
-  outColor = vec4(finish(develop(light), vUv, vUv * uView), 1.0);
+  /* THE DODGE: over the flower's whites — where the plant's light passes
+     the halo's threshold: petals, style, threads, never its stems — a
+     little print value, as a printer dodges the one white thing the eye
+     should go to (bloom/optics.ts BLOOM.dodge). Read from the plant's
+     picture at the scene's pixel: its edge a touch soft, a held light. */
+  float dodge = 0.0;
+  vec2 onPlant = vUv * uSceneSize - uBloomCoarseRect.xy;
+  if (uBloomDodge.x > 0.0 && all(greaterThanEqual(onPlant, vec2(0.0))) && all(lessThan(onPlant, uBloomCoarseRect.zw))) {
+    vec4 plant = textureLod(uBloomCoarse, onPlant / uBloomCoarseRect.zw, 0.0);
+    float white = plant.g / max(plant.a, 1e-3);
+    dodge = uBloomDodge.x * plant.a * smoothstep(0.8 * uBloomDodge.y, 1.6 * uBloomDodge.y, white);
+  }
+
+  outColor = vec4(finish(develop(light), vUv, vUv * uView, dodge), 1.0);
 }
 `;

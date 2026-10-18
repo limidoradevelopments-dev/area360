@@ -63,8 +63,26 @@ export const FILM = {
    * ripples mix sky into every dark reflection, which the design's frozen
    * water does not. Fitted together over ten bands of water: 6.6 levels
    * rms. Nothing at the horizon, where the lake meets the photograph's fog.
+   * NOW DODGED (2026-10-19, with the long exposure: water/motion.ts
+   * exposure): the user's fine-art reference (assets/sources/grade/
+   * reference-3.webp) prints its lake as a mirror — the open water as light
+   * as the fog it mirrors, ~140 down to ~80 at the foot, the reflections
+   * near black. So the stops run the other way toward the foot (`atFoot`
+   * below zero: light given back, the frame's own `foot` still darkening
+   * it) on a ramp that holds off until well below the shores (`shape` over
+   * 1), and the harder paper keeps the reflections black; a little burn at
+   * the horizon, where the far shore's fog band meets the water — dodged
+   * there too, the water just under it printed lighter than the band it
+   * mirrors, and drew a line under it. Swept against the reference's water,
+   * six columns of it: 13.5 levels rms (the lake of before, 38).
+   * THEN HALFWAY BACK (2026-10-20, the user: "too close to my reference — a
+   * version between it and the previous"): fitted to the mean of the two
+   * frames, the open water down two columns, the reflections and the
+   * banks (with CLARITY): within 1.4 levels rms of it. The ramp holds off
+   * longer below the shores (`shape` 1.6), so the far water keeps the
+   * previous print's light and the foot the halfway dodge.
    */
-  lakeBurn: { atHorizon: 0, atFoot: 0.6, shape: 0.5, contrast: 0.6 },
+  lakeBurn: { atHorizon: 0.1, atFoot: -0.7, shape: 1.6, contrast: 0.5 },
   /**
    * THE LIGHT POOLS OVER THE OPENING. Under an overcast the sky is one soft
    * light overhead, brightest where the most of it is open — over the lake,

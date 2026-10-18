@@ -23,3 +23,36 @@ export const STILLNESS = {
   /* Pointer travel under this (CSS px) is a tremor, not a movement. */
   tremorPx: 2,
 } as const;
+
+/**
+ * THE RAIN'S FALL (2026-10-19, the user's reference assets/sources/grade/
+ * reference-3.webp: "exact rain like effect"). Fine rain, ~1 mm drops,
+ * falls at ~3 m/s; at the reference's ~40 m, through the lens, that is a
+ * fifth of the frame's height a second, and on a shutter of a film frame
+ * (1/48 s) a dash about 0.4% of the height long — the reference's own
+ * dashes (4–6 px of a 2000 px frame). Each layer (weather/optics.ts RAIN)
+ * falls at its own distance's rate: the nearer drops quicker and longer.
+ * SLOWED AND THINNED (2026-10-20, the user: "too fast and too much — very
+ * subtle, coming little by little, not repeatedly fast"): at 3 m/s every
+ * drop crossed the frame in a few seconds, a stream of them always moving;
+ * now a drizzle's drift, and each drop is seen only for a little of its
+ * fall — catching the light, then gone — and the rain itself arrives over
+ * the visit's first half-minute.
+ */
+export const RAIN_MOTION = {
+  /* Metres per second: a drizzle's drift (its drops a fifth of a
+   * millimetre fall at ~0.7 m/s; fine rain's ~3 read as a downpour). */
+  fall: 1,
+  /* Seconds a drop is seen, shortest and longest: it brightens and fades
+   * over that, and its slot may hold another, later — or none. */
+  life: [2.5, 5] as const,
+  /* The rain's arrival on the visit's clock, seconds: none for `delay`,
+   * then coming in over `over` (eased), so the first look is still. */
+  onset: { delay: 4, over: 24 },
+  /* The lean of the fall, as a tangent: blown a little right to left, as
+   * the mist drifts along the shores (atmosphere/motion.ts). The
+   * reference's dashes lean ~17° (the other way); ~12° here. */
+  slant: -0.2,
+  /* The shutter that draws each drop as a dash, seconds: a film frame's. */
+  shutter: 1 / 48,
+} as const;

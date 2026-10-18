@@ -103,7 +103,7 @@ export function setSheetUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
   gl.uniform1f(u.uFogLife, p.fogLife);
   gl.uniform1f(u.uFogReach, OVER_PHOTO.reach);
   gl.uniform4f(u.uAerial, p.aerial, AERIAL.pivot, AERIAL.nearer, AERIAL.most);
-  gl.uniform3f(u.uSoftBlack, p.softBlack, SOFT_BLACK.from, SOFT_BLACK.to);
+  gl.uniform4f(u.uSoftBlack, p.softBlack, SOFT_BLACK.from, SOFT_BLACK.to, p.clarity);
   gl.uniform4f(u.uMistSeen, MIST_SEEN.veil, p.mistSeen, ...MIST_SEEN.water);
 }
 
@@ -151,7 +151,7 @@ export function setMistUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: SetF
 
 export const WATER_UNIFORMS = [
   "uWaterBody", "uWaterR0", "uWaves", "uWaterTime", "uWaterGain", "uCatsPaws", "uWind", "uWaterClarity",
-  "uSubjectWaver", "uMinElevation", "uLaps", "uLapFade",
+  "uSubjectWaver", "uMinElevation", "uLaps", "uLapFade", "uWaterSmear",
 ] as const;
 
 export function setWaterUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: SetFrame): void {
@@ -160,7 +160,13 @@ export function setWaterUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
   gl.uniform1f(u.uWaterR0, WATER_R0);
   gl.uniform4fv(u.uWaves, WAVE_DATA);
   gl.uniform1f(u.uWaterTime, f.waterTime);
-  gl.uniform3f(u.uWaterGain, p.swell, p.undulation, p.ripples);
+  /* The long exposure: what it averages is not drawn, but kept as the
+     spread of every reflection — each band's slope variance, half on each
+     axis (water/motion.ts exposure). */
+  const held = 1 - p.longExposure;
+  gl.uniform3f(u.uWaterGain, p.swell, p.undulation * held, p.ripples * held);
+  const smear = (band: number, gain: number) => 0.5 * (p.longExposure * p.smear * gain * band) ** 2;
+  gl.uniform2f(u.uWaterSmear, smear(WATER_MOTION.undulation.slope, p.undulation), smear(WATER_MOTION.ripples.slope, p.ripples));
   const paws = WATER_MOTION.catsPaws;
   gl.uniform4f(u.uCatsPaws, paws.scale, paws.drift, p.paws, paws.softness);
   gl.uniform3f(u.uWind, Math.cos(WATER_MOTION.wind), Math.sin(WATER_MOTION.wind), p.glass);

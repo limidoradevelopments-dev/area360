@@ -8,7 +8,7 @@
  *
  * Needs CAMERA_GLSL, FOG_GLSL and FILM_GLSL (undevelop) before it.
  */
-import { LOCAL_AIR } from "../../atmosphere/optics";
+import { CLARITY, LOCAL_AIR } from "../../atmosphere/optics";
 
 const CLEAR = LOCAL_AIR.clear;
 const SOFT = LOCAL_AIR.soft;
@@ -31,8 +31,9 @@ uniform float uFogReach;
    or take (soft limit) */
 uniform vec4 uAerial;
 /* soft blacks (atmosphere/optics.ts SOFT_BLACK): optical depth added at a
-   black, by darkness squared; full nearer than y metres, gone by z */
-uniform vec3 uSoftBlack;
+   black, by darkness squared; full nearer than y metres, gone by z; w,
+   the clarity: optical depth taken back everywhere (CLARITY) */
+uniform vec4 uSoftBlack;
 /* the mist seen moving (atmosphere/optics.ts MIST_SEEN): its veil over the
    dark, its self-shading over the open fog, and where it fades in over the
    water (metres) */
@@ -147,6 +148,12 @@ vec3 throughFog(vec3 photo, vec3 air, float departure, float depth, float placed
   /* The near bank's darkest trees, a little further into the air. */
   float dark = clamp(1.0 - photo.g / max(air.g, 1e-4), 0.0, 1.0);
   departure += uSoftBlack.x * dark * dark * (1.0 - smoothstep(uSoftBlack.y, uSoftBlack.z, depth));
+  /* CLARITY (atmosphere/optics.ts CLARITY): the photograph's own haze
+     taken back from its banks — their darks deepen, its fog (the
+     photograph's sky, as light as the air) does not move — and not from
+     the far shore down the channel, which stays in the fog: cleared, its
+     low line of trees printed as a dark smear across the horizon. */
+  departure -= uSoftBlack.w * (1.0 - smoothstep(${CLARITY.near.toFixed(1)}, ${CLARITY.far.toFixed(1)}, depth));
   gain = exp(-departure);
   vec3 c = air - (air - photo) * gain;
   /* A smooth floor at the photograph's black (or the pixel itself, if

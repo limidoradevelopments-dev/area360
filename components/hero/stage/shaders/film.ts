@@ -103,8 +103,9 @@ float regrade(float v) {
 }
 
 /* \`px\` is this pixel in CSS px, so the grain has the same size on every
-   screen: it belongs to the film, not to the display. */
-vec3 finish(vec3 c, vec2 uv, vec2 px) {
+   screen: it belongs to the film, not to the display. \`dodge\`: print
+   value laid over the focal point (bloom/optics.ts BLOOM.dodge). */
+vec3 finish(vec3 c, vec2 uv, vec2 px, float dodge) {
   float fromTop = 1.0 - uv.y;
   float below = max(fromTop - uFoot.x, 0.0);
   c *= exp2(-uFoot.y * below * below);
@@ -114,6 +115,13 @@ vec3 finish(vec3 c, vec2 uv, vec2 px) {
   c = uPaper.x + (uPaper.y - uPaper.x) * pow(clamp(c, 0.0, 1.0), vec3(uPaper.z));
   /* And the user's regrade of the whole print. */
   c = vec3(regrade(c.r), regrade(c.g), regrade(c.b));
+  /* PURE MONOCHROME (2026-10-19, the user's brief: "no unnecessary accent
+     colors inside the photograph"): a silver print. The bloom's whisper of
+     colour and its pollen's gold come out as their own greys. */
+  c = vec3(dot(c, vec3(0.2126, 0.7152, 0.0722)));
+  /* The flower's whites, dodged (the rain is laid on after, as drops:
+     weather/rain.ts). */
+  c += dodge;
 
   /* Re-seeded at film rate, strongest in the midtones as on real stock
      (the paper white and the deepest black carry least). Two octaves: the
@@ -122,7 +130,7 @@ vec3 finish(vec3 c, vec2 uv, vec2 px) {
   vec2 seed = frame * vec2(37.0, 17.0);
   vec2 g = px / uGrain.w;
   float n = grainNoise(g + seed) + 0.6 * grainNoise(g * 2.03 + seed.yx + 11.0);
-  float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  float lum = c.g;
   float amount = uGrain.x * (0.35 + 2.6 * lum * (1.0 - lum));
   /* ×1.65: the two interpolated octaves have ~0.25 of spread (sd); this
      brings them to a triangular grain's 0.41, so \`uGrain.x\` keeps its

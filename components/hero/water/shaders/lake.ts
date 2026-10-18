@@ -92,7 +92,15 @@ void main() {
   density = mix(density, uSheetMean, still);
   departure += fogDeparture(s.surface, s.r, s.surface.z, depth, s.perDepth, density, light, glow, weight);
   vec3 air = airOf(glow, weight, lightNear);
-  vec3 photo = mix(air, plateRadiance(at, gx, gy), plateCover(at));
+  /* THE STREAK, IN FOUR. A smear far longer than it is wide (the long
+     exposure's: water/motion.ts exposure) is more than one read can take:
+     the GPU filters at most 8:1 along a footprint, and past that widens it,
+     and the streaks went soft across. So it is read as four abutting lengths
+     of it, each within that. */
+  vec2 step_ = 0.25 * gy;
+  vec3 seen = vec3(0.0);
+  for (int k = 0; k < 4; k++) seen += plateRadiance(at + (float(k) - 1.5) * step_, gx, step_);
+  vec3 photo = mix(air, 0.25 * seen, plateCover(at));
   float gain;
   /* The shore it mirrors carries the air by place it carries over it. */
   outColor = vec4(throughFog(photo, air, departure, depth, localAir(tanOfPlate(at)).x, gain), 1.0);

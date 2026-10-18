@@ -34,7 +34,7 @@ import { FLUID, WIND } from "../atmosphere/motion";
 import { AirSampler } from "../atmosphere/sampler";
 import { BloomPass, type AirAt } from "../bloom/bloom";
 import { BLOOM } from "../bloom/optics";
-import { AERIAL, EXTINCTION, MIST, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
+import { AERIAL, CLARITY, EXTINCTION, MIST, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
 import { SLOT_UNIFORMS, StonePass } from "../stone/stone";
 import { LakePass } from "../water/lake";
@@ -42,6 +42,7 @@ import { WATER_MOTION } from "../water/motion";
 import { WATER } from "../water/optics";
 import { StillnessClock } from "../weather/clock";
 import { STILLNESS } from "../weather/motion";
+import { RainPass } from "../weather/rain";
 import { CAMERA, CAMERA_UNIFORMS, CameraRig, focalPx, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
 import {
   bindTexture,
@@ -116,12 +117,16 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   halation: number;
   /** Fog thickened in front of the near bank's darkest trees (SOFT_BLACK.amount). */
   softBlack: number;
+  /** The photograph's own haze taken back, optical depth (CLARITY.amount). */
+  clarity: number;
   spread: number;
   shadows: number;
   highlights: number;
   toe: number;
   knee: number;
   grain: number;
+  /** The rain (weather/optics.ts RAIN): 0 none, 1 designed. */
+  rain: number;
   /** The stone's light (stone/optics.ts STONE): irradiance on the top, the
    *  face turned from the light and the one turned to it; the sheen's sky
    *  on the top and on a face; what each face's foot keeps. */
@@ -141,6 +146,11 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   waver: number;
   /** The lake lapping at the stone, as a gain (1 = designed: water/motion.ts lapping). */
   lapping: number;
+  /** The long exposure (water/motion.ts exposure): how much of the
+   *  undulation and ripples it averages (0 = the lake of before), and the
+   *  smear it leaves, 1 = their own slope. */
+  longExposure: number;
+  smear: number;
   paws: number;
   glass: number;
   /** The near bank's drifting self-shade over the open fog (MIST_SEEN.grey). */
@@ -205,16 +215,20 @@ export function defaultParams(): StageParams {
     vignette: FILM.vignette.amount,
     paperWhite: FILM.paper.white,
     paperGamma: FILM.paper.gamma,
-    regrade: 1,
+    /* 0.81 of the way to it: the user's own setting (2026-10-18), a touch
+       lighter than their print. */
+    regrade: 0.81,
     diffusion: FILM.diffusion.amount,
     halation: FILM.halation,
     softBlack: SOFT_BLACK.amount,
+    clarity: CLARITY.amount,
     spread: FILM.diffusion.spread,
     shadows: FILM.print.shadows,
     highlights: FILM.print.highlights,
     toe: FILM.print.toe,
     knee: FILM.print.knee,
     grain: FILM.grain,
+    rain: 1,
     stoneTop: STONE.light.top,
     stoneAway: STONE.light.sideAway,
     stoneToward: STONE.light.sideToward,
@@ -227,6 +241,8 @@ export function defaultParams(): StageParams {
     ripples: 1,
     waver: WATER.waver,
     lapping: 1,
+    longExposure: WATER_MOTION.exposure.averaged,
+    smear: WATER_MOTION.exposure.smear,
     paws: WATER_MOTION.catsPaws.coverage,
     glass: WATER_MOTION.catsPaws.glass,
     bloomOpen: -1,
@@ -407,6 +423,7 @@ class Stage implements StageEngine {
   private readonly airSampler: AirSampler;
   private readonly stone: StonePass;
   private readonly lake: LakePass;
+  private readonly rain: RainPass;
   /* The steam's patches, drifting through the low mist (atmosphere/wisps.ts):
      not made while it is off (MIST.on). */
   private readonly wisps: WebGLTexture | null;
@@ -452,6 +469,9 @@ class Stage implements StageEngine {
   private waterTime = 0;
   /* The low mist's drift: slowed as the air's is under reduced motion. */
   private mistTime = 0;
+  /* The rain's clock: it stands still under reduced motion, a print of
+     rain (weather/). */
+  private rainTime = 0;
   /* Seconds the scene has been on screen this visit: the bloom opens on it. */
   private bloomClock = 0;
   private lastTime = 0;
@@ -487,6 +507,7 @@ class Stage implements StageEngine {
     this.airSampler = new AirSampler(gl);
     this.stone = new StonePass(gl, vao);
     this.lake = new LakePass(gl, vao);
+    this.rain = new RainPass(gl, vao);
     this.wisps = MIST.on ? createWisps(gl) : null;
     this.scene = createProgram(gl, SCENE_FRAG, [
       ...CAMERA_UNIFORMS, ...FOG_UNIFORMS, ...SHEET_UNIFORMS, ...WATER_UNIFORMS,
@@ -495,7 +516,7 @@ class Stage implements StageEngine {
       "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
     ]);
     this.film = createProgram(gl, FILM_FRAG, [
-      ...CAMERA_UNIFORMS,
+      ...CAMERA_UNIFORMS, "uBloomDodge",
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
       "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uRegrade", "uGrain",
       "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
@@ -584,6 +605,7 @@ class Stage implements StageEngine {
     this.airSampler.dispose();
     this.stone.dispose();
     this.lake.dispose();
+    this.rain.dispose();
     if (this.wisps) gl.deleteTexture(this.wisps);
     if (this.plates) {
       gl.deleteTexture(this.plates.backdrop);
@@ -694,6 +716,7 @@ class Stage implements StageEngine {
     this.time += dt;
     if (!this.reduced) this.waterTime += dt;
     this.mistTime += this.reduced ? dt * 0.25 : dt;
+    if (!this.reduced) this.rainTime += dt;
     this.camera.update(dt, this.params.swayRate);
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
@@ -931,8 +954,11 @@ class Stage implements StageEngine {
     gl.uniform3f(u.uPaper, FILM.paper.black, p.paperWhite, p.paperGamma);
     gl.uniform1fv(u.uRegrade, this.regrade());
     gl.uniform4f(u.uGrain, p.grain, FILM.fps, this.time, FILM.grainSize);
+    gl.uniform2f(u.uBloomDodge, BLOOM.dodge.lift, BLOOM.glow.threshold);
     this.bloom.bindFilm(u, UNITS.bloom);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    /* The rain, laid on the finished print as drops (weather/rain.ts). */
+    this.rain.draw(camera, p.rain, this.rainTime, this.options.canvas.height, this.reduced);
   }
 
   /**
