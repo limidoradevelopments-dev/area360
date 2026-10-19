@@ -103,9 +103,13 @@ uniform vec2 uSceneSize;
 uniform sampler2D uBloomHalo;
 uniform vec4 uBloomHaloRect;
 uniform vec4 uBloomHaloSize;
-/* print value laid over the flower's whites (bloom/optics.ts BLOOM.dodge),
-   and the light its whites pass (BLOOM.glow.threshold) */
-uniform vec2 uBloomDodge;
+/* the flower's own print (bloom/optics.ts BLOOM.print): its white, its
+   rise and how much; then where its whites begin and are full (its light
+   against the air's round it) */
+uniform vec3 uFlowerPrint;
+uniform vec2 uFlowerTone;
+/* the flower's own box, scene px (x0, y0, x1, y1): its print falls only in it */
+uniform vec4 uFlowerBox;
 
 void main() {
   /* The photograph's footprint for this device pixel, taken here, in uniform
@@ -181,19 +185,39 @@ void main() {
      softens its edge — never the other way, which would grey the fog. */
   light += uHalation * clamp(straight, 0.0, 1.0) * max(glow - light, vec3(0.0));
 
-  /* THE DODGE: over the flower's whites — where the plant's light passes
-     the halo's threshold: petals, style, threads, never its stems — a
-     little print value, as a printer dodges the one white thing the eye
-     should go to (bloom/optics.ts BLOOM.dodge). Read from the plant's
-     picture at the scene's pixel: its edge a touch soft, a held light. */
-  float dodge = 0.0;
+  /* THE FLOWER, PRINTED ON ITS OWN (bloom/optics.ts BLOOM.print). Lit as
+     it truly is, its whites carry about the fog's own light, and the print
+     lays the fog at the top of its curve, where everything near it is
+     pressed together: printed with the frame, the flower dissolved into
+     the fog round it, solid and finely shaded as it is (underexposed, every
+     tepal shows). So, as a printer dodges the one white thing the eye
+     should go to, its whites get a curve of their own: their light against
+     the air's round them (the diffusion's blur of the frame), rolled off
+     toward \`white\` — the shading kept, the cup's shadow and each tepal's
+     turn; laid over the frame's print where the plant is, as much as it is
+     white (its stems, moss and roots keep the frame's print). */
+  vec2 flower = vec2(0.0);
   vec2 onPlant = vUv * uSceneSize - uBloomCoarseRect.xy;
-  if (uBloomDodge.x > 0.0 && all(greaterThanEqual(onPlant, vec2(0.0))) && all(lessThan(onPlant, uBloomCoarseRect.zw))) {
+  vec2 onScene = vUv * uSceneSize;
+  bool inFlower = all(greaterThanEqual(onScene, uFlowerBox.xy)) && all(lessThanEqual(onScene, uFlowerBox.zw));
+  if (uFlowerPrint.x > 0.0 && inFlower && all(greaterThanEqual(onPlant, vec2(0.0))) && all(lessThan(onPlant, uBloomCoarseRect.zw))) {
     vec4 plant = textureLod(uBloomCoarse, onPlant / uBloomCoarseRect.zw, 0.0);
-    float white = plant.g / max(plant.a, 1e-3);
-    dodge = uBloomDodge.x * plant.a * smoothstep(0.8 * uBloomDodge.y, 1.6 * uBloomDodge.y, white);
+    if (uBloomFineRect.z > 0.0) {
+      ivec2 at = ivec2(gl_FragCoord.xy) - ivec2(uBloomFineRect.xy);
+      if (all(greaterThanEqual(at, ivec2(0))) && all(lessThan(at, ivec2(uBloomFineRect.zw)))) plant = texelFetch(uBloomFine, at, 0);
+    }
+    const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+    /* The picture holds the plant's light over what it leaves of what lies
+       behind (bloom/bloom.ts: light + leave · behind): its alpha is what is
+       LEFT, its cover one less. */
+    float cover = 1.0 - plant.a;
+    float own = dot(plant.rgb, LUMA) / max(cover, 1e-3);
+    float air = dot(textureLod(uGlow, vUv, 0.0).rgb, LUMA);
+    float r = clamp(own / max(air, 1e-4), 0.0, 2.0);
+    float white = smoothstep(uFlowerTone.x, uFlowerTone.y, r);
+    flower = vec2(uFlowerPrint.x * (1.0 - exp(-uFlowerPrint.y * r)), cover * white * uFlowerPrint.z);
   }
 
-  outColor = vec4(finish(develop(light), vUv, vUv * uView, dodge), 1.0);
+  outColor = vec4(finish(develop(light), vUv, vUv * uView, flower), 1.0);
 }
 `;

@@ -618,6 +618,13 @@ export class BloomPass {
   bindFilm(u: Record<string, WebGLUniformLocation | null>, unit: number): void {
     const gl = this.gl;
     gl.uniform2f(u.uSceneSize, this.sceneW, this.sceneH);
+    /* The flower's own box (its tepals), a little grown: where its own print
+       may fall (BLOOM.print) — not on the pale stem down the stone's face,
+       as bright as a petal's shade. */
+    const [bx0, by0, bx1, by1] = this.flowerBox;
+    const grow = 0.08 * Math.max(bx1 - bx0, by1 - by0, 0);
+    if (bx1 > bx0) gl.uniform4f(u.uFlowerBox, bx0 - grow, by0 - grow, bx1 + grow, by1 + grow);
+    else gl.uniform4f(u.uFlowerBox, 0, 0, -1, -1);
     /* The near picture: what the fine one replaces, and where the halo
        falls on the plant. */
     if (this.near && this.nearRect[2] > 0) {
@@ -1053,7 +1060,13 @@ export class BloomPass {
     const tex = gl.createTexture();
     const depth = gl.createRenderbuffer();
     const fbo = gl.createFramebuffer();
-    if (!tex || !depth || !fbo) return null;
+    if (!tex || !depth || !fbo) {
+      /* A context going away mid-allocation: none of it is kept. */
+      gl.deleteTexture(tex);
+      gl.deleteRenderbuffer(depth);
+      gl.deleteFramebuffer(fbo);
+      return null;
+    }
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -1077,7 +1090,11 @@ export class BloomPass {
     const h = Math.ceil(height * 1.2);
     const tex = gl.createTexture();
     const fbo = gl.createFramebuffer();
-    if (!tex || !fbo) return null;
+    if (!tex || !fbo) {
+      gl.deleteTexture(tex);
+      gl.deleteFramebuffer(fbo);
+      return null;
+    }
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);

@@ -71,7 +71,14 @@ export class AirSampler {
     const sync = this.sync;
     if (!sync) return;
     const status = gl.clientWaitSync(sync, 0, 0);
-    if (status === gl.TIMEOUT_EXPIRED || status === gl.WAIT_FAILED) return;
+    if (status === gl.TIMEOUT_EXPIRED) return;
+    if (status === gl.WAIT_FAILED) {
+      /* It will never signal (the context is going): let it go, or every
+         frame after would wait on it. */
+      gl.deleteSync(sync);
+      this.sync = null;
+      return;
+    }
     const count = this.asked[2] * this.asked[3] * 4;
     if (this.staging.length !== count) this.staging = new Float32Array(count);
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.buffer);

@@ -81,13 +81,18 @@ export const STONE = {
    * whose feldspar weather has whitened, about a fifth of its area; `fine`:
    * the grain of the ground itself.
    */
+  /* The amounts raised 2026-10-20 (the user: "the stone's details are not
+   * noticeable"): under the print's pressed darks its grain read as a
+   * smooth grey; with these and the lichen and pits below, its face's fine
+   * contrast is the user's reference's (reference-3.webp: 12.2 levels of
+   * high-pass, ours 11.1 → 12.2), its tone as it was (~57). */
   granite: {
     cloud: 0.3,
-    cloudAmount: 0.2,
+    cloudAmount: 0.32,
     fleck: 0.006,
-    fleckAmount: 0.55,
+    fleckAmount: 0.85,
     fine: 0.0024,
-    fineAmount: 0.3,
+    fineAmount: 0.5,
   },
   /**
    * WEATHERED, AS THE SHORE'S ROCKS ARE. What makes a stone belong to a
@@ -105,7 +110,7 @@ export const STONE = {
    *              faces, strongest under the edge
    */
   edge: 0.04,
-  lichen: { size: 0.09, cover: 0.22, pale: 1.35, dark: 0.6 },
+  lichen: { size: 0.09, cover: 0.34, pale: 1.7, dark: 0.5 },
   runs: 0.18,
   /**
    * WEAR, sized to what a pixel can hold at 10 m (6 mm on a 1200×700 frame,
@@ -115,7 +120,7 @@ export const STONE = {
    * fresh granite under the weathered skin; `pits`: how dark the pits are
    * where a crystal fell out.
    */
-  wear: { polish: 0.45, chip: 0.03, chipTone: 1.3, pits: 0.45 },
+  wear: { polish: 0.45, chip: 0.03, chipTone: 1.3, pits: 0.7 },
   /**
    * THE WATER'S MARK. Lakes rise and fall with the seasons, and every rock
    * on a northern shore carries a band where the water stands half the year:

@@ -164,6 +164,10 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
       window.clearTimeout(resizeTimer);
       engine?.dispose();
       engineRef.current = null;
+      /* The development handle let go too: holding the disposed engine, it
+         kept its context, canvas and every array alive after unmount. */
+      const handle = window as unknown as { __kaviStage?: StageEngine };
+      if (engine && handle.__kaviStage === engine) delete handle.__kaviStage;
     };
   }, []);
 

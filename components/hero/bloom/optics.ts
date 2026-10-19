@@ -425,12 +425,12 @@ export const BLOOM = {
    *   `cream`     how much warmer the cup is deep inside than at its rim
    */
   light: {
-    transmit: 0.55,
+    transmit: 0.4,
     cup: 0.42,
     sheen: 0.06,
     wax: 0.04,
     through: 0.2,
-    dome: [0.82, 0.3, 0.44] as const,
+    dome: [0.82, 0.62, 0.85] as const,
     veins: [11, 0.05] as const,
     satin: [40, 0.07] as const,
     cream: 0.1,
@@ -465,24 +465,30 @@ export const BLOOM = {
    * Measured beside the flower, the fog brightens by ~6 levels at most, the
    * user's choice of "you'd notice it without knowing why".
    */
-  glow: { lantern: 0.18, halo: 0.75, threshold: 0.42, reach: 0.07 },
+  /* `halo` 0.35 since 2026-10-20: at 0.75 it veiled the flower in its own
+   * light once the flower printed clear of the fog (`print`). */
+  glow: { lantern: 0.18, halo: 0.35, threshold: 0.42, reach: 0.07 },
 
   /**
-   * THE DODGE (2026-10-19, the user's brief: "a delicate glow around the
-   * focal point", after their fine-art reference, where the flower is the
-   * cleanest white in the print). Lit as it truly is, by the overcast dome
-   * alone, a white petal standing upright in fog prints darker than the
-   * fog behind it (~198 against the sky's ~212 before the paper): honest,
-   * and lost — and no light could lift it past the fog, which the print
-   * already lays at the paper's white. So it is DODGED, on the print, as a
-   * printer holds back the light over the one white thing the eye should
-   * go to: `lift` of print value laid over the plant where its light
-   * passes the halo's threshold (BLOOM.glow: its petals, its style, its
-   * threads; never its stems), in the film pass (stage/shaders/post.ts),
-   * after the paper — its whites printing over the fog, the regrade's top
-   * rising past the sky for them (stage/optics.ts FILM.regrade).
+   * ITS OWN PRINT (2026-10-20, the user: "the flower looks washed out —
+   * make it detailed, clear"; their brief before: "a delicate glow around
+   * the focal point"). Lit as it truly is, its tepals carry 1.5–2.6× the
+   * light of the fog round them, and the print lays the fog at the top of
+   * its curve, where all of that is pressed into the fog's own tone: the
+   * flower dissolved into the air behind it — solid and finely shaded as it
+   * is (underexposed, every tepal shows). A printer dodges such a thing; so
+   * its whites get a curve of their own, in the film pass (stage/shaders/
+   * post.ts): their light `r` against the air's round them, printed
+   * `white`·(1 − e^(−`rise`·r)) — the shading kept, the cup's shadow and each
+   * tepal's turn, the brightest rolling off near 190 instead of clipping —
+   * where `r` passes `from`, fully by `to` (the stems, moss and roots, at
+   * 0.25–0.85 of the air, keep the frame's print: from 0.7 the pale stem
+   * down the stone's face whitened), as much as it covers the
+   * pixel. It replaced a flat lift on its whites (BLOOM.dodge, 2026-10-19)
+   * that read the plant's picture's alpha as its cover, when it is what the
+   * plant LEAVES: it lifted the tepals' rims and drew white outlines.
    */
-  dodge: { lift: 0.22 },
+  print: { white: 0.86, rise: 1.4, amount: 1, from: 0.9, to: 1.3 },
 
   /**
    * THE POLLEN: motes of pale gold (hero.css --color-hero-pollen), each a

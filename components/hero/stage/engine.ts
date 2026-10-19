@@ -58,7 +58,7 @@ import {
 } from "./gl";
 import { PARALLAX } from "./motion";
 import { FILM, RENDER } from "./optics";
-import { buildPlates, type Plates } from "./plates";
+import { buildPlates, deletePlates, type Plates } from "./plates";
 import { DOWN_FRAG, FILM_FRAG, UP_FRAG } from "./shaders/post";
 import { SCENE_FRAG } from "./shaders/scene";
 import {
@@ -475,6 +475,8 @@ class Stage implements StageEngine {
   /* The rain's clock: it stands still under reduced motion, a print of
      rain (weather/). */
   private rainTime = 0;
+  /* The shores' downloads, cancelled if the stage is torn down first. */
+  private readonly fetches = new AbortController();
   /* Seconds the scene has been on screen this visit: the bloom opens on it. */
   private bloomClock = 0;
   private lastTime = 0;
@@ -519,7 +521,7 @@ class Stage implements StageEngine {
       "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
     ]);
     this.film = createProgram(gl, FILM_FRAG, [
-      ...CAMERA_UNIFORMS, "uBloomDodge",
+      ...CAMERA_UNIFORMS, "uFlowerPrint", "uFlowerTone", "uFlowerBox",
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
       "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uRegrade", "uGrain",
       "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
@@ -548,13 +550,21 @@ class Stage implements StageEngine {
     const alive = () => !this.disposed && !this.lost;
     let plates: Plates | null;
     try {
-      [plates] = await Promise.all([buildPlates(this.gl, alive), programsLinked(this.gl)]);
+      [plates] = await Promise.all([buildPlates(this.gl, alive, this.fetches.signal), programsLinked(this.gl, alive)]);
     } catch (error) {
-      console.warn(error);
-      if (alive()) this.options.onLost();
+      if (alive()) {
+        console.warn(error);
+        this.options.onLost();
+      }
       return;
     }
-    if (!plates || !alive()) return;
+    if (!plates) return;
+    if (!alive()) {
+      /* Gone while the shaders compiled: the plates arrived after dispose
+         and were never its to delete. */
+      if (!this.gl.isContextLost()) deletePlates(this.gl, plates);
+      return;
+    }
     this.linked = true;
     this.measureFrame();
     this.plates = plates;
@@ -595,6 +605,8 @@ class Stage implements StageEngine {
     if (this.disposed) return;
     this.disposed = true;
     this.stopLoop();
+    /* The shores still on their way are not needed now. */
+    this.fetches.abort();
     this.options.canvas.removeEventListener("webglcontextlost", this.handleLost);
     const gl = this.gl;
     if (gl.isContextLost()) return;
@@ -610,11 +622,8 @@ class Stage implements StageEngine {
     this.lake.dispose();
     this.rain.dispose();
     if (this.wisps) gl.deleteTexture(this.wisps);
-    if (this.plates) {
-      gl.deleteTexture(this.plates.backdrop);
-      gl.deleteTexture(this.plates.depth);
-      if (this.plates.mist) gl.deleteTexture(this.plates.mist);
-    }
+    if (this.plates) deletePlates(gl, this.plates);
+    this.plates = null;
     gl.deleteVertexArray(this.vao);
     /* The context itself is NOT lost on purpose: React's development
        double-mount hands the same canvas straight back, and a lost context
@@ -957,7 +966,10 @@ class Stage implements StageEngine {
     gl.uniform3f(u.uPaper, FILM.paper.black, p.paperWhite, p.paperGamma);
     gl.uniform1fv(u.uRegrade, this.regrade());
     gl.uniform4f(u.uGrain, p.grain, FILM.fps, this.time, FILM.grainSize);
-    gl.uniform2f(u.uBloomDodge, BLOOM.dodge.lift, BLOOM.glow.threshold);
+    /* The flower's own print (bloom/optics.ts BLOOM.print). */
+    const fp = BLOOM.print;
+    gl.uniform3f(u.uFlowerPrint, fp.white, fp.rise, fp.amount);
+    gl.uniform2f(u.uFlowerTone, fp.from, fp.to);
     this.bloom.bindFilm(u, UNITS.bloom);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     /* The rain, laid on the finished print as drops (weather/rain.ts). */

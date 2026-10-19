@@ -32,8 +32,8 @@ export interface Plates {
 
 const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-async function loadBitmap(url: string): Promise<ImageBitmap> {
-  const response = await fetch(url);
+async function loadBitmap(url: string, signal?: AbortSignal): Promise<ImageBitmap> {
+  const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`stage: ${url} (${response.status})`);
   /* Decoded exactly as stored: the depth is data, and the photograph's
      print values are undone by the film, not by the browser. */
@@ -54,6 +54,9 @@ function unpackDepth(bitmap: ImageBitmap): Float32Array {
   if (!ctx) throw new Error("stage: no 2D context to unpack the depth");
   ctx.drawImage(bitmap, 0, 0);
   const bytes = ctx.getImageData(0, 0, width, height).data;
+  /* Its backing store (the whole depth map, read-back friendly) is let go
+     now, not whenever the collector reaches the element. */
+  canvas.width = canvas.height = 0;
   const out = new Float32Array(width * height * 2);
   for (let i = 0, j = 0; j < out.length; i += 4, j += 2) {
     out[j] = (bytes[i] * 256 + bytes[i + 1]) / 65535;
@@ -62,26 +65,41 @@ function unpackDepth(bitmap: ImageBitmap): Float32Array {
   return out;
 }
 
-export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boolean): Promise<Plates | null> {
-  let photo: ImageBitmap;
-  let depthMap: ImageBitmap;
-  let veil: ImageBitmap | null;
-  try {
-    [photo, depthMap, veil] = await Promise.all([
-      loadBitmap(BACKDROP.plateUrl),
-      loadBitmap(BACKDROP.depthUrl),
-      /* Not fetched while the low mist is off (MIST.on). */
-      MIST.on
-        ? loadBitmap(MIST.url).catch((error: unknown) => {
-            console.warn(error);
-            return null;
-          })
-        : null,
-    ]);
-  } catch (error) {
-    console.warn(error);
+/** Lets the plates' textures go. */
+export function deletePlates(gl: WebGL2RenderingContext, plates: Plates): void {
+  gl.deleteTexture(plates.backdrop);
+  gl.deleteTexture(plates.depth);
+  if (plates.mist) gl.deleteTexture(plates.mist);
+}
+
+/**
+ * `alive`: false once the stage is gone; `signal` cancels the downloads.
+ * Whatever was decoded is closed on every way out, so no bitmap outlives
+ * the build — one image failing no longer leaves the other decoded and
+ * held.
+ */
+export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boolean, signal?: AbortSignal): Promise<Plates | null> {
+  const settled = await Promise.allSettled([
+    loadBitmap(BACKDROP.plateUrl, signal),
+    loadBitmap(BACKDROP.depthUrl, signal),
+    /* Not fetched while the low mist is off (MIST.on). */
+    MIST.on
+      ? loadBitmap(MIST.url, signal).catch((error: unknown) => {
+          if (!signal?.aborted) console.warn(error);
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+  const [photoResult, depthResult, veilResult] = settled;
+  if (photoResult.status !== "fulfilled" || depthResult.status !== "fulfilled") {
+    for (const r of settled) if (r.status === "fulfilled") r.value?.close();
+    const failure = photoResult.status === "rejected" ? photoResult.reason : depthResult.status === "rejected" ? depthResult.reason : null;
+    if (!signal?.aborted) console.warn(failure);
     return null;
   }
+  const photo = photoResult.value;
+  const depthMap = depthResult.value;
+  const veil = veilResult.status === "fulfilled" ? veilResult.value : null;
   const close = () => {
     photo.close();
     depthMap.close();

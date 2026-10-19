@@ -140,18 +140,25 @@ const LINK_POLL_GIVE_UP_MS = 120_000;
 /**
  * Resolves once every program started on `gl` has linked, then checks each
  * and reads its uniforms. Rejects with the driver's log if one failed.
+ * `alive`: false once the caller is gone (disposed, or its context lost) —
+ * the wait stops there and resolves with nothing read. WITHOUT IT, a stage
+ * torn down while its shaders compiled (React's development double mount
+ * does it on every load) kept polling for up to two minutes, its deleted
+ * programs never reporting done, holding the whole dead engine — its
+ * context, its canvas, its plates — until the give-up.
  */
-export async function programsLinked(gl: WebGL2RenderingContext): Promise<void> {
+export async function programsLinked(gl: WebGL2RenderingContext, alive: () => boolean = () => true): Promise<void> {
   const list = pending.get(gl) ?? [];
   pending.delete(gl);
   if (gl.getExtension("KHR_parallel_shader_compile")) {
     /* Everything started so far goes to the driver now. */
     gl.flush();
     const done = () =>
-      gl.isContextLost() || list.every((p) => gl.getProgramParameter(p.program.handle, COMPLETION_STATUS_KHR));
+      !alive() || gl.isContextLost() || list.every((p) => gl.getProgramParameter(p.program.handle, COMPLETION_STATUS_KHR));
     const giveUp = performance.now() + LINK_POLL_GIVE_UP_MS;
     while (!done() && performance.now() < giveUp) await new Promise((resolve) => setTimeout(resolve, LINK_POLL_MS));
   }
+  if (!alive()) return;
   for (const { program, names, vs, fs } of list) {
     if (!gl.getProgramParameter(program.handle, gl.LINK_STATUS) && !gl.isContextLost()) {
       const log = gl.getShaderInfoLog(fs) || gl.getShaderInfoLog(vs) || gl.getProgramInfoLog(program.handle);

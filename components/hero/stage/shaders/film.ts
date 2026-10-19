@@ -103,9 +103,10 @@ float regrade(float v) {
 }
 
 /* \`px\` is this pixel in CSS px, so the grain has the same size on every
-   screen: it belongs to the film, not to the display. \`dodge\`: print
-   value laid over the focal point (bloom/optics.ts BLOOM.dodge). */
-vec3 finish(vec3 c, vec2 uv, vec2 px, float dodge) {
+   screen: it belongs to the film, not to the display. \`flower\`: the
+   flower's own print value, and how much of this pixel takes it
+   (bloom/optics.ts BLOOM.print; stage/shaders/post.ts). */
+vec3 finish(vec3 c, vec2 uv, vec2 px, vec2 flower) {
   float fromTop = 1.0 - uv.y;
   float below = max(fromTop - uFoot.x, 0.0);
   c *= exp2(-uFoot.y * below * below);
@@ -121,7 +122,7 @@ vec3 finish(vec3 c, vec2 uv, vec2 px, float dodge) {
   c = vec3(dot(c, vec3(0.2126, 0.7152, 0.0722)));
   /* The flower's whites, dodged (the rain is laid on after, as drops:
      weather/rain.ts). */
-  c += dodge;
+  c = mix(c, vec3(flower.x), flower.y);
 
   /* Re-seeded at film rate, strongest in the midtones as on real stock
      (the paper white and the deepest black carry least). Two octaves: the
