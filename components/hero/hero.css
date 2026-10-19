@@ -33,67 +33,40 @@
   --color-hero-water: #0C0D0D;
 
   /* ── The bloom ──
-   * The one living thing on the set, and the only colour in it, as
-   * reflectances, read off the user's references (assets/sources/flowers/):
-   * the inner tepals white with a breath of cream, the outer white with a
-   * breath of green, the stems a waxy green, the tube paler, the anthers
-   * cream. Kept quiet on purpose: in this light a saturated green reads as
-   * a sticker laid on the print. Measured in the frame, every other thing
-   * in it is neutral within a level or three (the stone's top, the warmest,
-   * ~3); at the references' own green the stems printed ~10 levels green
-   * and read as pasted on, so each colour here keeps under half its
-   * references' chroma: the stems ~4 levels green, a whisper.
+   * The two cut chamomiles on the stone, as reflectances, read off the
+   * user's photograph (assets/sources/flowers/chamomile.webp): the rays
+   * white, the disc a golden yellow, the stems a sage green. Kept quiet on
+   * purpose: in this light a saturated green reads as a sticker laid on the
+   * print. Measured in the frame, every other thing in it is neutral within
+   * a level or three (the stone's top, the warmest, ~3); at a reference's
+   * own green a stem printed ~10 levels green and read as pasted on, so
+   * each colour here keeps about half its reference's chroma — and its
+   * lightness, which is all the print keeps: the disc darker than the rays,
+   * as the reference's dark centres are; the stems darker than the top they
+   * lie on, as its dark lines are.
    * SINCE 2026-10-19 THE PRINT IS PURE MONOCHROME (the user's brief: "no
    * unnecessary accent colors inside the photograph"; stage/shaders/film.ts
    * finish): these, and the pollen's gold below, now set only their greys.
    * Kept as colours, so the light they take is still each one's own. */
   --color-hero-petal: #F0EFE9;
-  --color-hero-sepal: #C9CCC0;
-  --color-hero-leaf: #7A8075;
-  --color-hero-tube: #A0A597;
-  --color-hero-anther: #E2D5AC;
-  /* The clump it grows from: the moss over its crack, a dark olive (moss
-   * on wet stone is darker than a leaf, and greyer); the bark of its old
-   * stem and its roots, a grey-brown — both as quiet as the stems. */
-  --color-hero-moss: #6A6D5D;
-  --color-hero-bark: #7C766C;
+  --color-hero-disc: #CFA640;
+  --color-hero-stem: #7E8A55;
+  /* The cloth it is tied with: undyed cotton, an off-white a little warm
+   * (bleached white would be the brightest thing in the frame, brighter
+   * than the flower; the reference's strip prints just under its flowers'
+   * white). */
+  --color-hero-cloth: #ECE9E2;
   /* Its pollen: motes of pale gold, each holding a little light (bloom/
    * optics.ts BLOOM.pollen) — the warmest small note in the frame, the
    * user's choice over white (2026-10-05). As light, not as a reflectance:
    * a mote is a point too fine to be lit, only seen glowing. */
   --color-hero-pollen: #EBD49B;
 
-  /* ── The static first paint ──
-   * The rendered frame's own light, measured: the mean of each tenth of its
-   * height (at 1440×810, grain off), placed at the middle of that tenth. The
-   * canvas fades in over an image of the same light, so nothing jumps.
-   * Re-measure if the grade changes (the engine's dev handle:
-   * __kaviStage.measure(20), averaged in pairs). Re-measured 2026-10-02 for
-   * the afternoon paper (stage/optics.ts FILM.paper), and 2026-10-16 for
-   * the low mist along the shores (atmosphere/optics.ts MIST: the middle
-   * bands 11–46 levels lighter) and again that day for the right bank a
-   * tenth shorter (scripts/hero-plates/backdrop.py BANK_HEIGHT: the bands
-   * at 25–35% 2–4 lighter, more sky), and that evening for the user's
-   * regrade with the low mist off (stage/optics.ts FILM.regrade,
-   * atmosphere/optics.ts MIST.on: the whole frame darker, the sky ~165), and
-   * on 2026-10-17 for their next print and their crop (FILM.regrade again,
-   * the sky ~143; stage/camera.ts CAMERA.zoom: the trees 9.3% larger),
-   * and on 2026-10-18 for that print at 0.81 (the user's setting: the sky
-   * ~154), and on 2026-10-19 for the fine-art print (the long-exposure
-   * lake, lighter toward the foot; the banks cleared to charcoal; the
-   * rain), and on 2026-10-20 for that print taken halfway back (CLARITY,
-   * FILM.lakeBurn), and that day again for the user's own tuner values,
-   * six drifts averaged. */
-  --color-hero-still-05: #909090;
-  --color-hero-still-15: #8F8F8F;
-  --color-hero-still-25: #868686;
-  --color-hero-still-35: #747474;
-  --color-hero-still-45: #616161;
-  --color-hero-still-55: #4E4E4E;
-  --color-hero-still-65: #464646;
-  --color-hero-still-75: #444444;
-  --color-hero-still-85: #323232;
-  --color-hero-still-95: #1F1F1F;
+  /* ── The first paint ──
+   * Black: the scene comes up out of it (HeroSection, motion.ts ENTRANCE),
+   * and the preloader will stand on it. The frame's own light band by band
+   * stood here until 2026-10-20, under the still the scene faded in over. */
+  --color-hero-ground: #000000;
 
   /* Registered below as <length>, so getComputedStyle hands the engine a
    * resolved px value rather than an unevaluated calc(). */
@@ -126,34 +99,35 @@
   }
 }
 
-/* The static paint: the rendered frame's light, band by band. What shows
- * before the engine's first frame, and all a browser without WebGL2 ever
- * shows. */
+/* The first paint: black, until the scene arrives out of it. */
 [data-hero-ground] {
-  background: linear-gradient(to bottom,
-      var(--color-hero-still-05) 5%,
-      var(--color-hero-still-15) 15%,
-      var(--color-hero-still-25) 25%,
-      var(--color-hero-still-35) 35%,
-      var(--color-hero-still-45) 45%,
-      var(--color-hero-still-55) 55%,
-      var(--color-hero-still-65) 65%,
-      var(--color-hero-still-75) 75%,
-      var(--color-hero-still-85) 85%,
-      var(--color-hero-still-95) 95%);
+  background: var(--color-hero-ground);
   /* A long press on a phone must stay a press: no callout, no selection. */
   -webkit-touch-callout: none;
 }
 
 /* PRE-ENTRANCE STATE. The canvas is invisible until its first frame exists;
- * the section's timeline fades it in over the static paint. */
+ * the section's timeline brings it up out of the black. */
 [data-hero-stage] {
   opacity: 0;
 }
 
-/* No scripting, no engine: the canvas would only ever be an empty layer. */
+/* The still stands in only where there is no scene: undisplayed (so its
+ * lazy image is never fetched) until the section marks it needed. */
+[data-hero-still] {
+  display: none;
+}
+[data-hero-fallback] [data-hero-still] {
+  display: block;
+}
+
+/* No scripting, no engine: the canvas would only ever be an empty layer,
+ * and the still is the hero. */
 @media (scripting: none) {
   [data-hero-stage] {
     display: none;
+  }
+  [data-hero-still] {
+    display: block;
   }
 }

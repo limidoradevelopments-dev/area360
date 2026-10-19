@@ -187,9 +187,10 @@ void main() {
     float scale = uSheetScale[k];
 
     /* The frame at this depth, in metres: the waves heave every sheet by the
-       same share of the picture. */
-    float frameH = z * uView.y / uFocal;
-    float frameW = z * uView.x / uFocal;
+       same share of the picture — the picture at rest, so they keep their
+       size in the world while the arrival's lens widens. */
+    float frameH = z * uView.y / uRestFocal;
+    float frameW = z * uView.x / uRestFocal;
     vec2 w = p.xy;
     w.y -= uWaveA.x * frameH * sin(6.2831853 * w.x / (uWaveA.y * frameW) - uWaveA.z * uTime + uWaveA.w)
          + uWaveB.x * frameH * sin(6.2831853 * w.x / (uWaveB.y * frameW) - uWaveB.z * uTime + uWaveB.w);
@@ -212,7 +213,7 @@ void main() {
     bool near = k < 2;
     vec4 carry = textureLod(uCarry, g, 0.0);
     vec2 cell = g * uGrid;
-    float toMetres = uCellPx * z / uFocal * response;
+    float toMetres = uCellPx * z / uRestFocal * response;
     float n = 0.0;
     float form = 0.0;
     for (int c = 0; c < (near ? int(uCarriedSets) : 1); c++) {

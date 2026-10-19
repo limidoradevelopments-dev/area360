@@ -1,37 +1,37 @@
 /**
  * ─── Bloom · its pass ───
  *
- * The plant is a small mesh (shape.ts), posed on the CPU each frame — the
- * opening, the air's push through springs, the tepals' tremble — and drawn
- * by its own two small programs (shaders/bloom.ts) into the pictures the
- * scene and the film read:
+ * The two cut flowers and their cloth are a small mesh (shape.ts), still
+ * but for the rays' tremble in the air, posed on the CPU, and drawn by
+ * their own small programs (shaders/bloom.ts) into the pictures the scene
+ * and the film read:
  *
- *   NEAR    the plant as the camera sees it, over a rect of the scene's own
- *           pixels round it, and on the stone under it the share of the sky
- *           the stone keeps — read by the scene at the same pixel
+ *   NEAR    the flowers as the camera sees them, over a rect of the scene's
+ *           own pixels round them, and on the stone under it the share of the
+ *           sky the stone keeps — read by the scene at the same pixel
  *   FINE    on a screen finer than the scene (a 4K one: the scene is drawn
  *           at ~2560 and the film develops it at 3840), the same at the
  *           SCREEN's own pixels — the film puts back what the scene's
  *           coarser pixel lost of it (stage/shaders/post.ts), as it does
  *           for the photograph. NEAR is then this picture brought down to
  *           the scene's pixels, so the two agree exactly
- *   MIRROR  the plant as the still lake mirrors it, at half the resolution,
+ *   MIRROR  the flower as the still lake mirrors it, at half the resolution,
  *           softened (the lake blurs it anyway) — read where the reflected
  *           ray crosses the plant's depth
  *   HALO    the light the flower holds, in the fog round it: its petals'
  *           light past a threshold, gathered from NEAR to a few scene
- *           pixels a texel and spread — the film adds it (motion.ts GLOW)
+ *           pixels a texel and spread — the film adds it
  *
  * And its pollen, as motes of light drawn straight into the scene's own
  * light after the scene pass (drawMotes): they drift up to ~70 cm from the
- * flower, and in its pictures they would grow the rect the plant is
- * supersampled over — and cost the flower its samples — wherever they went.
+ * flower, and in its pictures they would grow the rect the flower is
+ * supersampled over — and cost it its samples — wherever they went.
  *
  * Each is drawn SUPERSAMPLED (several samples a pixel each way, with a
  * depth test) and then resolved to its pixels, the contact shade worked out
- * in the same resolve. Its rect is fitted round the posed plant every frame
- * (the opening grows it, the sway moves it, the pollen drifts), its corner
- * on the pixel grid; the targets grow with headroom and are kept.
+ * in the same resolve. Its rect is fitted round the posed flower every
+ * frame (the camera's lean moves it), its corner on the pixel grid; the
+ * targets grow with headroom and are kept.
  *
  * ONE PICTURE A DRAW: never one draw into two targets (gl.ts Target: under
  * Direct3D a program drawn into two at once is compiled again on its first
@@ -41,48 +41,32 @@
 import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
 import { bindTexture, createProgram, deleteTarget, type Program } from "../stage/gl";
 import { STONE } from "../stone/optics";
-import { GLOW, OPENING, POLLEN, SWAY } from "./motion";
+import { FLUTTER, POLLEN } from "./motion";
 import { BLOOM } from "./optics";
-import { CONTACT_CHUNKS, CONTACT_MOSS, CONTACT_POINTS, HALO_FRAG, NOISE_SIZE, PLANT_FRAG, PLANT_VERT, RESOLVE_FRAG } from "./shaders/bloom";
-import {
-  antherAt,
-  buildMesh,
-  BUDLET_BODY,
-  grow,
-  MOSS_BOUNDS,
-  Pose,
-  POSE_WIDTH,
-  SAMPLES,
-  type Genome,
-  type Mesh,
-  type Vec3,
-} from "./shape";
+import { CONTACT_CHUNKS, CONTACT_POINTS, HALO_FRAG, NOISE_SIZE, PLANT_FRAG, PLANT_VERT, RESOLVE_FRAG } from "./shaders/bloom";
+import { buildMesh, grow, Pose, POSE_WIDTH, SAMPLES, type Genome, type Mesh, type Vec3 } from "./shape";
 
-/** The plant's reflectances (linear), read from the hero's tokens. */
+/** The flowers' and the cloth's reflectances (linear), read from the
+ *  hero's tokens. */
 export interface BloomColors {
   lit: readonly [number, number, number];
   petal: readonly [number, number, number];
-  sepal: readonly [number, number, number];
-  leaf: readonly [number, number, number];
-  tube: readonly [number, number, number];
-  anther: readonly [number, number, number];
-  moss: readonly [number, number, number];
-  bark: readonly [number, number, number];
+  disc: readonly [number, number, number];
+  stem: readonly [number, number, number];
+  cloth: readonly [number, number, number];
   pollen: readonly [number, number, number];
 }
 
 /** The air at a world point: velocity (m/s, world x and y) and churn. */
 export type AirAt = (p: Vec3, out: [number, number, number]) => [number, number, number];
 
-/** What the plant is told each step. */
+/** What the flower is told each step. */
 export interface BloomStep {
   /** Seconds of the visit the stage has been on screen. */
   clock: number;
-  /** A fixed opening (0 bud … 1 open) for tuning, or below 0: the clock's. */
-  open: number;
-  /** This visit's flower, 0–1. */
+  /** Which flower, 0–1 (BLOOM.seed; the tuner tries others). */
   seed: number;
-  /** No idle movement: the plant moves only when the air moves it. */
+  /** No idle movement: it moves only when the air moves it. */
   reduced: boolean;
   air: AirAt | null;
 }
@@ -93,15 +77,15 @@ export interface BloomLight {
 }
 
 /* Samples a pixel each way: the most that keeps the near picture's samples
-   under ~0.9 M (a 1440 frame's plant draws at 4). */
+   under ~0.9 M (a 1440 frame's flower draws at 4). */
 const SAMPLE_BUDGET = 900_000;
-/* The same at the screen's own pixels (FINE): a 4K frame's plant, ~400 ×
-   300 px, draws at 3–4 a pixel each way. */
+/* The same at the screen's own pixels (FINE): a 4K frame's flower and
+   cloth draw at 4 a pixel each way. */
 const FINE_BUDGET = 2_400_000;
 /* The mirror: half the scene's resolution, two samples a pixel each way. */
 const MIRROR_SCALE = 0.5;
 const MIRROR_SAMPLES = 2;
-/* Px of margin round the posed plant: the antialiased edge, and the
+/* Px of margin round the posed flower: the antialiased edge, and the
    contact shade's reach on the stone. */
 const MARGIN_PX = 3;
 /* The halo: scene px a texel, about this many texels across a 1440 frame's
@@ -110,16 +94,16 @@ const HALO_TEXELS = 480;
 
 const PLANT_UNIFORMS = [
   ...CAMERA_UNIFORMS,
-  "uPose", "uFlowerOrigin", "uFlowerBasis", "uHeart", "uHeartSpan", "uHeartSplay", "uStyleTip", "uRibs", "uTepalForm",
+  "uPose", "uRayRuffle", "uRidges", "uClothPleat",
   "uTargetRect", "uMirror", "uPoints", "uMote",
   "uStonePlan", "uStoneSpan", "uStoneWeather",
-  "uLit", "uBloomDome", "uLightSide", "uPetal", "uSepal", "uLeaf", "uTubeTone", "uAnther", "uMoss", "uBark", "uPollen",
-  "uBloomLight", "uBloomMore", "uTepalLook", "uPlantMore", "uNoise",
+  "uLit", "uBloomDome", "uLightSide", "uPetal", "uDisc", "uStem", "uCloth", "uPollen",
+  "uBloomLight", "uBloomMore", "uRayLook", "uPlantMore", "uNoise",
 ];
 const RESOLVE_UNIFORMS = [
   ...CAMERA_UNIFORMS,
   "uSource", "uFoot", "uBlur", "uMode", "uRectPx",
-  "uRuns", "uChunks", "uChunkSpan", "uChunkCount", "uMoss", "uMossShade", "uFlowerShade", "uContactShade",
+  "uRuns", "uChunks", "uChunkSpan", "uChunkCount", "uHeadShade", "uContactShade", "uClothShade",
   "uStonePlan", "uStoneSpan", "uStoneWeather",
 ];
 
@@ -140,13 +124,10 @@ interface Picture {
   height: number;
 }
 
-class Spring {
-  readonly d: Vec3 = [0, 0, 0];
-  readonly v: Vec3 = [0, 0, 0];
-}
-
 interface Speck {
   p: Vec3;
+  /* Where it was shed: it fades toward its reach from there. */
+  from: Vec3;
   age: number;
   life: number;
   drift: Vec3;
@@ -172,7 +153,6 @@ export class BloomPass {
   private genome: Genome;
   private mesh: Mesh;
   private pose: Pose;
-  private opaque = 0;
 
   /* Supersampled and resolved: near (at the scene's pixels), fine (at the
      screen's, on a screen finer than the scene), mirrored. */
@@ -188,6 +168,8 @@ export class BloomPass {
   private readonly haloRect = [0, 0, 1];
   private readonly haloUsed = [0, 0];
   private readonly flowerBox = [0, 0, 0, 0];
+  /* The cloth's box this frame (scene px): its own print falls in it. */
+  private readonly clothBox = [0, 0, 0, 0];
   private flowerDepth = 10;
   /* This frame: the near rect (scene px: corner, size); the fine rect
      (screen px: corner, size; size 0 when not drawn); the samples a pixel
@@ -209,17 +191,15 @@ export class BloomPass {
   private outH = 1;
   private fineOn = false;
 
-  /* Motion. */
-  private open = 0;
-  /* The light it holds, 0–1 (motion.ts GLOW), and how long it has been
-     fully open (s). */
-  private glow = 0;
-  private openFor = 0;
-  private readonly head = new Spring();
-  private readonly stems = BLOOM.stems.map(() => new Spring());
-  private accumulator = 0;
+  /* Motion: the rays' clock, the air past the heads (m/s, followed
+     smoothly), whether the rays are trembling and whether their pose has
+     changed since it was last sent to the GPU, the pollen. */
   private stepTime = 0;
   private airSpeed = 0;
+  private trembling = false;
+  private posed = true;
+  /* Where the heads lie, between them (they never move). */
+  private centre: Vec3 = [0, 0, 0];
   private readonly specks: Speck[] = [];
   private shed = 0;
   private idleShed = 0;
@@ -227,14 +207,14 @@ export class BloomPass {
   private readonly runs = new Float32Array(CONTACT_POINTS * 4);
   private readonly chunks = new Float32Array(CONTACT_CHUNKS * 4);
   private readonly chunkSpan = new Float32Array(CONTACT_CHUNKS * 2);
-  private readonly moss = new Float32Array(CONTACT_MOSS * 4);
+  private readonly headShade = new Float32Array(8);
 
   constructor(gl: WebGL2RenderingContext, vao: WebGLVertexArrayObject, seed: number) {
     this.gl = gl;
     this.vao = vao;
     this.plant = createProgram(gl, PLANT_FRAG, PLANT_UNIFORMS, PLANT_VERT);
     this.resolve = createProgram(gl, RESOLVE_FRAG, RESOLVE_UNIFORMS);
-    this.halo = createProgram(gl, HALO_FRAG, ["uSource", "uFoot", "uHalo"]);
+    this.halo = createProgram(gl, HALO_FRAG, ["uSource", "uFoot", "uHalo", "uHaloBox"]);
 
     const meshVao = gl.createVertexArray();
     const pollenVao = gl.createVertexArray();
@@ -280,21 +260,22 @@ export class BloomPass {
     gl.vertexAttrib4f(1, 0, 0, 0, 0);
     gl.bindVertexArray(null);
 
-    MOSS_BOUNDS.slice(0, CONTACT_MOSS).forEach((m, i) => this.moss.set([m.center[0], m.center[1], m.radius[0] / 1.3, m.radius[1] / 1.3], i * 4));
-
     this.genome = grow(seed);
     this.mesh = buildMesh(this.genome);
     this.pose = new Pose(this.genome, this.mesh.layout);
     this.upload();
+    this.centre = middleOf(this.pose);
   }
 
-  /* ── The flower this visit ─────────────────────────────────────────── */
+  /* ── The flower ──────────────────────────────────────────────────────── */
 
   private regrow(seed: number): void {
     this.genome = grow(seed);
     this.mesh = buildMesh(this.genome);
     this.pose = new Pose(this.genome, this.mesh.layout);
     this.upload();
+    this.posed = true;
+    this.centre = middleOf(this.pose);
   }
 
   /** The mesh to the GPU, and the pose texture sized to its layout. */
@@ -311,7 +292,6 @@ export class BloomPass {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
-    this.opaque = mesh.opaque;
 
     gl.bindTexture(gl.TEXTURE_2D, this.poseTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, POSE_WIDTH, mesh.layout.rows, 0, gl.RGBA, gl.FLOAT, null);
@@ -323,94 +303,60 @@ export class BloomPass {
 
   /* ── Motion ────────────────────────────────────────────────────────── */
 
-  /** Advances the plant by `dt` seconds: the opening, the air, the pollen. */
+  /** Advances the flowers by `dt` seconds: their tremble, their pollen. */
   update(dt: number, step: BloomStep): void {
     if (step.seed !== this.genome.seed) this.regrow(step.seed);
-    this.open =
-      step.open >= 0 ? Math.min(step.open, 1) : Math.min(Math.max((step.clock - OPENING.delay) / OPENING.seconds, 0), 1);
-    /* The light it holds: up as it opens, settling once it is open. */
-    this.openFor = this.open >= 1 ? this.openFor + dt : 0;
-    const settle = GLOW.settle.to + (1 - GLOW.settle.to) * Math.exp(-this.openFor / GLOW.settle.seconds);
-    this.glow = smooth(GLOW.rise[0], GLOW.rise[1], this.open) * settle;
-
-    /* The air where the plant stands, once a frame: at the flower, at each
-       stem's tip. */
+    /* How hard the air moves past the heads, once a frame, followed
+       smoothly (motion.ts FLUTTER.smooth): their tremble, their pollen. */
     const air: [number, number, number] = [0, 0, 0];
-    const at = (p: readonly number[]) => (step.air ? step.air([p[0], p[1], p[2]], air) : ((air[0] = air[1] = air[2] = 0), air));
-    const flowerAir = [...at(BLOOM.center)];
-    const tipAir = BLOOM.stems.map((s) => [...at(s.points[s.points.length - 1])]);
-
-    /* Fixed steps (the house rule for springs), the frame capped. */
-    this.accumulator += Math.min(dt, SWAY.maxFrame);
-    while (this.accumulator >= SWAY.step) {
-      this.accumulator -= SWAY.step;
-      this.stepTime += SWAY.step;
-      this.spring(this.head, SWAY.head, flowerAir);
-      this.stems.forEach((s, k) => this.spring(s, SWAY.stem, tipAir[k]));
+    if (step.air) step.air(this.center, air);
+    const speed = Math.hypot(air[0], air[1]);
+    this.airSpeed += (speed - this.airSpeed) * (1 - Math.exp(-dt / FLUTTER.smooth));
+    this.stepTime += Math.min(dt, 0.1);
+    /* Posed only while the air moves them visibly; once it no longer does,
+       laid back to rest once and held (motion.ts FLUTTER.visible). */
+    const flutter = this.pose.flutter(this.airSpeed, step.reduced);
+    if (flutter >= FLUTTER.visible) {
+      this.pose.poseRays(flutter, this.stepTime);
+      this.trembling = this.posed = true;
+    } else if (this.trembling) {
+      this.pose.poseRays(0, this.stepTime);
+      this.trembling = false;
+      this.posed = true;
     }
-
-    /* Never quite still: the convection round it (motion.ts SWAY.idle). */
-    const idle = step.reduced ? 0 : SWAY.idle.amount;
-    const w = 2 * Math.PI * SWAY.idle.hz;
-    const t = step.clock;
-    const breathe = (phase: number): Vec3 => [
-      idle * (Math.sin(w * t + phase) + 0.6 * Math.sin(w * SWAY.idle.ratio * t + 1.7 * phase)),
-      idle * 0.6 * (Math.sin(w * 0.83 * t + 2.3 * phase) + 0.5 * Math.sin(w * SWAY.idle.ratio * 1.3 * t + phase)),
-      0,
-    ];
-    const head = add(this.head.d, breathe(0.4));
-    const tips = this.stems.map((s, k) => add(s.d, scale(breathe(1.9 + k * 2.4), 0.5)));
-
-    /* How hard the air moves past the open flower: the tremble, the
-       pollen. */
-    const rel = Math.hypot(flowerAir[0] - this.head.v[0], flowerAir[1] - this.head.v[1]);
-    this.airSpeed += (rel - this.airSpeed) * (1 - Math.exp(-dt / 0.15));
-
-    this.pose.update({ open: this.open, head, stems: tips, air: this.airSpeed, time: this.stepTime });
     this.stepPollen(dt, step);
   }
 
-  /** One fixed step of a spring pushed by the air (x and y, m/s). */
-  private spring(s: Spring, k: { hz: number; damping: number; drag: number; most: number }, air: readonly number[]): void {
-    const h = SWAY.step;
-    const w = 2 * Math.PI * k.hz;
-    for (let c = 0; c < 2; c += 1) {
-      const a = -w * w * s.d[c] - 2 * k.damping * w * s.v[c] + k.drag * (air[c] - s.v[c]);
-      s.v[c] += a * h;
-      s.d[c] += s.v[c] * h;
-    }
-    /* Bent, never flung: past `most` it is held there. */
-    const r = Math.hypot(s.d[0], s.d[1]);
-    if (r > k.most) {
-      s.d[0] *= k.most / r;
-      s.d[1] *= k.most / r;
-    }
+  /** Where the heads lie (m, world: between them): the air is read round
+   *  it. */
+  get center(): Vec3 {
+    return this.centre;
   }
 
   private stepPollen(dt: number, step: BloomStep): void {
     const P = POLLEN;
     const specks = this.specks;
-    const ripe = Math.min(Math.max((this.pose.frame.heart - P.ripe) / (1 - P.ripe), 0), 1);
     const strength = Math.min(Math.max((this.airSpeed - P.from) / (P.full - P.from), 0), 1);
-    this.shed += dt * P.rate * strength * ripe;
+    this.shed += dt * P.rate * strength;
     /* In still air, one or two at a time, at a rate that wanders on two
        terms at the golden ratio (never a beat). Not with reduced motion:
        that is the scene moving, not the visitor. */
     if (!step.reduced) {
       const w = 2 * Math.PI * P.idle.hz * step.clock;
-      this.idleShed += dt * P.idle.rate * ripe * (1 + 0.35 * Math.sin(w) + 0.25 * Math.sin(w * P.ratio + 1.3));
+      this.idleShed += dt * P.idle.rate * (1 + 0.35 * Math.sin(w) + 0.25 * Math.sin(w * P.ratio + 1.3));
     }
-    const tip: Vec3 = [0, 0, 0];
     while (this.shed >= 1 || this.idleShed >= 1) {
       if (this.shed >= 1) this.shed -= 1;
       else this.idleShed -= 1;
       if (specks.length >= P.most) continue;
-      const i = Math.floor(Math.random() * (this.genome.filaments.length / 4));
-      const p = this.pose.toWorld(antherAt(this.genome, i, this.pose.frame.heart, tip));
+      /* From either disc, anywhere on its florets. */
+      const h = Math.random() < 0.5 ? 0 : 1;
+      const p = this.pose.discPoint(h, Math.random(), Math.sqrt(Math.random()));
       const a = Math.random() * 2 * Math.PI;
       const [slow, quick] = P.glint.hz;
       specks.push({
         p,
+        from: [p[0], p[1], p[2]],
         age: 0,
         life: P.life[0] + (P.life[1] - P.life[0]) * Math.random(),
         drift: [Math.cos(a) * P.wander, Math.sin(a) * P.wander, (Math.random() - 0.5) * P.wander],
@@ -419,11 +365,10 @@ export class BloomPass {
       });
     }
     const air: [number, number, number] = [0, 0, 0];
-    const origin = this.pose.frame.origin;
     for (let i = specks.length - 1; i >= 0; i -= 1) {
       const s = specks[i];
       s.age += dt;
-      const far = Math.hypot(s.p[0] - origin[0], s.p[1] - origin[1], s.p[2] - origin[2]);
+      const far = Math.hypot(s.p[0] - s.from[0], s.p[1] - s.from[1], s.p[2] - s.from[2]);
       if (s.age >= s.life || far > P.reach) {
         specks.splice(i, 1);
         continue;
@@ -456,8 +401,12 @@ export class BloomPass {
   render(camera: CameraFrame, colors: BloomColors, light: BloomLight): void {
     const gl = this.gl;
     if (!this.fit(camera)) return;
-    gl.bindTexture(gl.TEXTURE_2D, this.poseTex);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, POSE_WIDTH, this.mesh.layout.rows, gl.RGBA, gl.FLOAT, this.pose.data);
+    /* The pose to the GPU only when it has changed (still air: never). */
+    if (this.posed) {
+      gl.bindTexture(gl.TEXTURE_2D, this.poseTex);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, POSE_WIDTH, this.mesh.layout.rows, gl.RGBA, gl.FLOAT, this.pose.data);
+      this.posed = false;
+    }
 
     const [nx, ny, nw, nh] = this.nearRect;
     const near = this.near;
@@ -480,7 +429,7 @@ export class BloomPass {
         this.drawPlant(nearSampled, nw * s, nh * s, rect, 0, s * (this.sceneW / this.cssW), camera, colors, light);
         this.drawResolve(near, nw, nh, nearSampled, [0, 0, s, s], [0, 0], [1, 0], [nx, ny, this.sceneW, this.sceneH], camera);
       }
-      if (this.glow > 0.002) this.drawHalo(near, camera);
+      this.drawHalo(near, camera);
     }
     const mirror = this.mirror;
     const mirrorSampled = this.mirrorSampled;
@@ -496,11 +445,10 @@ export class BloomPass {
   }
 
   /**
-   * THE HALO: the flower's light past a threshold (its petals, never its
-   * stems), gathered from the near picture into a few scene pixels a texel
+   * THE HALO: the flower's light past a threshold (its tepals, never its
+   * tube or the cloth's shade), gathered from the near picture into a few scene pixels a texel
    * over its box, then spread there by a Gaussian BLOOM.glow.reach wide at
-   * the flower — one way, then the other. The film adds it (bindFilm), as
-   * much as the flower holds this frame.
+   * the flower — one way, then the other. The film adds it (bindFilm).
    */
   private drawHalo(near: Picture, camera: CameraFrame): void {
     const gl = this.gl;
@@ -533,6 +481,8 @@ export class BloomPass {
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
     const [nx, ny, nw, nh] = this.nearRect;
+    const grow = 0.08 * Math.max(bx1 - bx0, by1 - by0);
+    gl.uniform4f(u.uHaloBox, bx0 - grow - nx, by0 - grow - ny, bx1 + grow - nx, by1 + grow - ny);
     pass(a, near.tex, [x0 - nx, y0 - ny, k, 0], [nw, nh, BLOOM.glow.threshold, 0]);
     pass(b, a.tex, [1, 0, sigma, reach], [w, h, 0, 1]);
     pass(a, b.tex, [0, 1, sigma, reach], [w, h, 0, 1]);
@@ -609,7 +559,7 @@ export class BloomPass {
       gl.uniform4f(u.uBloomMirrorRect, -10, -10, 1, 1);
       gl.uniform2f(u.uBloomMirrorFill, 1, 1);
     }
-    gl.uniform1f(u.uBloomPlane, BLOOM.center[2]);
+    gl.uniform1f(u.uBloomPlane, this.center[2]);
   }
 
   /** Hands the film pass the fine picture and the near one it replaces,
@@ -619,12 +569,18 @@ export class BloomPass {
     const gl = this.gl;
     gl.uniform2f(u.uSceneSize, this.sceneW, this.sceneH);
     /* The flower's own box (its tepals), a little grown: where its own print
-       may fall (BLOOM.print) — not on the pale stem down the stone's face,
-       as bright as a petal's shade. */
+       may fall (BLOOM.print) — not on the cloth, as bright as a tepal's
+       shade. */
     const [bx0, by0, bx1, by1] = this.flowerBox;
     const grow = 0.08 * Math.max(bx1 - bx0, by1 - by0, 0);
     if (bx1 > bx0) gl.uniform4f(u.uFlowerBox, bx0 - grow, by0 - grow, bx1 + grow, by1 + grow);
     else gl.uniform4f(u.uFlowerBox, 0, 0, -1, -1);
+    /* The cloth's own box, a pixel grown, and the air round the flower it
+       is measured against (the box's middle). */
+    const [cx0, cy0, cx1, cy1] = this.clothBox;
+    if (cx1 > cx0) gl.uniform4f(u.uClothBox, cx0 - 1, cy0 - 1, cx1 + 1, cy1 + 1);
+    else gl.uniform4f(u.uClothBox, 0, 0, -1, -1);
+    gl.uniform2f(u.uFlowerAir, (0.5 * (bx0 + bx1)) / this.sceneW, (0.5 * (by0 + by1)) / this.sceneH);
     /* The near picture: what the fine one replaces, and where the halo
        falls on the plant. */
     if (this.near && this.nearRect[2] > 0) {
@@ -636,7 +592,7 @@ export class BloomPass {
     const halo = this.halos[0];
     if (halo && this.haloUsed[0] > 0) {
       bindTexture(gl, u.uBloomHalo, unit + 2, halo.tex);
-      gl.uniform4f(u.uBloomHaloRect, this.haloRect[0], this.haloRect[1], this.haloRect[2], BLOOM.glow.halo * this.glow);
+      gl.uniform4f(u.uBloomHaloRect, this.haloRect[0], this.haloRect[1], this.haloRect[2], BLOOM.glow.halo);
       gl.uniform4f(u.uBloomHaloSize, halo.width, halo.height, this.haloUsed[0], this.haloUsed[1]);
     } else {
       gl.uniform4f(u.uBloomHaloRect, 0, 0, 1, 0);
@@ -673,10 +629,10 @@ export class BloomPass {
   }
 
   /**
-   * Fits the rects round the posed plant (its spines, its heart, the moss,
-   * the contact's reach on the stone; and the flower's own box, for the
-   * halo) and makes sure the
-   * targets hold them. False if there is nothing to draw.
+   * Fits the rects round the posed flower (its spines, its heart, the
+   * cloth, the contact's reach on the stone; and the flower's own box, for
+   * the halo) and makes sure the targets hold them. False if there is
+   * nothing to draw.
    */
   private fit(camera: CameraFrame): boolean {
     const box = [Infinity, Infinity, -Infinity, -Infinity];
@@ -705,41 +661,50 @@ export class BloomPass {
       const o = (first + count - 1) * 12;
       add(d[o], d[o + 1], d[o + 2], d[o + 3] + d[o + 11] + extra);
     };
-    /* The stems, the tube, the second bud and its bracts, the old stem and
-       the roots, in the world. */
+    /* The stems, the shoot and the cloth, with their shade's reach on the
+       stone; and the cloth's own box, its margins and the knot's girth with
+       it. */
     for (const first of layout.stems) spine(first, SAMPLES.stem, reach);
-    spine(layout.tube, SAMPLES.tube, 0.004);
-    spine(layout.budlet, SAMPLES.budlet, 0.004);
-    spine(layout.trunk, SAMPLES.trunk, reach);
-    for (const first of layout.roots) spine(first, SAMPLES.root, 0.008, 3);
-    /* The flower: its tepals, in its own frame — and its own box, which
-       the halo is spread round. */
-    const flower = this.flowerBox;
-    flower[0] = flower[1] = Infinity;
-    flower[2] = flower[3] = -Infinity;
-    const tepals = this.genome.tepals.length;
-    for (let k = 0; k < tepals; k += 1) {
-      for (let i = 0; i < SAMPLES.tepal; i += 3) {
-        const o = (layout.tepals + k * SAMPLES.tepal + i) * 12;
-        const p = this.pose.toWorld([d[o], d[o + 1], d[o + 2]]);
-        add(p[0], p[1], p[2], d[o + 3] + 0.004);
-        if (!projectPx(camera, p[0], p[1], p[2], this.sceneW, this.sceneH, out)) continue;
-        flower[0] = Math.min(flower[0], out[0]);
-        flower[1] = Math.min(flower[1], out[1]);
-        flower[2] = Math.max(flower[2], out[0]);
-        flower[3] = Math.max(flower[3], out[1]);
+    spine(layout.shoot, SAMPLES.shoot, reach, 3);
+    const pieces = [SAMPLES.wrap, SAMPLES.knot, SAMPLES.knot, SAMPLES.tail, SAMPLES.tail];
+    layout.cloth.forEach((first, k) => spine(first, pieces[k], BLOOM.contact.cloth * 3, 3));
+    const cloth = this.clothBox;
+    cloth[0] = cloth[1] = Infinity;
+    cloth[2] = cloth[3] = -Infinity;
+    layout.cloth.forEach((first, k) => {
+      for (let i = 0; i < pieces[k]; i += 1) {
+        const o = (first + i) * 12;
+        if (!projectPx(camera, d[o], d[o + 1], d[o + 2], this.sceneW, this.sceneH, out)) continue;
+        const m = ((d[o + 3] + 0.002) * focal * perCss) / out[2];
+        cloth[0] = Math.min(cloth[0], out[0] - m);
+        cloth[1] = Math.min(cloth[1], out[1] - m);
+        cloth[2] = Math.max(cloth[2], out[0] + m);
+        cloth[3] = Math.max(cloth[3], out[1] + m);
       }
-    }
-    /* The heart and the flower's shade on the top; the moss and its shade. */
-    const o = this.pose.frame.origin;
-    if (projectPx(camera, o[0], o[1], o[2], this.sceneW, this.sceneH, out)) this.flowerDepth = out[2];
-    add(o[0], o[1], o[2], 0.09 * BLOOM.scale);
-    const [mossReach] = BLOOM.contact.moss;
-    for (const m of MOSS_BOUNDS) {
-      for (const [sx, sz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-        add(m.center[0] + sx * m.radius[0], STONE.top + m.height, m.center[1] + sz * m.radius[1], 3 * mossReach);
+    });
+    /* The heads: their rays, discs and bracts — and their own box, which
+       the halo is spread round and their print falls in. */
+    const heads = this.flowerBox;
+    heads[0] = heads[1] = Infinity;
+    heads[2] = heads[3] = -Infinity;
+    this.genome.heads.forEach((rays, h) => {
+      for (let k = 0; k < rays.length; k += 1) {
+        for (let i = 0; i < SAMPLES.ray; i += 2) {
+          const o = (layout.rays[h] + k * SAMPLES.ray + i) * 12;
+          add(d[o], d[o + 1], d[o + 2], d[o + 3] + 0.003);
+          if (!projectPx(camera, d[o], d[o + 1], d[o + 2], this.sceneW, this.sceneH, out)) continue;
+          heads[0] = Math.min(heads[0], out[0]);
+          heads[1] = Math.min(heads[1], out[1]);
+          heads[2] = Math.max(heads[2], out[0]);
+          heads[3] = Math.max(heads[3], out[1]);
+        }
       }
-    }
+      spine(layout.discs[h], SAMPLES.disc, 0.002, 3);
+      const o = this.pose.heads[h].origin;
+      add(o[0], o[1], o[2], 0.02);
+    });
+    const c = this.center;
+    if (projectPx(camera, c[0], c[1], c[2], this.sceneW, this.sceneH, out)) this.flowerDepth = out[2];
 
     /* NEAR: the scene's pixels, its corner on their grid. */
     const pad = MARGIN_PX;
@@ -808,11 +773,10 @@ export class BloomPass {
    *  fades in, out and toward its reach, its glint — with it; how many. */
   private packPollen(): number {
     const data = this.pollenData;
-    const o = this.pose.frame.origin;
     const G = POLLEN.glint;
     let n = 0;
     for (const s of this.specks) {
-      const far = Math.hypot(s.p[0] - o[0], s.p[1] - o[1], s.p[2] - o[2]);
+      const far = Math.hypot(s.p[0] - s.from[0], s.p[1] - s.from[1], s.p[2] - s.from[2]);
       const glint = 1 - G.depth * (0.5 - 0.5 * Math.sin(s.phase + s.rate * s.age));
       const a =
         smooth(0, POLLEN.fade, s.age) * (1 - smooth(0.55 * s.life, s.life, s.age)) * (1 - smooth(0.7 * POLLEN.reach, POLLEN.reach, far)) * glint;
@@ -853,20 +817,9 @@ export class BloomPass {
     setCameraUniforms(gl, u, camera);
     bindTexture(gl, u.uPose, 0, this.poseTex);
     bindTexture(gl, u.uNoise, 1, this.noiseTex, gl.TEXTURE_3D);
-    const f = this.pose.frame;
-    gl.uniform3f(u.uFlowerOrigin, f.origin[0], f.origin[1], f.origin[2]);
-    gl.uniformMatrix3fv(u.uFlowerBasis, false, f.basis);
-    const H = BLOOM.heart;
-    const s = BLOOM.scale;
-    gl.uniform4f(u.uHeart, f.heart, H.thread * s, H.anther[0] * s, H.anther[1] * s);
-    gl.uniform4f(u.uHeartSpan, H.throat[0] * s, H.throat[1] * s, H.length[0] * s, H.length[1] * s);
-    gl.uniform4f(u.uHeartSplay, 0.05, H.splay[0], H.splay[1], H.ring * s);
-    const style = this.pose.data;
-    const tip = (this.mesh.layout.style + SAMPLES.style - 1) * 12;
-    gl.uniform4f(u.uStyleTip, style[tip], style[tip + 1], style[tip + 2], H.lobes[1] * s);
-    gl.uniform4f(u.uRibs, BLOOM.stem.rib, 0.0035, BLOOM.tube.ridges, BLOOM.tube.ridgeDepth);
-    const T = BLOOM.tepals;
-    gl.uniform4f(u.uTepalForm, T.crease[0], T.crease[1], T.ruffle[0] * s, T.ruffle[1] * s);
+    gl.uniform1f(u.uRayRuffle, BLOOM.rays.ruffle);
+    gl.uniform2f(u.uRidges, BLOOM.stem.ribs[0], BLOOM.stem.ribs[1]);
+    gl.uniform1f(u.uClothPleat, BLOOM.cloth.pleat);
     gl.uniform4f(u.uTargetRect, rect[0], rect[1], rect[2], rect[3]);
     gl.uniform1f(u.uMirror, mirrored);
     gl.uniform3f(u.uPoints, 0, BLOOM.pollen.radius, samplesPerCss);
@@ -874,39 +827,30 @@ export class BloomPass {
     gl.uniform3fv(u.uLit, colors.lit);
     /* The dome, scaled as the stone's light is tuned (stage/StageTuner),
        against the top light it was fitted under (0.8: the stone's own was
-       since set to the user's 0.83, under which they saw the plant ~4%
+       since set to the user's 0.83, under which they saw the flowers ~4%
        brighter — kept). */
     const dome = BLOOM.light.dome;
     const k = light.light[0] / 0.8;
     gl.uniform3f(u.uBloomDome, dome[0] * k, dome[1] * k, dome[2] * k);
     gl.uniform2f(u.uLightSide, STONE.lightSide[0], STONE.lightSide[1]);
     gl.uniform3fv(u.uPetal, colors.petal);
-    gl.uniform3fv(u.uSepal, colors.sepal);
-    gl.uniform3fv(u.uLeaf, colors.leaf);
-    gl.uniform3fv(u.uTubeTone, colors.tube);
-    gl.uniform3fv(u.uAnther, colors.anther);
-    gl.uniform3fv(u.uMoss, colors.moss);
-    gl.uniform3fv(u.uBark, colors.bark);
+    gl.uniform3fv(u.uDisc, colors.disc);
+    gl.uniform3fv(u.uStem, colors.stem);
+    gl.uniform3fv(u.uCloth, colors.cloth);
     const L = BLOOM.light;
-    gl.uniform4f(u.uBloomLight, L.transmit, L.cup, L.sheen, L.wax);
-    gl.uniform3f(u.uBloomMore, L.through, BLOOM.glow.lantern * this.glow, BLOOM.tepals.inner);
-    gl.uniform4f(u.uTepalLook, L.veins[0], L.veins[1], L.satin[0], L.satin[1]);
-    gl.uniform4f(u.uPlantMore, L.cream, BLOOM.stem.areole, BLOOM.stem.lobe, BUDLET_BODY);
+    gl.uniform4f(u.uBloomLight, L.transmit, L.sheen, L.wax, L.through[0]);
+    gl.uniform4f(u.uBloomMore, L.through[1], L.florets[0], L.florets[1], BLOOM.rays.teeth);
+    gl.uniform4f(u.uRayLook, L.veins[0], L.veins[1], L.satin[0], L.satin[1]);
+    const F = BLOOM.cloth.fray;
+    gl.uniform4f(u.uPlantMore, L.weave, F[0], F[1], L.cloth);
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS);
     gl.depthMask(true);
     gl.bindVertexArray(this.meshVao);
-    /* The plant's own parts, whole; then its threads and anthers, each as
-       faint as it is finer than a sample, laid over without hiding each
-       other. (Its pollen is drawn into the scene: drawMotes.) */
-    gl.drawElements(gl.TRIANGLES, this.opaque, gl.UNSIGNED_SHORT, 0);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.depthMask(false);
-    gl.drawElements(gl.TRIANGLES, this.mesh.indices.length - this.opaque, gl.UNSIGNED_SHORT, this.opaque * 2);
-    gl.disable(gl.BLEND);
-    gl.depthMask(true);
+    /* The flowers and the cloth, whole. (Their pollen is drawn into the
+       scene: drawMotes.) */
+    gl.drawElements(gl.TRIANGLES, this.mesh.indices.length, gl.UNSIGNED_SHORT, 0);
     gl.disable(gl.DEPTH_TEST);
     gl.bindVertexArray(null);
   }
@@ -958,14 +902,13 @@ export class BloomPass {
   }
 
   /**
-   * The contact shade's inputs: the runs the stone lies under — each posed
-   * stem, the old stem, each root — as points and their half-widths, read
-   * in chunks of a few points, each with the sphere its shade reaches; the
-   * moss; the flower.
+   * The contact shade's inputs: the runs the stone lies under — the tube,
+   * the cloth wound round it and its knot, the cloth's tails — as points
+   * and their radii, read in chunks of a few points, each with the sphere
+   * its shade reaches; and the flower.
    */
   private setContact(u: Record<string, WebGLUniformLocation | null>): void {
     const gl = this.gl;
-    const data = this.pose.data;
     const runs = this.runs;
     const chunks = this.chunks;
     const span = this.chunkSpan;
@@ -990,64 +933,46 @@ export class BloomPass {
       cz *= k;
       let far = 0;
       for (let i = first; i < n; i += 1) {
-        const r = runs[i * 4 + 3];
-        const reach = Math.min(Math.max(4 * r, 0.003), reachMost);
-        far = Math.max(far, Math.hypot(runs[i * 4] - cx, runs[i * 4 + 1] - cy, runs[i * 4 + 2] - cz) + 0.6 * r + 2.5 * reach);
+        const r = Math.abs(runs[i * 4 + 3]);
+        const reach = runs[i * 4 + 3] < 0 ? 3 * BLOOM.contact.cloth : Math.min(Math.max(4 * r, 0.003), reachMost);
+        far = Math.max(far, Math.hypot(runs[i * 4] - cx, runs[i * 4 + 1] - cy, runs[i * 4 + 2] - cz) + r + 2.5 * reach);
       }
       chunks.set([cx, cy, cz, far], c * 4);
       span[c * 2] = first;
       span[c * 2 + 1] = n - 1;
       c += 1;
     };
-    /* Points along a run; every third closes a chunk, which the next one
+    /* Each run's points; every fourth closes a chunk, which the next one
        begins from. */
-    const point = (x: number, y: number, z: number, r: number, start: boolean) => {
-      if (n >= CONTACT_POINTS) return;
-      if (start) {
-        chunk();
-        first = n;
-      }
-      runs[n * 4] = x;
-      runs[n * 4 + 1] = y;
-      runs[n * 4 + 2] = z;
-      runs[n * 4 + 3] = Math.max(r, 1e-5);
-      n += 1;
-      if (n - first === 4) {
-        chunk();
-        first = n - 1;
-      }
-    };
-    /* Each stem as ten points, where its blade's width shades. */
-    const per = 10;
-    for (const first of this.mesh.layout.stems) {
-      for (let i = 0; i < per; i += 1) {
-        const o = (first + Math.round((i * (SAMPLES.stem - 1)) / (per - 1))) * 12;
-        point(data[o], data[o + 1], data[o + 2], data[o + 3], i === 0);
-      }
-    }
-    /* The old stem and the roots, still: a few points each. */
-    for (const still of this.pose.stills) {
-      const count = still.points.length;
-      const take = Math.min(count, 6);
-      for (let i = 0; i < take; i += 1) {
-        const j = Math.round((i * (count - 1)) / (take - 1));
-        const p = still.points[j];
-        point(p[0], p[1], p[2], still.radius[j], i === 0);
-      }
+    for (const run of this.pose.runs) {
+      chunk();
+      first = n;
+      run.points.forEach((p, i) => {
+        if (n >= CONTACT_POINTS) return;
+        const r = run.radius[i];
+        runs[n * 4] = p[0];
+        runs[n * 4 + 1] = p[1];
+        runs[n * 4 + 2] = p[2];
+        runs[n * 4 + 3] = r < 0 ? Math.min(r, -1e-5) : Math.max(r, 1e-5);
+        n += 1;
+        if (n - first === 4) {
+          chunk();
+          first = n - 1;
+        }
+      });
     }
     chunk();
     gl.uniform4fv(u.uRuns, runs);
     gl.uniform4fv(u.uChunks, chunks);
     gl.uniform2fv(u.uChunkSpan, span);
     gl.uniform1f(u.uChunkCount, c);
-    gl.uniform4fv(u.uMoss, this.moss);
-    const [mossReach, mossDepth] = BLOOM.contact.moss;
-    gl.uniform4f(u.uMossShade, mossReach, mossDepth, STONE.top, Math.min(MOSS_BOUNDS.length, CONTACT_MOSS));
-    const f = this.pose.frame;
-    const axis = [f.basis[6], f.basis[7], f.basis[8]];
-    const radius = BLOOM.contact.flower * BLOOM.tepals.length[1] * BLOOM.scale * (0.45 + 0.55 * f.heart);
-    gl.uniform4f(u.uFlowerShade, f.origin[0] + axis[0] * 0.02, f.origin[1] + axis[1] * 0.02, f.origin[2] + axis[2] * 0.02, radius);
+    const shade = this.headShade;
+    this.pose.heads.forEach((head, h) => {
+      shade.set([head.origin[0], head.origin[1], head.origin[2], BLOOM.contact.head * BLOOM.rays.length[1] * head.size], h * 4);
+    });
+    gl.uniform4fv(u.uHeadShade, shade);
     gl.uniform4f(u.uContactShade, BLOOM.contact.reach, BLOOM.contact.depth, BLOOM.contact.crease[0], BLOOM.contact.crease[1]);
+    gl.uniform1f(u.uClothShade, BLOOM.contact.cloth);
   }
 
   private ensureSampled(current: Sampled | null, width: number, height: number): Sampled | null {
@@ -1115,14 +1040,14 @@ export class BloomPass {
     gl.deleteFramebuffer(s.fbo);
   }
 
-  /** The opening, 0–1, this frame (development: the tuner shows it). */
-  get opening(): number {
-    return this.open;
-  }
 }
 
-const add = (a: readonly number[], b: readonly number[]): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-const scale = (a: readonly number[], k: number): Vec3 => [a[0] * k, a[1] * k, a[2] * k];
+/** The point between the two heads (m, world). */
+function middleOf(pose: Pose): Vec3 {
+  const [a, b] = pose.heads;
+  return [0.5 * (a.origin[0] + b.origin[0]), 0.5 * (a.origin[1] + b.origin[1]), 0.5 * (a.origin[2] + b.origin[2])];
+}
+
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);

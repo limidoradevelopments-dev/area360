@@ -112,7 +112,7 @@ export class FluidSim {
     return this.fluid?.[this.fluidIndex].tex ?? null;
   }
 
-  /** The air's current target, to be read back (sampler.ts). */
+  /** The air's current target. */
   get fieldTarget(): Target | null {
     return this.fluid?.[this.fluidIndex] ?? null;
   }

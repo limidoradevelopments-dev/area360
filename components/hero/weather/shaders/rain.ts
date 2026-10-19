@@ -17,8 +17,6 @@
  * hashed afresh by where it is in the lattice: the rain never repeats.
  */
 
-import { CAMERA } from "../../stage/camera";
-
 const HASH_GLSL = /* glsl */ `
 float rainHash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -44,6 +42,9 @@ uniform vec4 uRain;
 uniform vec4 uRainGrid;
 /* how long a drop is seen, seconds: shortest, longest (motion.ts) */
 uniform vec2 uRainLife;
+/* where the horizon is in the frame this frame (frame heights from the
+   top): it moves as the camera tilts in its arrival */
+uniform float uRainHorizon;
 
 out vec2 vLocal;
 out float vLift;
@@ -79,7 +80,7 @@ void main() {
      are as pale high up as low down, only rarer. A drop falling into the
      thicker band comes out of the fog over a little of its fall, not at
      once. */
-  float up = ${CAMERA.horizon.toFixed(4)} - p.y;
+  float up = uRainHorizon - p.y;
   float reach = up > 0.0 ? exp(-up / uRainLook.z) : mix(1.0, uRainLook.w, smoothstep(0.0, 0.04, -up));
   float present = smoothstep(h, h + 0.06, uRainLook.x * reach) * seen;
   float bright = mix(0.5, 1.0, rainHash(slot + uRainSeed + 5.3 + cycle * 13.7)) * uRainFall.w / w;

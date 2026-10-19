@@ -25,14 +25,21 @@ gsap.registerPlugin(useGSAP);
  * air in front of the stone.
  *
  * LAYERS, bottom to top:
- *   the section's own background   the frame's light, band by band (CSS,
- *                                   [data-hero-ground])
- *   [data-hero-still]               the static still's layer (phase 5)
- *   [data-hero-stage]               the scene (WebGL), faded in over it
+ *   the section's own background   black (CSS, [data-hero-ground]): the
+ *                                   first paint, until the scene is ready
+ *   [data-hero-still]               the scene's frame as a picture — only
+ *                                   where there is no scene: no WebGL2, a
+ *                                   lost context, no scripting
+ *   [data-hero-stage]               the scene (WebGL), coming up out of the
+ *                                   black as it arrives (motion.ts ENTRANCE)
  *
- * The static layers are the first paint and the whole fallback. Once the
- * canvas is fully opaque they leave the visibility tree; if the context is
- * ever lost they come straight back.
+ * THE SCENE ARRIVES, NOT A PICTURE (2026-10-20, the user: it read as an
+ * image or a video). The first paint was the scene's own first frame as a
+ * picture, which the canvas faded in over unseen — so the first thing the
+ * visitor saw was a photograph. Now the frame is black until the scene is
+ * ready (the preloader will stand there), then the scene comes up out of it
+ * with the camera settling into place and the air rolling. The still is
+ * fetched only when it is shown (lazy, and undisplayed until then).
  *
  * THE SHORES ARE ASKED FOR WITH THE PAGE. The engine fetches its images (the
  * shores' two, the low mist's veil) itself, but only once its code has
@@ -65,6 +72,8 @@ export default function HeroSection({ className, respectReducedMotion = false }:
 
   const scope = useRef<HTMLElement>(null);
   const [ready, setReady] = useState(false);
+  /* No scene (no WebGL2, or the context was lost): the still stands in. */
+  const [fallback, setFallback] = useState(false);
 
   const prefersReduced = usePrefersReducedMotion();
   const reduced = respectReducedMotion && prefersReduced;
@@ -89,16 +98,14 @@ export default function HeroSection({ className, respectReducedMotion = false }:
           ease: ENTRANCE.ease,
         },
       );
-      /* Fully covered: the static paint stops compositing. */
-      tl.set("[data-hero-still]", { visibility: "hidden" });
     },
     { scope, dependencies: [ready] },
   );
 
-  /* The scene is gone (no WebGL2, or the context was lost): the static paint
-     is the hero again. */
+  /* The scene is gone (no WebGL2, or the context was lost): the still is
+     the hero. */
   const restoreStill = contextSafe(() => {
-    gsap.set("[data-hero-still]", { visibility: "visible" });
+    setFallback(true);
     gsap.to("[data-hero-stage]", { opacity: 0, duration: REDUCED.fadeSeconds, overwrite: true });
   });
 
@@ -107,6 +114,7 @@ export default function HeroSection({ className, respectReducedMotion = false }:
       ref={scope}
       aria-labelledby="hero-heading"
       data-hero-ground
+      data-hero-fallback={fallback ? "" : undefined}
       className={cx("relative h-svh w-full overflow-clip", "select-none touch-pan-y", className)}
     >
       <h1 id="hero-heading" className="sr-only">

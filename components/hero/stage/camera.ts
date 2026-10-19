@@ -52,7 +52,7 @@
 
 import { STONE } from "../stone/optics";
 import { BACKDROP, DEPTH } from "./layers";
-import { PARALLAX } from "./motion";
+import { ARRIVAL, PARALLAX } from "./motion";
 
 export const CAMERA = {
   eyeHeight: 1.23,
@@ -77,12 +77,12 @@ export const CAMERA = {
    * its top. */
   pivot: [STONE.center[0], 1.1, DEPTH.subject] as const,
   /* How far inside the photograph's edge (tan) a frame's edge must stay:
-   * the lean's reach at the shores (5 cm against a 10 m pivot moves a 60 m
-   * bank ~0.004) with room to spare, and the width of the edge's fade. Past
+   * the lean's reach at the shores (12 cm against a 10 m pivot moves the
+   * sky ~0.012; motion.ts PARALLAX) with room to spare, and the width of the edge's fade. Past
    * `maxCloseIn` the fade widens by `grow` × how far past the edge the frame
    * looks, up to `widest`: on a 32:9 frame the forest's outer third fades
    * into the fog, the way a far bank does, instead of ending at a line. */
-  edge: { lean: 0.006, fade: 0.01, grow: 0.8, widest: 0.15 },
+  edge: { lean: 0.014, fade: 0.01, grow: 0.8, widest: 0.15 },
   /* The most the lens closes in for a wide frame: at 1.29 the stone's
    * front corner meets the water 2% above the frame's bottom. (The user's
    * 2.26:1 screen needs 1.27.) */
@@ -105,16 +105,22 @@ export function focalPx(widthPx: number, heightPx: number): number {
 export interface CameraFrame {
   /** Frame size, CSS px. */
   readonly view: readonly [number, number];
-  /** Focal length, CSS px. */
+  /** Focal length, CSS px (the arrival's zoom in it). */
   readonly focal: number;
+  /** The lens at rest, CSS px: the frame the simulated air lives in. */
+  readonly restFocal: number;
   /** Where the camera is, metres. */
   readonly position: readonly [number, number, number];
   /** Camera → world, column-major. */
   readonly rotation: Float32Array;
+  /** How far the photograph's eye stands from the camera's (metres): none
+   *  while the lean is within what the photograph takes (motion.ts
+   *  PARALLAX.plateMost). */
+  readonly plateShift: readonly [number, number, number];
 }
 
 /** The uniform names every camera-reading program declares (CAMERA_GLSL). */
-export const CAMERA_UNIFORMS = ["uView", "uFocal", "uCenter", "uCamPos", "uCamRot", "uEyeHeight"] as const;
+export const CAMERA_UNIFORMS = ["uView", "uFocal", "uRestFocal", "uCenter", "uCamPos", "uCamRot", "uEyeHeight", "uPlateShift"] as const;
 
 export function setCameraUniforms(
   gl: WebGL2RenderingContext,
@@ -123,11 +129,13 @@ export function setCameraUniforms(
 ): void {
   gl.uniform2f(uniforms.uView, frame.view[0], frame.view[1]);
   gl.uniform1f(uniforms.uFocal, frame.focal);
+  gl.uniform1f(uniforms.uRestFocal, frame.restFocal);
   /* The lens's axis on the frame, in uv (y up): risen by the front. */
   gl.uniform2f(uniforms.uCenter, 0.5, 1 - CAMERA.horizon);
   gl.uniform3f(uniforms.uCamPos, frame.position[0], frame.position[1], frame.position[2]);
   gl.uniformMatrix3fv(uniforms.uCamRot, false, frame.rotation);
   gl.uniform1f(uniforms.uEyeHeight, CAMERA.eyeHeight);
+  gl.uniform3f(uniforms.uPlateShift, frame.plateShift[0], frame.plateShift[1], frame.plateShift[2]);
 }
 
 export interface SwayParams {
@@ -150,7 +158,26 @@ export class CameraRig {
   private tx = 0;
   private ty = 0;
   private accumulator = 0;
+  /* Seconds since the arrival began (motion.ts ARRIVAL); infinite: in
+     place. */
+  private age = Infinity;
   private readonly rotation = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  private readonly shift: [number, number, number] = [0, 0, 0];
+
+  /** Start from the arrival's opening shot, to settle into place. */
+  arrive(): void {
+    this.age = 0;
+  }
+
+  /** In place at once (reduced motion). */
+  settle(): void {
+    this.age = Infinity;
+  }
+
+  /** Still settling into place. */
+  get arriving(): boolean {
+    return this.age < Math.max(ARRIVAL.seconds, ARRIVAL.zoom.seconds);
+  }
 
   /** Lean toward a point of the frame: −1…1 across, −1…1 up. */
   lean(nx: number, ny: number): void {
@@ -174,8 +201,12 @@ export class CameraRig {
     );
   }
 
-  /** Advances the spring by `dt` seconds; `frequency` in rad/s (PARALLAX). */
+  /** Advances the arrival and the spring by `dt` seconds; `frequency` in
+   *  rad/s (PARALLAX). */
   update(dt: number, frequency: number = PARALLAX.frequency): void {
+    /* The arrival runs on wall time, the frame capped as the spring's is:
+       a stalled frame holds it rather than jumping it. */
+    if (this.age < Infinity) this.age += Math.min(dt, PARALLAX.maxFrame);
     if (this.resting) {
       this.accumulator = 0;
       return;
@@ -196,17 +227,52 @@ export class CameraRig {
   }
 
   /**
-   * The camera for this frame: moved by the lean, and turned so the pivot
-   * (over the stone) stays exactly where it is on screen.
+   * The camera for this frame.
+   *
+   * THE LEAN turns it about the orbit point (motion.ts PARALLAX.orbit), out
+   * in the lake beyond the stone: the stone moves a little with the visitor
+   * and the shores a little against them — an object in a space, not a
+   * picture panned behind a fixed cut-out.
+   *
+   * THE ARRIVAL (motion.ts ARRIVAL) lifts and draws it back, turned so the
+   * stone keeps its place; and opens on a longer lens tilted down onto the
+   * stone (its `zoom`), easing out to the resting lens. A tilt, not a shift
+   * of the frame: the lens's axis meets the frame at the horizon (the risen
+   * front), and zoomed about that the stone fell out of the bottom.
    */
   pose(view: readonly [number, number], sway: SwayParams): CameraFrame {
-    const dx = this.x * sway.swayX;
-    const dy = this.y * sway.swayY;
+    const A = ARRIVAL;
+    const Z = A.zoom;
+    const crane = (1 - Math.min(this.age / A.seconds, 1)) ** A.power;
+    const t = Math.min(this.age / Z.seconds, 1);
+    /* In and out (smootherstep): held a moment while the frame is still
+       dark, out through the middle, landing without a jolt. */
+    const close = 1 - t * t * t * (t * (t * 6 - 15) + 10);
+    const lx = this.x * sway.swayX;
+    const ly = this.y * sway.swayY;
+    const up = crane * A.up;
+    const dz = -crane * A.back;
     const [px, py, pz] = CAMERA.pivot;
+    const oz = PARALLAX.orbit;
     const eye = CAMERA.eyeHeight;
-    /* Yaw and pitch that keep the pivot on the same ray it had at rest. */
-    const yaw = Math.atan2(px - dx, pz) - Math.atan2(px, pz);
-    const pitch = Math.atan2(py - (eye + dy), pz) - Math.atan2(py - eye, pz);
+    const camY = eye + ly + up;
+    const yaw = Math.atan2(px - lx, oz - dz) - Math.atan2(px, oz);
+    let pitch =
+      Math.atan2(py - (eye + ly), oz) - Math.atan2(py - eye, oz) +
+      Math.atan2(py - (eye + up), pz - dz) - Math.atan2(py - eye, pz);
+    const rest = focalPx(view[0], view[1]);
+    const focal = rest * (1 + (Z.from - 1) * close);
+    if (close > 0) {
+      /* The framing point (the flowers on the stone's top) placed at
+         `frame` of the height from the top, eased back to where the lens
+         puts it as it widens. */
+      const [fx, fy, fz] = A.frameOn;
+      const elevation = Math.atan2(fy - camY, Math.hypot(fx - lx, fz - dz));
+      const below = pitch - elevation;
+      const natural = CAMERA.horizon + (Math.tan(below) * focal) / view[1];
+      const wanted = natural + (Z.frame - natural) * close;
+      pitch -= below - Math.atan(((wanted - CAMERA.horizon) * view[1]) / focal);
+    }
     const cy = Math.cos(yaw);
     const sy = Math.sin(yaw);
     const cp = Math.cos(pitch);
@@ -223,11 +289,18 @@ export class CameraRig {
     r[6] = cp * sy;
     r[7] = sp;
     r[8] = cp * cy;
+    /* The photograph's eye: the lean past what it takes stays with the
+       camera, not with the photograph (motion.ts PARALLAX.plateMost). */
+    const [mx, my] = PARALLAX.plateMost;
+    this.shift[0] = lx - Math.max(-mx, Math.min(mx, lx));
+    this.shift[1] = ly - Math.max(-my, Math.min(my, ly));
     return {
       view,
-      focal: focalPx(view[0], view[1]),
-      position: [dx, eye + dy, 0],
+      focal,
+      restFocal: rest,
+      position: [lx, camY, dz],
       rotation: r,
+      plateShift: this.shift,
     };
   }
 }

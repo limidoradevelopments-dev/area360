@@ -1,31 +1,38 @@
 /**
  * ─── Hero · motion ───
  *
- * The section's own timings: how the scene arrives over the static paint.
+ * The section's own timings: how the scene arrives out of black.
  * Everything inside the scene has its own motion.ts beside its code:
  *
- *   stage/motion.ts        the camera's lean
- *   atmosphere/motion.ts   the air and the fog
+ *   stage/motion.ts        the camera's lean, and its arrival
+ *   atmosphere/motion.ts   the air and the fog, and the arrival's air
  *   water/motion.ts        the lake's surface
- *   weather/motion.ts      the stillness clock
+ *   weather/motion.ts      the stillness clock, the rain
  */
 
-import { REVEAL_EASE_FN } from "@/components/ui/motion";
+import { cubicBezier } from "@/components/ui/easing";
 
 /**
- * The canvas fades in over the still once its first frame exists. The
- * still IS that frame (HeroStill), so the fade only hands over: what shows
- * is the fog beginning to move. 1.8 s was for fading in over flat grey;
- * over the still it read as waiting. Long enough that a frame a pixel off
- * (an unusual screen shape) is never seen to jump.
- * A placeholder for the phase 5 entrance (white fog, then the stone).
+ * THE SCENE COMES UP OUT OF BLACK (2026-10-20, the user: no static picture
+ * first — black until it is ready, then the scene, moving). The canvas fades
+ * in over the black ground once its first frame exists, while the camera
+ * settles into place (stage/motion.ts ARRIVAL, 3 s) and the air rolls
+ * (atmosphere/motion.ts ARRIVAL_AIR).
+ *
+ * SLOW TO START, SLOW TO LAND: the camera moves fastest in its first half
+ * second, where the photograph of the shores smears a little at its edges
+ * as it warps; the fade keeps the frame dark there and gives it light as
+ * the camera slows. An even sine-like in-out over `fadeSeconds`, ending
+ * before the camera does, so the last of the settling is seen in full
+ * light — the motion that says it is a place, not a picture.
  */
 export const ENTRANCE = {
-  ease: REVEAL_EASE_FN,
-  fadeSeconds: 0.8,
+  ease: cubicBezier(0.45, 0, 0.4, 1),
+  fadeSeconds: 1.8,
 } as const;
 
-/** Reduced motion keeps what the visitor does and drops what the scene does. */
+/** Reduced motion keeps what the visitor does and drops what the scene does:
+ *  no camera arrival, and a short fade. */
 export const REDUCED = {
-  fadeSeconds: 0.2,
+  fadeSeconds: 0.4,
 } as const;

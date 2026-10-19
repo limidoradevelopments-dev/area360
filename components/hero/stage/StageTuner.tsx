@@ -24,8 +24,8 @@ export default function StageTuner({ engine }: { engine: StageEngine }) {
   const values = useControls(
     {
       "Camera · stage/motion": folder({
-        swayX: { value: d.swayX, min: 0, max: 0.2, step: 0.005, label: "lean x m" },
-        swayY: { value: d.swayY, min: 0, max: 0.1, step: 0.005, label: "lean y m" },
+        swayX: { value: d.swayX, min: 0, max: 0.35, step: 0.005, label: "lean x m (photo ≤ 0.12)" },
+        swayY: { value: d.swayY, min: 0, max: 0.15, step: 0.005, label: "lean y m (photo ≤ 0.06)" },
         swayRate: { value: d.swayRate, min: 1, max: 12, step: 0.1, label: "spring ω" },
       }),
       "Fog · atmosphere/optics": folder({
@@ -104,8 +104,7 @@ export default function StageTuner({ engine }: { engine: StageEngine }) {
         footToward: { value: d.footToward, min: 0.2, max: 1, step: 0.01, label: "lit foot keeps" },
       }),
       "Bloom · bloom/optics, bloom/motion": folder({
-        /* Below 0: the visit's clock opens it (OPENING). */
-        bloomOpen: { value: d.bloomOpen, min: -0.05, max: 1, step: 0.01, label: "open (<0 live)" },
+        /* Which flower: BLOOM.seed is the one the first paint shows. */
         bloomSeed: { value: d.bloomSeed, min: 0, max: 1, step: 0.01, label: "flower (seed)" },
       }),
     },

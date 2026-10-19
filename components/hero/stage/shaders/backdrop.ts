@@ -56,8 +56,11 @@ vec2 backdropAt(vec2 uv) {
   return vec2(uPlateGeo.w / max(s.r, 1e-4), s.g);
 }
 
-/* Where a camera ray meets the photograph; \`depth\` returns how far. */
+/* Where a camera ray meets the photograph; \`depth\` returns how far. Seen
+   from the photograph's own eye (uPlateShift: the lean past what it takes
+   stays with the camera). */
 vec2 locateBackdrop(vec3 origin, vec3 ray, out float depth) {
+  origin -= uPlateShift;
   vec2 uv = plateUvAt(ray);
   depth = backdropAt(uv).x;
   for (int i = 0; i < 2; i++) {
@@ -79,6 +82,7 @@ vec3 plateRadiance(vec2 uv, vec2 dx, vec2 dy) {
    the photograph's land; then halved six times onto it. Returns uv there;
    \`depth\` returns how far. */
 vec2 reflectBackdrop(vec3 origin, vec3 ray, out float depth) {
+  origin -= uPlateShift;
   const int STEPS = 40;
   float zStart = max(origin.z, uBackdropNearest);
   float w0 = 1.0 / zStart;

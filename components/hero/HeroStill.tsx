@@ -6,12 +6,13 @@ import still from "./still.json";
 /**
  * ─── HeroStill ───
  *
- * The first paint: the scene's own first frame as a picture
- * (scripts/hero-plates/still.py, `npm run still`), there the moment the
- * page arrives, until the live scene fades in over it (HeroSection). Before
- * it the visitor looked at flat grey for as long as the engine took to
- * compile and fetch — ~1.8 s on a GTX 1050 Ti, longer on a phone. It is also
- * all a browser without WebGL2 ever shows.
+ * The scene's own frame as a picture (scripts/hero-plates/still.py,
+ * `npm run still`): what stands in where there is no scene — a browser
+ * without WebGL2, a lost context, no scripting (HeroSection). It was the
+ * first paint until 2026-10-20, when the scene began to arrive out of black
+ * instead (the user: it read as an image). Undisplayed until it is needed
+ * (hero.css) and lazy, so a visit with a scene never fetches it; with no
+ * scripting the browser loads lazy images at once, as it must.
  *
  * PLACED AS THE CAMERA FRAMES. The lens keeps the horizon at a fixed share
  * of the height (stage/camera.ts focalPx), so on any screen the frame is a
@@ -60,7 +61,7 @@ export default function HeroStill({ className }: { className?: string }) {
           srcSet={srcSet(fallback)}
           sizes={sizes(fallback)}
           alt=""
-          fetchPriority="high"
+          loading="lazy"
           className="absolute inset-0 size-full object-cover"
           style={{ objectPosition: `50% ${(CAMERA.horizon * 100).toFixed(2)}%` }}
         />

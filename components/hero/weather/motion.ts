@@ -20,8 +20,10 @@ export const STILLNESS = {
   /* Seconds (τ) for it to ease back when the visitor moves: quicker than it
    * came, but never a switch — the rain does not stop because a hand moved. */
   recedeSeconds: 2.5,
-  /* Pointer travel under this (CSS px) is a tremor, not a movement. */
-  tremorPx: 2,
+  /* Pointer travel under this (CSS px) is a tremor, not a movement: a hand
+   * resting on a trackpad or a mouse drifts by more than 2 px (the first
+   * setting) without anyone moving it, and reset the clock. */
+  tremorPx: 12,
 } as const;
 
 /**
@@ -37,7 +39,7 @@ export const STILLNESS = {
  * drop crossed the frame in a few seconds, a stream of them always moving;
  * now a drizzle's drift, and each drop is seen only for a little of its
  * fall — catching the light, then gone — and the rain itself arrives over
- * the visit's first half-minute.
+ * the visit's first seconds.
  */
 export const RAIN_MOTION = {
   /* Metres per second: a drizzle's drift (its drops a fifth of a
@@ -47,8 +49,13 @@ export const RAIN_MOTION = {
    * over that, and its slot may hold another, later — or none. */
   life: [2.5, 5] as const,
   /* The rain's arrival on the visit's clock, seconds: none for `delay`,
-   * then coming in over `over` (eased), so the first look is still. */
-  onset: { delay: 4, over: 24 },
+   * then coming in over `over` (eased). It was 4 s and then 24: at 8 s a
+   * thirtieth of it, half by 16 s, and most visitors had gone before they
+   * saw a drop (2026-10-20). Now it is falling as the scene settles (the
+   * arrival, stage/motion.ts, 3 s), and in full within ~7 s — still a
+   * drop at a time: each one fades in and out over its own seconds
+   * (`life`). */
+  onset: { delay: 1, over: 6 },
   /* The lean of the fall, as a tangent: blown a little right to left, as
    * the mist drifts along the shores (atmosphere/motion.ts). The
    * reference's dashes lean ~17° (the other way); ~12° here. */

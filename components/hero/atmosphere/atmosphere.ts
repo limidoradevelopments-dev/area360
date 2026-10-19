@@ -22,8 +22,10 @@ import { bindTexture, createProgram, createTarget, deleteTarget, type Program, t
 import { breathing, Gusts } from "./ambient";
 import { carryPhase, FluidSim, type AirParams } from "./fluid";
 import { Forcing } from "./forcing";
+import { HandAir } from "./hand";
 import {
   AIR_CLOCK,
+  ARRIVAL_AIR,
   BREATHING,
   FLUID,
   FOG_WAVES,
@@ -83,6 +85,14 @@ export class Atmosphere {
   private lastActive = -Infinity;
   private gusts: Gusts;
   private quietUntil = 0;
+  /* The hand's push on the air, kept on the CPU for what is posed there
+     (hand.ts), and where the hand was last frame (cells). */
+  readonly hand = new HandAir();
+  private handFrom: [number, number] | null = null;
+  /* The arrival's air still to come (motion.ts ARRIVAL_AIR): when it
+     began, and how many of its pulses have gone in. */
+  private arrivalAt: number | null = null;
+  private arrivalDone = 0;
 
   /* The frame, in CSS px, and one cell of the air. */
   private cssW = 1;
@@ -122,7 +132,7 @@ export class Atmosphere {
    * The air as it stands — its target, and where the frame at rest lies on
    * its grid (fluid uv = frame uv · map.xy + map.zw), the grid's size in
    * cells and a cell's size in CSS px — for what answers it on the CPU
-   * (sampler.ts, bloom/).
+   * (hand.ts, bloom/).
    */
   get air(): { target: Target; map: readonly [number, number, number, number]; grid: [number, number]; cellPx: number } | null {
     const target = this.sim.fieldTarget;
@@ -178,6 +188,8 @@ export class Atmosphere {
       this.forcing.beginSpell(this.pointerCell[0], this.pointerCell[1]);
     }
 
+    if (this.arrivalAt !== null) this.arrive(reduced);
+
     if (!reduced) {
       const gust = this.gusts.due(this.clock, this.quietUntil);
       if (gust) {
@@ -188,6 +200,10 @@ export class Atmosphere {
 
     const hover = this.hoverCell();
     this.forcing.setWake(hover ? (this.wakeFrom ?? hover) : null, hover, dt);
+    /* The same push, for the flowers (hand.ts). */
+    this.hand.update(dt);
+    if (hover && this.handFrom) this.hand.push(this.handFrom, hover, dt, this.forcing.gain.wake);
+    this.handFrom = hover;
 
     /* Calm air steps half as often, each step twice as long. */
     const stepDt = AIR_CLOCK.tick * (this.calm ? AIR_CLOCK.calmEvery : 1);
@@ -310,6 +326,38 @@ export class Atmosphere {
       return thirds.map((t, i) => t.map((v) => Math.round((v / counts[i]) * 1000) / 1000));
     };
     return { density: read(density), light: read(light) };
+  }
+
+  /** The scene is coming up: the arrival's air goes in from now (the
+   *  pulses fall due in tick). */
+  beginArrival(): void {
+    this.arrivalAt = this.clock;
+    this.arrivalDone = 0;
+    this.quietUntil = Math.max(this.quietUntil, this.clock + ARRIVAL_AIR.quiet);
+  }
+
+  /** The arrival's pulses due by now, in order: the churn, the breaths. */
+  private arrive(reduced: boolean): void {
+    const A = ARRIVAL_AIR;
+    const since = this.clock - (this.arrivalAt ?? this.clock);
+    const pulses = [A.churn, ...A.breaths];
+    while (this.arrivalDone < pulses.length && since >= pulses[this.arrivalDone].at) {
+      const k = this.arrivalDone;
+      this.arrivalDone += 1;
+      /* Under reduced motion the scene does nothing unasked. */
+      if (reduced) continue;
+      if (k === 0) {
+        const c = A.churn;
+        const [cx, cy] = this.toCells(c.x * this.cssW, c.y * this.cssH);
+        this.forcing.stir(cx, cy, { sigma: c.sigma, energy: c.energy, seconds: c.seconds });
+      } else {
+        const b = A.breaths[k - 1];
+        const [cx, cy] = this.toCells(b.x * this.cssW, b.y * this.cssH);
+        this.forcing.breathe(cx, cy, { sigma: b.sigma, rate: b.rate, seconds: b.seconds });
+      }
+      this.lastActive = this.clock;
+    }
+    if (this.arrivalDone >= pulses.length) this.arrivalAt = null;
   }
 
   /* ── Input, in frame CSS px ─────────────────────────────────────────── */

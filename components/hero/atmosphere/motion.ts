@@ -23,6 +23,17 @@ export const PHI = 1.618033988749895;
 
 /* ── The clock ─────────────────────────────────────────────────────────── */
 
+/**
+ * THE HAND'S AIR, KEPT ON THE CPU for what is posed there (hand.ts: the
+ * flowers' tremble, their pollen's drift), instead of read back from the
+ * GPU (every read held the main thread 5–70 ms). `puffs`: how many of the
+ * hand's last pushes are kept (a frame each: ~0.4 s of a pass at 120 Hz,
+ * by when the first is half gone); `spread`: how much wider than the wake
+ * itself a puff is felt, as the simulated air spreads what the hand gives
+ * it; `least`: cells/s under which a puff is gone.
+ */
+export const HAND_AIR = { puffs: 48, spread: 1.6, least: 0.05 } as const;
+
 export const AIR_CLOCK = {
   /* One fluid step per 1/60s, on a fixed clock drained from wall time.
    * NOT the house 1/120: that rule is for explicit springs, which go unstable
@@ -302,6 +313,31 @@ export const GUST = {
   /* Where gusts fall, as shares of the frame (y from the top): over the
    * shores and the open water above the stone, where a glimpse means depth. */
   region: { x: [0.08, 0.92], y: [0.22, 0.55] },
+} as const;
+
+/**
+ * THE ARRIVAL'S AIR (2026-10-20, the user: the scene should come up with
+ * the air already moving, not at rest). As the frame comes up out of black
+ * (hero/motion.ts ENTRANCE) and the camera settles (stage/motion.ts
+ * ARRIVAL), the lake breathes twice across the open water over the shores,
+ * one after the other, and a broad, soft churn rolls through the bank in
+ * front of the stone: the first thing the visitor sees is the fog moving.
+ * Each breath shaped as a gust (GUST), stronger; `at` seconds after the
+ * first frame, `x`, `y` shares of the frame (y from the top). The churn
+ * spreads about half a touch's energy (TOUCH) over a field ~75× wider, so it
+ * rolls the fog rather than tearing it. Measured over its first 2.5 s, the
+ * fog over the shores moves ~3× as much as in calm air (2.9 levels against
+ * 0.7) and opens no hole; at a gust's own strength and a tenth of the
+ * churn it was barely more than calm air (0.37 against 0.26 a half
+ * second). The lake's own gusts wait `quiet` seconds after it.
+ */
+export const ARRIVAL_AIR = {
+  breaths: [
+    { at: 0.1, x: 0.3, y: 0.4, sigma: 50, rate: 1.6, seconds: 3 },
+    { at: 0.9, x: 0.72, y: 0.36, sigma: 45, rate: 1.35, seconds: 3 },
+  ],
+  churn: { at: 0, x: 0.5, y: 0.46, sigma: 70, energy: 1200, seconds: 2.4 },
+  quiet: 8,
 } as const;
 
 /**

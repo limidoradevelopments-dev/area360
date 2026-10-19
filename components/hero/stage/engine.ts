@@ -11,9 +11,9 @@
  *   weather     the stillness clock (weather/clock.ts)
  *   air         the simulated air, fixed 1/60s steps (atmosphere/)
  *   sheets      the fog between the planes, half resolution (atmosphere/)
- *   bloom       the plant on the stone, and in the lake (bloom/): posed
- *               on the CPU from the visit's clock and the air read back
- *               where it stands (atmosphere/sampler.ts)
+ *   bloom       the two cut flowers on the stone and their cloth, and in
+ *               the lake (bloom/): their rays posed on the CPU from the air
+ *               the hand moves (atmosphere/hand.ts)
  *   stone       the stone as the camera sees it and as the lake mirrors
  *               it, over rects round it (stone/)
  *   lake        the photograph reflected in the lake (water/lake.ts)
@@ -31,7 +31,6 @@ import { Atmosphere, type FogLook, type HandGains } from "../atmosphere/atmosphe
 import { createWisps } from "../atmosphere/wisps";
 import type { AirParams } from "../atmosphere/fluid";
 import { FLUID, WIND } from "../atmosphere/motion";
-import { AirSampler } from "../atmosphere/sampler";
 import { BloomPass, type AirAt } from "../bloom/bloom";
 import { BLOOM } from "../bloom/optics";
 import { AERIAL, CLARITY, EXTINCTION, MIST, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_PHOTO, SHEETS, VOLUME } from "../atmosphere/optics";
@@ -166,10 +165,8 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   mistStone: number;
   /** How much it is lit as a volume, 1 = designed (MIST.volume). */
   mistVolume: number;
-  /** The bloom (bloom/): how open, 0 bud … 1 full — below 0, as the visit's
-   *  clock opens it (bloom/motion.ts OPENING) — and which flower, 0–1 (a new
-   *  one each visit). */
-  bloomOpen: number;
+  /** The cut flowers (bloom/): which ones, 0–1 (BLOOM.seed: the same on
+   *  every visit, as the first paint is). */
   bloomSeed: number;
 }
 
@@ -248,8 +245,7 @@ export function defaultParams(): StageParams {
     smear: WATER_MOTION.exposure.smear,
     paws: WATER_MOTION.catsPaws.coverage,
     glass: WATER_MOTION.catsPaws.glass,
-    bloomOpen: -1,
-    bloomSeed: 0.37,
+    bloomSeed: BLOOM.seed,
   };
 }
 
@@ -408,7 +404,7 @@ function unprintTable(pivot: number, shadows: number, highlights: number, toe: n
 /* The diffusion's pyramid: half the scene, then each level half again. */
 const GLOW_LEVELS = 5;
 
-const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "sepal", "leaf", "tube", "anther", "moss", "bark", "pollen"] as const;
+const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "disc", "stem", "cloth", "pollen"] as const;
 type ColorToken = (typeof COLOR_TOKENS)[number];
 
 class Stage implements StageEngine {
@@ -423,7 +419,6 @@ class Stage implements StageEngine {
   private readonly up: Program;
   private readonly atmosphere: Atmosphere;
   private readonly bloom: BloomPass;
-  private readonly airSampler: AirSampler;
   private readonly stone: StonePass;
   private readonly lake: LakePass;
   private readonly rain: RainPass;
@@ -457,12 +452,9 @@ class Stage implements StageEngine {
     stone: [0.25, 0.25, 0.25],
     water: [0, 0, 0],
     petal: [0.8, 0.8, 0.8],
-    sepal: [0.7, 0.7, 0.7],
-    leaf: [0.1, 0.1, 0.1],
-    tube: [0.3, 0.3, 0.3],
-    anther: [0.7, 0.7, 0.7],
-    moss: [0.1, 0.1, 0.1],
-    bark: [0.2, 0.2, 0.2],
+    disc: [0.5, 0.4, 0.1],
+    stem: [0.2, 0.25, 0.1],
+    cloth: [0.7, 0.7, 0.7],
     pollen: [0.8, 0.65, 0.35],
   };
 
@@ -477,7 +469,8 @@ class Stage implements StageEngine {
   private rainTime = 0;
   /* The shores' downloads, cancelled if the stage is torn down first. */
   private readonly fetches = new AbortController();
-  /* Seconds the scene has been on screen this visit: the bloom opens on it. */
+  /* Seconds the scene has been on screen this visit: the pollen's idle
+     shedding wanders on it. */
   private bloomClock = 0;
   private lastTime = 0;
   private raf = 0;
@@ -486,6 +479,15 @@ class Stage implements StageEngine {
 
   /* The last pointer position, to tell a movement from a tremor. */
   private lastPointer: [number, number] | null = null;
+  /* The frame's place in the viewport, read once and kept until a resize or
+     a scroll moves it: read on every pointer move, it made the browser
+     recompute style mid-frame whenever anything had changed since (the
+     entrance's fade does, every frame). */
+  private frameRect: DOMRect | null = null;
+  /* The air's frame this frame, and a scratch cell (airAt: called for every
+     mote of pollen, it allocates nothing). */
+  private airFrame: Atmosphere["air"] = null;
+  private readonly cell: [number, number] = [0, 0];
 
   private visible = true;
   private reduced: boolean;
@@ -506,10 +508,7 @@ class Stage implements StageEngine {
     this.vao = vao;
 
     this.atmosphere = new Atmosphere(gl, vao);
-    /* A new flower each visit (bloom/shape.ts grow). */
-    this.params.bloomSeed = Math.random();
     this.bloom = new BloomPass(gl, vao, this.params.bloomSeed);
-    this.airSampler = new AirSampler(gl);
     this.stone = new StonePass(gl, vao);
     this.lake = new LakePass(gl, vao);
     this.rain = new RainPass(gl, vao);
@@ -521,7 +520,7 @@ class Stage implements StageEngine {
       "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
     ]);
     this.film = createProgram(gl, FILM_FRAG, [
-      ...CAMERA_UNIFORMS, "uFlowerPrint", "uFlowerTone", "uFlowerBox",
+      ...CAMERA_UNIFORMS, "uFlowerPrint", "uFlowerTone", "uFlowerBox", "uClothPrint", "uClothBox", "uFlowerAir",
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
       "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uRegrade", "uGrain",
       "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
@@ -569,7 +568,13 @@ class Stage implements StageEngine {
     this.measureFrame();
     this.plates = plates;
     this.ready = true;
-    /* The plant posed before its first frame: a bud. */
+    /* THE ARRIVAL: the first frame is drawn from where the camera starts,
+       and the air is set moving, as the scene comes up out of black
+       (stage/motion.ts ARRIVAL, atmosphere/motion.ts ARRIVAL_AIR). Under
+       reduced motion it is simply there. */
+    if (!this.reduced) this.camera.arrive();
+    this.atmosphere.beginArrival();
+    /* The flowers posed before their first frame. */
     this.stepBloom(0);
     this.render();
     this.options.onFirstFrame();
@@ -583,7 +588,10 @@ class Stage implements StageEngine {
 
   setReducedMotion(reduced: boolean): void {
     this.reduced = reduced;
-    if (reduced) this.camera.centre();
+    if (reduced) {
+      this.camera.centre();
+      this.camera.settle();
+    }
   }
 
   setParams(next: Partial<StageParams>): void {
@@ -617,7 +625,6 @@ class Stage implements StageEngine {
     this.deleteTargets();
     this.atmosphere.dispose();
     this.bloom.dispose();
-    this.airSampler.dispose();
     this.stone.dispose();
     this.lake.dispose();
     this.rain.dispose();
@@ -642,6 +649,7 @@ class Stage implements StageEngine {
   private measureFrame(): void {
     const { frame, canvas } = this.options;
     const rect = frame.getBoundingClientRect();
+    this.frameRect = rect;
     const style = getComputedStyle(frame);
 
     this.cssW = Math.max(1, rect.width);
@@ -739,46 +747,43 @@ class Stage implements StageEngine {
   }
 
   /**
-   * The plant's step: the air round it asked for (and last frame's
-   * collected: atmosphere/sampler.ts), then its opening, sway and pollen.
+   * The flowers' step: their tremble and their pollen, in the air the
+   * visitor's hand moves (atmosphere/hand.ts, kept on the CPU: nothing is
+   * read back from the GPU).
    */
   private stepBloom(dt: number): void {
-    const air = this.atmosphere.air;
-    if (air) {
-      const [cx, cy] = this.airCell(BLOOM.center, air);
-      const f = focalPx(this.cssW, this.cssH);
-      /* The air within ~75 cm of the flower: the stems' tips and wherever
-         the pollen drifts before it fades (bloom/motion.ts POLLEN.reach). */
-      const half = Math.min(48, Math.ceil((0.75 * f) / (BLOOM.center[2] * air.cellPx)));
-      this.airSampler.update(air.target, cx - half, cy - half, 2 * half, 2 * half);
-    }
+    /* The air's frame, once a frame: read for every mote of pollen. */
+    this.airFrame = this.atmosphere.air;
     const p = this.params;
     this.bloom.update(dt, {
       clock: this.bloomClock,
-      open: p.bloomOpen,
       seed: p.bloomSeed,
       reduced: this.reduced,
       air: this.airAt,
     });
   }
 
-  /** A world point's cell on the air's grid (its plane: the camera at rest). */
-  private airCell(p: readonly number[], air: NonNullable<Atmosphere["air"]>): [number, number] {
+  /** A world point's cell on the air's grid (its plane: the camera at
+   *  rest), into `out`. */
+  private airCell(p: readonly number[], air: NonNullable<Atmosphere["air"]>, out: [number, number]): [number, number] {
     const f = focalPx(this.cssW, this.cssH);
     const u = ((p[0] / p[2]) * f) / this.cssW + 0.5;
     const v = (((p[1] - CAMERA.eyeHeight) / p[2]) * f) / this.cssH + 1 - CAMERA.horizon;
-    return [(u * air.map[0] + air.map[2]) * air.grid[0], (v * air.map[1] + air.map[3]) * air.grid[1]];
+    out[0] = (u * air.map[0] + air.map[2]) * air.grid[0];
+    out[1] = (v * air.map[1] + air.map[3]) * air.grid[1];
+    return out;
   }
 
-  /** The air at a world point, from the patch read back: m/s, and churn. */
+  /** The air the hand moved at a world point (atmosphere/hand.ts): m/s,
+   *  and churn. */
   private airAt: AirAt = (p, out) => {
-    const air = this.atmosphere.air;
-    if (!air || !this.airSampler.ready) {
+    const air = this.airFrame;
+    if (!air) {
       out[0] = out[1] = out[2] = 0;
       return out;
     }
-    const [cx, cy] = this.airCell(p, air);
-    this.airSampler.at(cx, cy, out);
+    const [cx, cy] = this.airCell(p, air, this.cell);
+    this.atmosphere.hand.at(cx, cy, out);
     /* Cells a second → metres a second, at the point's own depth. */
     const metresPerCell = (air.cellPx * p[2]) / focalPx(this.cssW, this.cssH);
     out[0] *= metresPerCell;
@@ -872,7 +877,7 @@ class Stage implements StageEngine {
     return this.unprintCache;
   }
 
-  /** The plant's own pass (bloom/), which the scene pass reads. */
+  /** The flowers' own pass (bloom/), which the scene pass reads. */
   private drawBloom(camera: CameraFrame): void {
     const p = this.params;
     this.bloom.render(camera, this.colors, { light: [p.stoneTop, p.stoneAway, p.stoneToward] });
@@ -966,10 +971,11 @@ class Stage implements StageEngine {
     gl.uniform3f(u.uPaper, FILM.paper.black, p.paperWhite, p.paperGamma);
     gl.uniform1fv(u.uRegrade, this.regrade());
     gl.uniform4f(u.uGrain, p.grain, FILM.fps, this.time, FILM.grainSize);
-    /* The flower's own print (bloom/optics.ts BLOOM.print). */
+    /* The flowers' own print, and the cloth's (bloom/optics.ts BLOOM.print). */
     const fp = BLOOM.print;
     gl.uniform3f(u.uFlowerPrint, fp.white, fp.rise, fp.amount);
     gl.uniform2f(u.uFlowerTone, fp.from, fp.to);
+    gl.uniform3f(u.uClothPrint, fp.cloth.white, fp.cloth.from, fp.cloth.to);
     this.bloom.bindFilm(u, UNITS.bloom);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     /* The rain, laid on the finished print as drops (weather/rain.ts). */
@@ -980,10 +986,21 @@ class Stage implements StageEngine {
    * The adaptive tier. The frame interval is what the visitor feels, so it
    * is what is measured; a sustained slow average drops one quality tier.
    * It never climbs back mid-visit: a scene that sharpens and softens as the
-   * frame rate wanders is worse than one that is slightly soft.
+   * frame rate wanders is worse than one that is slightly soft. It judges
+   * from the end of the arrival.
    */
   private watchFrameRate(elapsed: number): void {
     if (elapsed <= 0 || elapsed > 250) return;
+    /* NOT DURING THE ARRIVAL: its first frames carry the page's own warm-up
+       (first draws, uploads) and its opening shot shows more of the lake,
+       the costliest thing to draw (stage/motion.ts ARRIVAL.zoom). Judged
+       then, a fast machine could be dropped a tier for the whole visit by
+       its first three seconds. */
+    if (this.camera.arriving) {
+      this.slowFrames = 0;
+      this.frameAverage = 1000 / 60;
+      return;
+    }
     this.frameAverage += (elapsed - this.frameAverage) * 0.05;
     this.slowFrames = this.frameAverage > RENDER.slowFrameMs ? this.slowFrames + 1 : 0;
     if (this.slowFrames > RENDER.slowFrames && this.tier < RENDER.tiers.length - 1) {
@@ -1030,11 +1047,13 @@ class Stage implements StageEngine {
 
   activity(): void {
     this.stillness.stir();
+    /* A scroll moves the frame in the viewport. */
+    this.frameRect = null;
   }
 
   /** Client px → frame CSS px, or null outside the frame. */
   private framePoint(clientX: number, clientY: number): [number, number] | null {
-    const rect = this.options.frame.getBoundingClientRect();
+    const rect = (this.frameRect ??= this.options.frame.getBoundingClientRect());
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) return null;

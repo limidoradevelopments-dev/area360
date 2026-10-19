@@ -26,7 +26,7 @@ export class RainPass {
   constructor(gl: WebGL2RenderingContext, vao: WebGLVertexArrayObject) {
     this.gl = gl;
     this.vao = vao;
-    this.program = createProgram(gl, RAIN_FRAG, ["uRainFall", "uRainLook", "uRainSeed", "uRain", "uRainGrid", "uRainLife"], RAIN_VERT);
+    this.program = createProgram(gl, RAIN_FRAG, ["uRainFall", "uRainLook", "uRainSeed", "uRain", "uRainGrid", "uRainLife", "uRainHorizon"], RAIN_VERT);
   }
 
   /**
@@ -46,10 +46,15 @@ export class RainPass {
     const aspect = camera.view[0] / camera.view[1];
     /* The lens, in frame heights per unit of tangent. */
     const focal = camera.focal / camera.view[1];
+    /* The horizon in the frame: the lens's axis tilted by the camera (a
+       level direction's height in the camera's view). */
+    const r = camera.rotation;
+    const horizon = CAMERA.horizon - (r[5] / Math.max(r[8], 1e-3)) * focal;
     gl.bindVertexArray(this.vao);
     gl.useProgram(this.program.handle);
     gl.uniform4f(u.uRain, amount, time, RAIN_MOTION.slant, 1 / heightPx);
     gl.uniform2f(u.uRainLife, RAIN_MOTION.life[0], RAIN_MOTION.life[1]);
+    gl.uniform1f(u.uRainHorizon, horizon);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     RAIN.layers.forEach((layer, i) => {
@@ -59,7 +64,7 @@ export class RainPass {
          by the lean. */
       const down = fall * time;
       const sideways = RAIN_MOTION.slant * down;
-      const top = Math.max(CAMERA.horizon - 5 * layer.rise, 0);
+      const top = Math.max(horizon - 5 * layer.rise, 0);
       const firstColumn = Math.floor(-sideways / cell) - 1;
       const columns = Math.ceil(aspect / cell) + 3;
       const firstRow = Math.floor((top - down) / cell) - 1;

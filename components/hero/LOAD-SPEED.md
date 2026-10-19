@@ -297,6 +297,15 @@ After the user's fine-art reference (`assets/sources/grade/reference-3.webp`), t
 | GPU, film pass + rain, 3840×2160 | 2.941 ms | 2.949 ms |
 | GPU, lake pass, one read against four | | within the GPU's clock drift (alternated twice; at 4K the drift was ±0.5 ms) |
 
+## Two cut chamomiles in place of the kadupul (2026-10-20)
+
+The user replaced the flower: two cut chamomiles lying on the stone, their stems tied with a strip of cloth (AGENTS.md has the design). Everything above about the kadupul — its opening, the clump, the moss, the roots, the heart's threads, the second bud — is history: that code is gone.
+
+- **Smaller programs.** The plant program lost the heart (filaments, anthers, stigma), the moss, the bark, the roots and the bud; it gained the rays' teeth, the disc's florets and the cloth. Cold compile ~0.21 s (was ~0.4–0.55 s); the resolve, without its moss loop, ~0.18 s (was ~0.2–0.25 s). Measured with a nonce in each source, three runs each.
+- **One draw.** Nothing is finer than a sample any more (no threads laid over with blending): the mesh is drawn whole in one call, ~9.2k vertices, a pose texture of 17 rows.
+- **GPU.** ~0.13 ms a frame at 1440, ~0.36 ms at 4K (was ~0.3–0.55 and ~0.85), the medians of 170 frames with full frames drawn between them. TIMED ALONE, with nothing else for the GPU to do between timings, the same pass read 8 ms: the GPU drops its clocks when idle. Keep it busy when timing a small pass.
+- **CPU.** The rays are posed each frame (two heads, ~22 rays of 12 samples); the stems, discs, bracts and cloth are posed once.
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

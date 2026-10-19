@@ -104,7 +104,7 @@ float regrade(float v) {
 
 /* \`px\` is this pixel in CSS px, so the grain has the same size on every
    screen: it belongs to the film, not to the display. \`flower\`: the
-   flower's own print value, and how much of this pixel takes it
+   flowers' (or the cloth's) own print value, and how much of this pixel takes it
    (bloom/optics.ts BLOOM.print; stage/shaders/post.ts). */
 vec3 finish(vec3 c, vec2 uv, vec2 px, vec2 flower) {
   float fromTop = 1.0 - uv.y;
@@ -117,11 +117,11 @@ vec3 finish(vec3 c, vec2 uv, vec2 px, vec2 flower) {
   /* And the user's regrade of the whole print. */
   c = vec3(regrade(c.r), regrade(c.g), regrade(c.b));
   /* PURE MONOCHROME (2026-10-19, the user's brief: "no unnecessary accent
-     colors inside the photograph"): a silver print. The bloom's whisper of
-     colour and its pollen's gold come out as their own greys. */
+     colors inside the photograph"): a silver print. The flowers' colours
+     and their pollen's gold come out as their own greys. */
   c = vec3(dot(c, vec3(0.2126, 0.7152, 0.0722)));
-  /* The flower's whites, dodged (the rain is laid on after, as drops:
-     weather/rain.ts). */
+  /* The flowers' and the cloth's whites, dodged (the rain is laid on
+     after, as drops: weather/rain.ts). */
   c = mix(c, vec3(flower.x), flower.y);
 
   /* Re-seeded at film rate, strongest in the midtones as on real stock
