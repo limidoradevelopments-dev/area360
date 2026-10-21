@@ -14,7 +14,7 @@
 import { MIST_MOTION } from "../atmosphere/motion";
 import { AERIAL, EXTINCTION, MIST, MIST_SEEN, OVER_PHOTO, SHEETS, SOFT_BLACK } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
-import { LAPS, WATER_MOTION, WAVES } from "../water/motion";
+import { GRAVITY, LAPS, TENSION, WATER_MOTION, WAVES } from "../water/motion";
 import { WATER, WATER_R0, WATER_UNDER } from "../water/optics";
 import { CAMERA, type CameraFrame } from "./camera";
 import type { StageParams } from "./engine";
@@ -69,9 +69,32 @@ export const UNITS = {
   wisps: 3,
 } as const;
 
-/* Constant per build: packed once, not per frame. */
+/* The waves and the lapping, packed once; only their phases change. */
 const WAVE_DATA = new Float32Array(WAVES.flat());
 const LAP_DATA = new Float32Array(LAPS.flat());
+
+/* Each wave's angular speed (rad/s), by the dispersion relation of real
+   water (water/motion.ts), ω² = g·k + (σ/ρ)·k³: once, here. Every pass that
+   draws the lake worked it out at every pixel of every frame. */
+const TAU = 2 * Math.PI;
+const dispersion = (k: number) => Math.sqrt(GRAVITY * k + TENSION * k * k * k);
+const WAVE_OMEGA = WAVES.map(([kx, kz]) => dispersion(Math.hypot(kx, kz)));
+const LAP_OMEGA = LAPS.map(([k]) => dispersion(k));
+let phasesAt = Number.NaN;
+
+/**
+ * The waves' and the lapping's phases at the lake's time `time` (s), into
+ * their packed data — once a frame, however many passes ask. Taken round
+ * the circle in double precision, so a long visit keeps them exact (the
+ * GPU's single precision lost ~0.002 rad of a ripple's phase per ten
+ * minutes).
+ */
+function phasesNow(time: number): void {
+  if (time === phasesAt) return;
+  phasesAt = time;
+  for (let i = 0; i < WAVES.length; i += 1) WAVE_DATA[i * 4 + 3] = (WAVES[i][3] - WAVE_OMEGA[i] * time) % TAU;
+  for (let i = 0; i < LAPS.length; i += 1) LAP_DATA[i * 3 + 2] = (LAPS[i][2] - LAP_OMEGA[i] * time) % TAU;
+}
 
 /* ── atmosphere/shaders/fog.ts ────────────────────────────────────────── */
 
@@ -158,6 +181,7 @@ export function setWaterUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
   const p = f.params;
   gl.uniform3fv(u.uWaterBody, f.colors.water);
   gl.uniform1f(u.uWaterR0, WATER_R0);
+  phasesNow(f.waterTime);
   gl.uniform4fv(u.uWaves, WAVE_DATA);
   gl.uniform1f(u.uWaterTime, f.waterTime);
   /* The long exposure: what it averages is not drawn, but kept as the

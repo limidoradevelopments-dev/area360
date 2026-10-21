@@ -8,7 +8,7 @@
  */
 
 import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms } from "../stage/camera";
-import { bindTexture, createProgram, createTarget, deleteTarget, exactTargetFormat, type Program, type Target } from "../stage/gl";
+import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, exactTargetFormat, type Program, type Target } from "../stage/gl";
 import {
   DEVELOP_UNIFORMS,
   FOG_UNIFORMS,
@@ -64,6 +64,8 @@ export class LakePass {
     const u = this.program.uniforms;
     gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    /* Read only on the water, below the rows drawn. */
+    discardBound(gl);
     gl.viewport(0, 0, target.width, target.height);
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(0, 0, target.width, rows);

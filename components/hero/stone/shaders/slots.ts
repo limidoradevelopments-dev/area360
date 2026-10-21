@@ -15,10 +15,14 @@
  *                      (zero on a miss) and whether it hit; then slots 5–9
  *                      the same five rays' normals, which tell an edge from a
  *                      face.
+ *   MIRROR_SURFACE_FRAG  the lake's surface under the reflection, once a
+ *                      pixel: the reflected ray and its spread, or nothing
+ *                      where the scene will not ask.
  *   STONE_MIRROR_FRAG  the stone as the lake mirrors it: slots 0–3 the
  *                      reflection's cone of four rays (slot 0 alone, the
  *                      reflected ray itself, where the water is mirror-
- *                      still). Each: the light and whether it hit.
+ *                      still), from that surface. Each: the light and
+ *                      whether it hit.
  *   SLOTS_GLSL         the scene's side: the slots read back and resolved.
  *
  * WHY ONE RAY A PROGRAM. Direct3D's compiler (every Windows browser) takes
@@ -103,9 +107,47 @@ void main() {
 }
 `;
 
+/* The lake's surface under the reflection, worked out ONCE a pixel for the
+   four rays (stone/stone.ts MIRROR): the stone's reflected ray, and its
+   cone's spread (\`roughSubject\`) — as the bits of the ray and the spread
+   in halves (a half's rounding is 1/4000 of the cone's width: a
+   hundredth of a pixel where the ray meets the stone). Zero where the
+   scene will not ask: water past the stone, or whose cone passes nowhere
+   near it — most of the rect. Each of the four rays once worked the whole
+   lake out for itself, all 26 waves and the lapping, at every pixel of a
+   rect that on a phone spans most of the near water, and then threw it
+   away there: on a phone-class GPU (Intel UHD 630, a phone's frame), 3
+   of the 4 workings cost ~11 ms a frame. */
+export const MIRROR_SURFACE_FRAG = /* glsl */ `#version 300 es
+precision highp float;
+precision highp sampler2D;
+
+in vec2 vUv;
+out uvec4 outSurface;
+
+${CAMERA_GLSL}
+${WATER_GLSL}
+${STONE_GLSL}
+${SURFACE_GLSL}
+${PIXEL_GLSL}
+
+void main() {
+  vec3 ray = cameraRay(vUv);
+  vec2 sigma = waterFootprint(ray);
+  outSurface = uvec4(0u);
+  if (ray.y >= 0.0) return;
+  vec3 origin = uCamPos;
+  LakeSurface s = lakeSurface(origin, ray, waterDepth(origin, ray), sigma);
+  /* Where the scene will not ask: nothing to trace. */
+  if (!beforeStone(s) || !reflectsStone(s)) return;
+  outSurface = uvec4(floatBitsToUint(s.wavering), packHalf2x16(s.roughSubject));
+}
+`;
+
 export const STONE_MIRROR_FRAG = /* glsl */ `#version 300 es
 precision highp float;
 precision highp sampler2D;
+precision highp usampler2D;
 
 out vec4 outLight;
 
@@ -113,9 +155,11 @@ ${CAMERA_GLSL}
 uniform vec3 uLit;
 ${WATER_GLSL}
 ${STONE_GLSL}
-${SURFACE_GLSL}
-${PIXEL_GLSL}
 ${SLOT_GLSL}
+/* the lake's surface under this pixel (MIRROR_SURFACE_FRAG), and this
+   slot's corner in the slots' target (px) */
+uniform usampler2D uMirrorSurface;
+uniform vec2 uSlotOrigin;
 
 /* The stone in a reflection. The ripples too fine to draw spread the
    reflected ray over a small cone (\`roughSubject\`, radians across and
@@ -126,29 +170,32 @@ ${SLOT_GLSL}
    itself, in slot 0. */
 void main() {
   int slot = int(uSlot);
-  vec3 ray = cameraRay(vUv);
-  vec2 sigma = waterFootprint(ray);
   outLight = vec4(0.0);
-  if (ray.y >= 0.0) return;
+  uvec4 surface = texelFetch(uMirrorSurface, ivec2(gl_FragCoord.xy - uSlotOrigin), 0);
+  /* Where the scene will not ask: nothing to trace. (A reflected ray is
+     never all zeros.) */
+  if (all(equal(surface.xyz, uvec3(0u)))) return;
+  vec3 ray = cameraRay(vUv);
   vec3 origin = uCamPos;
-  LakeSurface s = lakeSurface(origin, ray, waterDepth(origin, ray), sigma);
-  /* Where the scene will not ask: nothing to trace. */
-  if (!beforeStone(s) || !reflectsStone(s)) return;
-  vec2 rough = s.roughSubject;
+  /* Where the ray meets the water, as lakeSurface has it. */
+  vec3 at = origin + ray * ((waterDepth(origin, ray) - origin.z) / ray.z);
+  at.y = 0.0;
+  vec3 wavering = uintBitsToFloat(surface.xyz);
+  vec2 rough = unpackHalf2x16(surface.w);
   /* The cone's width is the footprint the stone's grain is filtered to. */
   float spread = max(rough.y, 0.002);
   bool cone = rough.y >= 0.001;
-  vec3 dir = normalize(s.wavering);
+  vec3 dir = normalize(wavering);
   vec3 across = normalize(vec3(dir.z, 0.0, -dir.x));
   vec3 up = cross(dir, across);
   /* The quartile midpoints of a unit Gaussian, ±0.32 and ±1.15. */
   float v = (slot < 2 ? -1.0 : 1.0) * (slot == 0 || slot == 3 ? 1.15 : 0.32);
   float a = (slot == 1 || slot == 3 ? 0.6 : -0.6);
-  vec3 d = cone ? dir + across * (a * rough.x) + up * (v * rough.y) : s.wavering;
+  vec3 d = cone ? dir + across * (a * rough.x) + up * (v * rough.y) : wavering;
   vec3 local;
   vec3 normal;
-  float t = stoneAbove(s.surface, d, false, local, normal);
-  if (t > 0.0) outLight = vec4(stoneLight(s.surface, d, t, local, normal, spread, uLit), 1.0);
+  float t = stoneAbove(at, d, false, local, normal);
+  if (t > 0.0) outLight = vec4(stoneLight(at, d, t, local, normal, spread, uLit), 1.0);
 }
 `;
 

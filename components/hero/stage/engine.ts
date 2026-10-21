@@ -48,14 +48,17 @@ import {
   createProgram,
   createTarget,
   deleteTarget,
+  discardBound,
+  drawsInTiles,
   parseColor,
   programsLinked,
+  setTiledGpu,
   srgbToLinear,
   supportsHalfFloatTargets,
   type Program,
   type Target,
 } from "./gl";
-import { PARALLAX } from "./motion";
+import { CLOCKS, PARALLAX } from "./motion";
 import { FILM, RENDER } from "./optics";
 import { buildPlates, deletePlates, type Plates } from "./plates";
 import { DOWN_FRAG, FILM_FRAG, UP_FRAG } from "./shaders/post";
@@ -316,6 +319,8 @@ export function createStageEngine(options: StageEngineOptions): StageEngine | nu
     powerPreference: "default",
   });
   if (!gl || !supportsHalfFloatTargets(gl)) return null;
+  /* Phones' tiles: the passes say what they overwrite (gl.ts discardBound). */
+  setTiledGpu(drawsInTiles(gl));
   /* Asked for before the first shader, so every compile can run on the
      browser's own threads (gl.ts programsLinked). */
   gl.getExtension("KHR_parallel_shader_compile");
@@ -729,14 +734,18 @@ class Stage implements StageEngine {
     const elapsed = now - this.lastTime;
     this.lastTime = now;
     this.watchFrameRate(elapsed);
-    this.tick(Math.min(elapsed / 1000, PARALLAX.maxFrame), true);
+    const seconds = elapsed / 1000;
+    this.tick(Math.min(seconds, PARALLAX.maxFrame), true, Math.min(seconds, CLOCKS.maxFrame));
   };
 
-  private tick(dt: number, paint: boolean): void {
-    this.time += dt;
-    if (!this.reduced) this.waterTime += dt;
-    this.mistTime += this.reduced ? dt * 0.25 : dt;
-    if (!this.reduced) this.rainTime += dt;
+  /** `dt`: the step for what has state (the springs, the air, the
+   *  flowers); `wall`: the frame's real length, for what is only a function
+   *  of time (motion.ts CLOCKS). */
+  private tick(dt: number, paint: boolean, wall = dt): void {
+    this.time += wall;
+    if (!this.reduced) this.waterTime += wall;
+    this.mistTime += this.reduced ? wall * 0.25 : wall;
+    if (!this.reduced) this.rainTime += wall;
     this.camera.update(dt, this.params.swayRate);
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
@@ -893,6 +902,7 @@ class Stage implements StageEngine {
     const u = this.scene.uniforms;
     gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    discardBound(gl);
     gl.viewport(0, 0, target.width, target.height);
     gl.useProgram(this.scene.handle);
     setCameraUniforms(gl, u, f.camera);
@@ -920,6 +930,7 @@ class Stage implements StageEngine {
     let source: Target = scene;
     for (const level of this.glowDown) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, level.fbo);
+      discardBound(gl);
       gl.viewport(0, 0, level.width, level.height);
       bindTexture(gl, this.down.uniforms.uSource, 0, source.tex);
       gl.uniform2f(this.down.uniforms.uTexel, 1 / source.width, 1 / source.height);
@@ -932,6 +943,7 @@ class Stage implements StageEngine {
     for (let i = this.glowUp.length - 1; i >= 0; i -= 1) {
       const out = this.glowUp[i];
       gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+      discardBound(gl);
       gl.viewport(0, 0, out.width, out.height);
       bindTexture(gl, this.up.uniforms.uCoarse, 0, coarse.tex);
       bindTexture(gl, this.up.uniforms.uFine, 1, this.glowDown[i].tex);

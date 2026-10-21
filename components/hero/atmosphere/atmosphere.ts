@@ -18,7 +18,7 @@
  */
 
 import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
-import { bindTexture, createProgram, createTarget, deleteTarget, type Program, type Target } from "../stage/gl";
+import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, type Program, type Target } from "../stage/gl";
 import { breathing, Gusts } from "./ambient";
 import { carryPhase, FluidSim, type AirParams } from "./fluid";
 import { Forcing } from "./forcing";
@@ -229,6 +229,7 @@ export class Atmosphere {
     const u = this.program.uniforms;
     gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, sheets.fbo);
+    discardBound(gl, true);
     gl.viewport(0, 0, sheets.width, sheets.height);
     gl.useProgram(this.program.handle);
     setCameraUniforms(gl, u, camera);
@@ -284,6 +285,7 @@ export class Atmosphere {
     bindTexture(gl, v.uPacked, 0, sheets.tex);
     for (const [target, set] of [[this.densityTarget, 0], [this.lightTarget, 1]] as const) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      discardBound(gl);
       gl.uniform1f(v.uSet, set);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }

@@ -306,6 +306,32 @@ The user replaced the flower: two cut chamomiles lying on the stone, their stems
 - **GPU.** ~0.13 ms a frame at 1440, ~0.36 ms at 4K (was ~0.3–0.55 and ~0.85), the medians of 170 frames with full frames drawn between them. TIMED ALONE, with nothing else for the GPU to do between timings, the same pass read 8 ms: the GPU drops its clocks when idle. Keep it busy when timing a small pass.
 - **CPU.** The rays are posed each frame (two heads, ~22 rays of 12 samples); the stems, discs, bracts and cloth are posed once.
 
+## Lighter for phones, the picture kept (2026-10-21)
+
+The user saw lag on a realme C11 (2021): a PowerVR GE8322, about a sixth of the Intel UHD 630 used here as a phone-class GPU. Their rule was to make no visible change, so every change was proven by a frame diff (frozen clock, seeded randomness, phone, 1440 and HiDPI frames, the opening shot, rest and a lean). The final frames are 99.996–99.999% identical to the old code's; the rest are a handful of isolated pixels in the moving lake and on the edge of the stone's reflection.
+
+GPU time per frame, before → after, measured interleaved A/B in development (the GPU numbers match production):
+
+| | GTX 1050 Ti, 1440 | GTX 1050 Ti, phone size | Intel UHD 630, phone size |
+|---|---|---|---|
+| stone | 1.08 → 0.38 ms | 1.9 → 0.78 ms | ~17–20 → ~7 ms |
+| whole frame | 8.2–8.5 → 7.3–7.6 ms | 7.8–8.0 → 6.6–6.8 ms | ~68 → ~45–53 ms |
+
+Phone size here means 390×844 at 3×, drawn at 780×1688. The Intel figures move ±30% as the laptop heats up.
+
+- **The stone's reflection works the lake out once.** Each of the four reflection slots was recomputing the whole lake surface (26 waves and the lapping) over a rect that on a phone spans most of the near water, then throwing it away wherever the stone isn't reflected. Now `MIRROR_SURFACE_FRAG` does it once per pixel into RGBA32UI: the reflected ray as its bits, and the cone width as two halves. The half rounding is the only thing that moves pixels, 3–7 per frame on the reflection's edge; applying just that rounding to the old code reproduced the same diff. The slots then trace only where the reflection falls. Slots are drawn only over the rect they need, not the targets' 15% headroom.
+- **The waves' speeds and phases are worked out on the CPU.** The dispersion relation is computed once per frame (`stage/uniforms.ts` `phasesNow`), in double precision, wrapped round the circle; the GPU's single precision had drifted ~0.002 rad per ten minutes. NOT A BRANCH IN THE WAVE LOOP: skipping the swell's zero-gain waves with `continue` stopped Direct3D unrolling the loop and cost the scene and the lake 0.15–0.3 ms on the 1050 Ti. Without it, both got faster.
+- **Phones are told what each pass overwrites.** `gl.ts` `discardBound` is called before the ~44 passes that draw their whole target (the air, the sheets, the slots, the lake, the scene, the glow). A tile-based GPU otherwise copies the old contents back in, tile by tile. It fires only on tile-based GPUs (`drawsInTiles`): a desktop GPU behind Direct3D took the hint as work, ~0.4 ms a frame. To test it, `window.__kaviDiscardProbe` (development) fills those targets with junk instead; the frames stayed identical, and so did frames with a phone's user agent.
+- **Real time below 10 fps.** The waves, the mist, the rain and the grain follow the frame's real length, up to 1 s (`stage/motion.ts` `CLOCKS`). The springs and the air keep their 0.1 s cap. Before, at 5 fps they ran at half speed.
+- **Cold compile.** The new program set compiles ~6% faster (4.97 s against 5.3 s, all 24 programs cold, interleaved): the mirror's slot program no longer carries the lake surface.
+
+Tried and not kept:
+- **The edge rays' light only on the stone's outline.** It was bit-exact (a mask pass, then a second drawing), but saved only ~0.7 ms on Intel and nothing on the 1050 Ti, and its extra passes cost tile-based GPUs.
+- **The scene reusing the lake pass's reflectance.** No gain.
+- **Paper and regrade on the luma only.** No gain, and not exact: the shade token, the stone and the flowers' colours aren't grey.
+- **The reflection search cut to 16 steps.** It misses thin trunks, so the reflections change.
+- **The search with exact Hi-Z skipping.** Parked: each block test costs ~4 reads, for an estimated 1–2 ms on Intel.
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

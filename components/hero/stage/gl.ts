@@ -214,6 +214,63 @@ export function createTarget(
   return { tex, fbo, width, height };
 }
 
+/* Whether this GPU draws in tiles (drawsInTiles), set once by the engine:
+   only there does discardBound save anything. */
+let tiled = false;
+
+/**
+ * Whether the GPU draws in tiles held on the chip: every phone's and
+ * tablet's (Mali, Adreno, PowerVR, Apple, Samsung's Xclipse) and an
+ * Apple-silicon Mac's. By its name where the browser gives one (Chrome and
+ * Safari only through the debug extension: their RENDERER is a mask), and
+ * otherwise by a phone's or tablet's user agent.
+ */
+export function drawsInTiles(gl: WebGL2RenderingContext): boolean {
+  let renderer = String(gl.getParameter(gl.RENDERER));
+  if (/^WebKit/.test(renderer)) {
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    if (info) renderer = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  }
+  if (/Mali|Adreno|PowerVR|Apple|Xclipse|Immortalis|Maleoon/i.test(renderer)) return true;
+  return /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+}
+
+/** Sets whether discardBound tells the GPU anything (drawsInTiles). */
+export function setTiledGpu(value: boolean): void {
+  tiled = value;
+}
+
+/**
+ * THE BOUND TARGET'S OLD CONTENTS ARE NOT NEEDED: the pass about to draw
+ * into it covers every pixel anything will read from it. Call with the
+ * scissor off, before drawing.
+ *
+ * A phone's GPU (Mali, Adreno, PowerVR, Apple) draws in small tiles held
+ * on the chip; told nothing, it first copies the target's old contents in
+ * from memory, tile by tile, in case the pass leaves some of them — across
+ * the ~40 passes of a frame (the air alone is ~30 a step), memory traffic a
+ * phone pays in time and heat for nothing. ONLY THERE: a desktop GPU
+ * behind Direct3D took the hint as work, ~0.4 ms a frame (GTX 1050 Ti,
+ * 2026-10-21), so it is told nothing (drawsInTiles). `integer`: an integer
+ * target (RGBA32UI).
+ *
+ * In development, `window.__kaviDiscardProbe` fills the target with junk
+ * instead — what a phone may leave there — so a frame that still reads old
+ * contents shows it on any GPU.
+ */
+export function discardBound(gl: WebGL2RenderingContext, integer = false): void {
+  if (process.env.NODE_ENV !== "production" && (globalThis as { __kaviDiscardProbe?: boolean }).__kaviDiscardProbe) {
+    if (integer) gl.clearBufferuiv(gl.COLOR, 0, [0xdeadbeef, 0x7f7f7f7f, 0x12345678, 0xffffffff]);
+    else gl.clearBufferfv(gl.COLOR, 0, [7, -3, 5, 0.37]);
+    return;
+  }
+  if (tiled) gl.invalidateFramebuffer(gl.FRAMEBUFFER, DISCARD_COLOR);
+}
+
+/* COLOR_ATTACHMENT0, as its number: this module is also evaluated where
+   there is no WebGL (the server's render). */
+const DISCARD_COLOR = [0x8ce0];
+
 /** Zeroes a target. New sim targets must start from rest, not from garbage. */
 export function clearTarget(gl: WebGL2RenderingContext, target: Target): void {
   gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);

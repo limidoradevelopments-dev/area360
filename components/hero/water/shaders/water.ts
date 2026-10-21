@@ -18,7 +18,7 @@
  * angles.
  */
 
-import { GRAVITY, LAPS, SWELL_COUNT, TENSION, UNDULATION_COUNT, WAVES } from "../motion";
+import { LAPS, SWELL_COUNT, UNDULATION_COUNT, WAVES } from "../motion";
 
 export const WATER_GLSL = /* glsl */ `
 #define WAVE_COUNT ${WAVES.length}
@@ -30,7 +30,10 @@ export const WATER_GLSL = /* glsl */ `
 /* the body of the lake (linear), reflectance at normal incidence */
 uniform vec3 uWaterBody;
 uniform float uWaterR0;
-/* each wave: wavenumber (rad/m, x and z), amplitude (m), phase */
+/* each wave: wavenumber (rad/m, x and z), amplitude (m), and its phase
+   NOW (rad): its start less its angular speed times the lake's time —
+   the speed by the dispersion relation, worked out once a frame on the
+   CPU (stage/uniforms.ts), not at every pixel of every pass */
 uniform vec4 uWaves[WAVE_COUNT];
 /* seconds of the lake's own time */
 uniform float uWaterTime;
@@ -53,8 +56,9 @@ uniform vec3 uWaterClarity;
 uniform float uSubjectWaver;
 /* the lowest a reflected ray may dip, as a share of its mirror elevation */
 uniform float uMinElevation;
-/* the lake lapping at the stone: wavenumber (rad/m), amplitude (m), phase;
-   then how far it reaches (m) and its gain (1 = designed) */
+/* the lake lapping at the stone: wavenumber (rad/m), amplitude (m), phase
+   now (as the waves'); then how far it reaches (m) and its gain (1 =
+   designed) */
 uniform vec3 uLaps[LAP_COUNT];
 uniform vec2 uLapFade;
 
@@ -107,12 +111,10 @@ vec3 waterNormal(vec2 p, vec2 sigma, out vec2 roughness, out vec2 smear) {
   roughness = vec2(0.0);
   for (int i = 0; i < WAVE_COUNT; i++) {
     vec4 w = uWaves[i];
-    float k = length(w.xy);
-    float omega = sqrt(${GRAVITY.toFixed(3)} * k + ${TENSION.toExponential(3)} * k * k * k);
     float amp = w.z * (i < SWELL_COUNT ? uWaterGain.x : i < BROAD_COUNT ? uWaterGain.y : uWaterGain.z * paw);
     vec2 ks = w.xy * sigma;
     float seen = exp(-0.5 * dot(ks, ks));
-    float phase = dot(w.xy, p) - omega * uWaterTime + w.w;
+    float phase = dot(w.xy, p) + w.w;
     /* h = A cos(phase): its gradient is −A k sin(phase). */
     vec2 grad = amp * w.xy;
     slope -= grad * sin(phase) * seen;
@@ -130,11 +132,10 @@ vec2 lapSlope(float d, vec2 away, vec2 sigma, inout vec2 roughness) {
   if (fade < 1e-3) return slope;
   for (int i = 0; i < LAP_COUNT; i++) {
     vec3 w = uLaps[i];
-    float omega = sqrt(${GRAVITY.toFixed(3)} * w.x + ${TENSION.toExponential(3)} * w.x * w.x * w.x);
     vec2 ks = w.x * away * sigma;
     float seen = exp(-0.5 * dot(ks, ks));
     vec2 grad = w.y * fade * w.x * away;
-    slope -= grad * sin(w.x * d - omega * uWaterTime + w.z) * seen;
+    slope -= grad * sin(w.x * d + w.z) * seen;
     roughness += 0.5 * grad * grad * (1.0 - seen * seen);
   }
   return slope;

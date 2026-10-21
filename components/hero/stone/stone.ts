@@ -7,8 +7,10 @@
  *   SEEN    the stone as the camera sees it: ten slots — the light of the
  *           pixel's centre and its four edge rays, then their normals —
  *           over a rect round where the stone stands above the water
- *   MIRROR  the stone as the lake mirrors it: four slots — the reflection's
- *           cone of rays — over a rect of the near water, round where the
+ *   MIRROR  the stone as the lake mirrors it: the lake's surface there,
+ *           once a pixel, then four slots — the reflection's cone of rays,
+ *           traced only where it falls — over a rect of the near water,
+ *           round where the
  *           stone's reflection can fall
  *
  * Each rect follows the camera every frame (its lean moves the stone a few
@@ -18,7 +20,7 @@
  */
 
 import { CAMERA_UNIFORMS, CAMERA, setCameraUniforms, type CameraFrame } from "../stage/camera";
-import { bindTexture, createProgram, createTarget, deleteTarget, exactTargetFormat, type Program, type Target } from "../stage/gl";
+import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, exactTargetFormat, type Program, type Target } from "../stage/gl";
 import { DEPTH } from "../stage/layers";
 import {
   FOG_UNIFORMS,
@@ -32,7 +34,7 @@ import {
   type Uniforms,
 } from "../stage/uniforms";
 import { STONE } from "./optics";
-import { STONE_MIRROR_FRAG, STONE_VIEW_FRAG } from "./shaders/slots";
+import { MIRROR_SURFACE_FRAG, STONE_MIRROR_FRAG, STONE_VIEW_FRAG } from "./shaders/slots";
 
 /** The uniforms the scene pass declares to read the slots (SLOTS_GLSL). */
 export const SLOT_UNIFORMS = [
@@ -80,7 +82,8 @@ interface Slots {
   readonly program: Program;
   readonly count: number;
   target: Target | null;
-  /** One slot's rect in the scene's target: corner and size (px). */
+  /** One slot's rect in the scene's target: corner and size (px). Only
+   *  this is drawn, and read: the target may be larger (place). */
   readonly rect: [number, number, number, number];
   /** From one slot to the next in the target (px). */
   readonly step: [number, number];
@@ -91,14 +94,19 @@ export class StonePass {
   private readonly vao: WebGLVertexArrayObject;
   private readonly seen: Slots;
   private readonly mirror: Slots;
+  /* The lake's surface under the mirror's rect, once a pixel, which its
+     four slots read (shaders/slots.ts MIRROR_SURFACE_FRAG): one slot's
+     size, integers. */
+  private readonly surfaceProgram: Program;
+  private surface: Target | null = null;
   private readonly box: Box = [0, 0, 0, 0];
 
   constructor(gl: WebGL2RenderingContext, vao: WebGLVertexArrayObject) {
     this.gl = gl;
     this.vao = vao;
     const names = [...CAMERA_UNIFORMS, ...FOG_UNIFORMS, ...STONE_UNIFORMS, ...WATER_UNIFORMS, "uSlot"];
-    const slots = (fragment: string, count: number): Slots => ({
-      program: createProgram(gl, fragment, names),
+    const slots = (fragment: string, count: number, extra: readonly string[] = []): Slots => ({
+      program: createProgram(gl, fragment, [...names, ...extra]),
       count,
       target: null,
       rect: [0, 0, 0, 0],
@@ -106,7 +114,8 @@ export class StonePass {
     });
     /* SEEN: five rays' light, then the same five rays' normals. */
     this.seen = slots(STONE_VIEW_FRAG, 10);
-    this.mirror = slots(STONE_MIRROR_FRAG, 4);
+    this.mirror = slots(STONE_MIRROR_FRAG, 4, ["uMirrorSurface", "uSlotOrigin"]);
+    this.surfaceProgram = createProgram(gl, MIRROR_SURFACE_FRAG, [...CAMERA_UNIFORMS, ...STONE_UNIFORMS, ...WATER_UNIFORMS]);
   }
 
   /** The scene's target was rebuilt: the slots are placed afresh. */
@@ -115,6 +124,8 @@ export class StonePass {
       deleteTarget(this.gl, slots.target);
       slots.target = null;
     }
+    deleteTarget(this.gl, this.surface);
+    this.surface = null;
   }
 
   /** Places both rects for this frame's camera and draws their slots. */
@@ -122,6 +133,7 @@ export class StonePass {
     this.place(this.seen, seenBounds(this.box, f), f);
     this.draw(this.seen, f);
     this.place(this.mirror, mirrorBounds(this.box, f), f);
+    this.drawSurface(f);
     this.draw(this.mirror, f);
   }
 
@@ -141,14 +153,17 @@ export class StonePass {
     this.resize();
     this.gl.deleteProgram(this.seen.program.handle);
     this.gl.deleteProgram(this.mirror.program.handle);
+    this.gl.deleteProgram(this.surfaceProgram.handle);
   }
 
   /**
    * Fits the slots' rect round `box` (px of the scene's target, clipped to
    * it). The corner snaps to even pixels, so the slots' 2×2 quads are the
    * scene's (stage/shaders/pixel.ts). The targets grow with headroom when
-   * the rect outgrows them, and are kept otherwise; the rect is then the
-   * targets' size, reaching a little further up and right than it must.
+   * the rect outgrows them, and are kept otherwise. ONLY THE RECT IS
+   * DRAWN, and read (the scene finds no stone past it): drawn to the
+   * targets' size, a slot also worked out the headroom, up to a third more
+   * than the stone can reach.
    */
   private place(slots: Slots, box: Box, f: SetFrame): void {
     const even = (v: number) => 2 * Math.floor(v / 2);
@@ -172,8 +187,8 @@ export class StonePass {
     }
     rect[0] = x0;
     rect[1] = y0;
-    rect[2] = size[0];
-    rect[3] = size[1];
+    rect[2] = w;
+    rect[3] = h;
   }
 
   /** One slot's size in the current targets (0 × 0 if none). */
@@ -199,7 +214,34 @@ export class StonePass {
     slots.target = createTarget(gl, width, height, exactTargetFormat(gl), gl.NEAREST);
     slots.step[0] = across ? w : 0;
     slots.step[1] = across ? 0 : h;
+    if (slots === this.mirror) {
+      deleteTarget(gl, this.surface);
+      this.surface = createTarget(gl, w, h, gl.RGBA32UI, gl.NEAREST);
+    }
     return true;
+  }
+
+  /** The lake's surface under the mirror's rect, once a pixel (its four
+   *  slots read it): the scene's own pixels, as a slot's are (draw). */
+  private drawSurface(f: SetFrame): void {
+    const target = this.surface;
+    const rect = this.mirror.rect;
+    if (!target || rect[2] === 0) return;
+    const gl = this.gl;
+    const u = this.surfaceProgram.uniforms;
+    gl.bindVertexArray(this.vao);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    /* Read only inside the rect, which is drawn whole. */
+    discardBound(gl, true);
+    gl.useProgram(this.surfaceProgram.handle);
+    setCameraUniforms(gl, u, f.camera);
+    setStoneUniforms(gl, u, f);
+    setWaterUniforms(gl, u, f);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.viewport(-rect[0], -rect[1], f.width, f.height);
+    gl.scissor(0, 0, rect[2], rect[3]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disable(gl.SCISSOR_TEST);
   }
 
   private draw(slots: Slots, f: SetFrame): void {
@@ -210,11 +252,14 @@ export class StonePass {
     const u = slots.program.uniforms;
     gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    /* Read only inside each slot's rect, which is drawn whole. */
+    discardBound(gl);
     gl.useProgram(slots.program.handle);
     setCameraUniforms(gl, u, f.camera);
     setFogUniforms(gl, u, f);
     setStoneUniforms(gl, u, f);
     setWaterUniforms(gl, u, f);
+    if (slots === this.mirror && this.surface) bindTexture(gl, u.uMirrorSurface, 0, this.surface.tex);
     /* Each slot through the scene's own viewport, shifted so the rect lands
        on the slot, and scissored to it: the scene's own pixels, its own vUv
        and its own 2×2 quads (the shift is even: place). */
@@ -225,6 +270,7 @@ export class StonePass {
       gl.viewport(ox - rect[0], oy - rect[1], f.width, f.height);
       gl.scissor(ox, oy, rect[2], rect[3]);
       gl.uniform1f(u.uSlot, k);
+      gl.uniform2f(u.uSlotOrigin, ox, oy);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     gl.disable(gl.SCISSOR_TEST);

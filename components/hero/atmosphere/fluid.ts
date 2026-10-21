@@ -14,7 +14,7 @@
  * projection (shaders/sheets.ts), so the camera's sway never drags the air.
  */
 
-import { bindTexture, clearTarget, createProgram, createTarget, deleteTarget, type Program, type Target } from "../stage/gl";
+import { bindTexture, clearTarget, createProgram, createTarget, deleteTarget, discardBound, type Program, type Target } from "../stage/gl";
 import type { ForcingFrame } from "./forcing";
 import { FLUID, FOG, STRATIFICATION, TURBULENCE, WAKE, WIND } from "./motion";
 import {
@@ -190,8 +190,10 @@ export class FluidSim {
     gl.bindVertexArray(this.vao);
     gl.viewport(0, 0, this.gridW, this.gridH);
 
+    /* Every pass covers its whole target, and reads only others. */
     const draw = (target: Target) => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      discardBound(gl);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
     const read = () => fluid[this.fluidIndex];

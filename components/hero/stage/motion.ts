@@ -75,6 +75,19 @@ export const PARALLAX = {
 } as const;
 
 /**
+ * THE SCENE'S CLOCKS KEEP REAL TIME. The springs and the simulated air take
+ * at most PARALLAX.maxFrame of a frame: a longer step throws them. What is
+ * only a function of time — the waves, the mist's drift, the rain's fall,
+ * the grain — takes the frame's real length, up to `maxFrame` (s): held to
+ * 0.1 s a frame too, it ran in slow motion on a device below 10 fps (half
+ * speed at 5). At 10 fps and faster nothing changes. Past `maxFrame` (a
+ * device waking from sleep with the page shown) the time is dropped.
+ */
+export const CLOCKS = {
+  maxFrame: 1,
+} as const;
+
+/**
  * THE ARRIVAL (2026-10-20, the user: the scene should not start at rest;
  * "a bit of a top view, then gently down to our angle"). The scene comes
  * up out of black with the camera settling into place: from `back` m
