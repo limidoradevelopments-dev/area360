@@ -128,6 +128,18 @@ export class StonePass {
     this.surface = null;
   }
 
+  /**
+   * THE ARRIVAL IS OVER: the targets grew for its opening shot, the stone
+   * close and its rects large, and grow-only they kept that size for the
+   * whole visit — on a phone held upright, 60 MB for the stone seen where
+   * it needs 22 at rest (2026-10-22). Let go now; drawn next, they are
+   * made again round the rects the resting stone needs. Nothing drawn
+   * changes: only what lies outside the rects, which nothing reads.
+   */
+  refit(): void {
+    this.resize();
+  }
+
   /** Places both rects for this frame's camera and draws their slots. */
   render(f: SetFrame): void {
     this.place(this.seen, seenBounds(this.box, f), f);

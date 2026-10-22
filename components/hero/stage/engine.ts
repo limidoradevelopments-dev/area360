@@ -494,6 +494,9 @@ class Stage implements StageEngine {
   private vsync = 1000 / 60;
   private lastDisplay = 0;
   private floored = false;
+  /* The arrival's targets are to be fitted to the resting scene once it is
+     over (stone.ts refit). */
+  private fitPending = false;
   /* Measuring the device in the dark (RENDER.calibrate): the tier being
      tried, the frames drawn of it, the intervals counted, since when. None
      once the scene is revealed. */
@@ -618,6 +621,7 @@ class Stage implements StageEngine {
     /* The rain arrives on the visit's clock (weather/motion.ts
        RAIN_MOTION.onset): the visit begins now. */
     this.rainTime = 0;
+    this.fitPending = true;
     this.slowSince = -1;
     this.frameAverage = this.frameCap || 1000 / 60;
     this.options.onFirstFrame();
@@ -653,6 +657,13 @@ class Stage implements StageEngine {
     }
     /* Not a stall of the page (a tab put aside): a frame. */
     if (elapsed > 0 && elapsed < 1000) c.samples.push(elapsed);
+    /* A FAST DEVICE IS SETTLED AT ONCE: two frames running well inside the
+       display's rate at full quality. */
+    const n = c.samples.length;
+    if (c.tier === RENDER.ladder[0].tier && n >= 2 && Math.max(c.samples[n - 1], c.samples[n - 2]) <= RENDER.holds.fast) {
+      this.reveal(0);
+      return;
+    }
     /* Enough to judge — or one frame so far over what a rung at 30 holds
        that no more are needed. */
     const enough =
@@ -858,14 +869,30 @@ class Stage implements StageEngine {
          frames, so their intervals came back fast whatever the frame
          cost (a 6 fps device measured as 120); and the wait the read
          makes is one nobody sees. */
-      const start = performance.now();
-      this.tick(dt, false, wall);
-      this.camera.arrive();
-      this.render();
+      /* IN A BURST WHILE FAST: frames drawn back to back while each runs
+         well inside the display's rate and the burst under `burstMs`, so
+         a fast device is measured in a few tens of milliseconds instead of
+         a frame of the display's each. Anything slower a frame at a time,
+         the page free between: drawn back to back, a frame near a rung's
+         edge read ~30% dearer than it runs (a GTX 1050 Ti at 4K: 45 ms
+         against the 35 it holds), and dropped a tier it did not need. */
       const gl = this.gl;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.probePixel);
-      this.calibrate(performance.now() - start, now);
+      const burst = performance.now();
+      let step = dt;
+      let stepWall = wall;
+      do {
+        const start = performance.now();
+        this.tick(step, false, stepWall);
+        this.camera.arrive();
+        this.render();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.probePixel);
+        const end = performance.now();
+        this.calibrate(end - start, end);
+        step = Math.min((end - start) / 1000, PARALLAX.maxFrame);
+        stepWall = Math.min((end - start) / 1000, CLOCKS.maxFrame);
+        if (end - start > RENDER.holds.fast) break;
+      } while (this.calibration && performance.now() - burst < RENDER.calibrate.burstMs);
       return;
     }
     this.watchFrameRate(elapsed);
@@ -881,6 +908,11 @@ class Stage implements StageEngine {
     this.mistTime += this.reduced ? wall * 0.25 : wall;
     if (!this.reduced) this.rainTime += wall;
     this.camera.update(dt, this.params.swayRate);
+    if (this.fitPending && !this.camera.arriving) {
+      this.fitPending = false;
+      this.stone.refit();
+      this.bloom.refit();
+    }
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
     this.atmosphere.tick(dt, this.params, this.params, tier.pressureIterations, this.reduced);

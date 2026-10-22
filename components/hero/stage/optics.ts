@@ -197,7 +197,7 @@ export const RENDER = {
    * longer runs ~20 s at the wrong quality and then changes before the
    * visitor's eyes (the watcher below did, judging only after the arrival).
    */
-  calibrate: { warmup: 3, frames: 6, seconds: 0.6 },
+  calibrate: { warmup: 3, frames: 6, seconds: 0.6, burstMs: 50 },
   /**
    * THE LADDER, best first: a quality tier and a frame rate (0: every frame
    * the display shows). THE FRAME RATE GIVES WAY BEFORE THE PICTURE: an
@@ -214,7 +214,9 @@ export const RENDER = {
     { tier: 1, fps: 30 },
     { tier: 2, fps: 30 },
   ],
-  holds: { full: 20, capped: 30 },
+  /* `fast`: two frames at most this settle a device at full quality at
+   * once (≥ 70 fps of work: a fast device in the dark ~0.05 s, not ~0.15). */
+  holds: { full: 20, capped: 30, fast: 14 },
   /**
    * AND WATCHED AFTER (a phone heating up, a tab beside it): from the end
    * of the arrival, an average frame interval over `slowFrameMs` (the

@@ -618,6 +618,16 @@ export class BloomPass {
     gl.deleteBuffer(this.pollenBuffer);
     gl.deleteTexture(this.poseTex);
     gl.deleteTexture(this.noiseTex);
+    this.refit();
+  }
+
+  /**
+   * The arrival is over (as stone.ts refit): the pictures grew for its
+   * opening shot, the flowers close and large, and are let go now; drawn
+   * next, they are made again round the resting flowers.
+   */
+  refit(): void {
+    const gl = this.gl;
     this.release(this.nearSampled);
     this.release(this.mirrorSampled);
     for (const p of [this.near, this.fine, this.mirror, ...this.halos]) {
