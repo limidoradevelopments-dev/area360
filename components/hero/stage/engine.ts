@@ -42,7 +42,7 @@ import { WATER } from "../water/optics";
 import { StillnessClock } from "../weather/clock";
 import { STILLNESS } from "../weather/motion";
 import { RainPass } from "../weather/rain";
-import { CAMERA, CAMERA_UNIFORMS, CameraRig, focalPx, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
+import { CAMERA, CAMERA_UNIFORMS, CameraRig, focalPx, frameCenter, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
 import {
   bindTexture,
   createProgram,
@@ -261,6 +261,10 @@ export interface StageEngineOptions {
   onFirstFrame: () => void;
   /** The context is gone; the static paint must come back. */
   onLost: () => void;
+  /** Even the slowest rung cannot keep up here (stage/optics.ts RENDER):
+   *  what stands in is the page's to decide. Called once; without it the
+   *  slowest rung stays. */
+  onFloor?: () => void;
 }
 
 export interface StageEngine {
@@ -479,8 +483,22 @@ class Stage implements StageEngine {
   private bloomClock = 0;
   private lastTime = 0;
   private raf = 0;
-  private slowFrames = 0;
   private frameAverage = 1000 / 60;
+  /* Since when the average has been slow (ms), or −1. */
+  private slowSince = -1;
+  /* The rung of the ladder the visit is on (stage/optics.ts RENDER), the
+     interval between drawn frames it asks (ms; 0: every frame the display
+     shows), and the display's own frame: the shortest interval seen. */
+  private rung = 0;
+  private frameCap = 0;
+  private vsync = 1000 / 60;
+  private lastDisplay = 0;
+  private floored = false;
+  /* Measuring the device in the dark (RENDER.calibrate): the tier being
+     tried, the frames drawn of it, the intervals counted, since when. None
+     once the scene is revealed. */
+  private calibration: { tier: number; seen: number; samples: number[]; since: number } | null = null;
+  private readonly probePixel = new Uint8Array(4);
 
   /* The last pointer position, to tell a movement from a tremor. */
   private lastPointer: [number, number] | null = null;
@@ -493,6 +511,7 @@ class Stage implements StageEngine {
      mote of pollen, it allocates nothing). */
   private airFrame: Atmosphere["air"] = null;
   private readonly cell: [number, number] = [0, 0];
+  private readonly restCenter: [number, number] = [0.5, 0.5];
 
   private visible = true;
   private reduced: boolean;
@@ -573,17 +592,106 @@ class Stage implements StageEngine {
     this.measureFrame();
     this.plates = plates;
     this.ready = true;
-    /* THE ARRIVAL: the first frame is drawn from where the camera starts,
-       and the air is set moving, as the scene comes up out of black
-       (stage/motion.ts ARRIVAL, atmosphere/motion.ts ARRIVAL_AIR). Under
-       reduced motion it is simply there. */
-    if (!this.reduced) this.camera.arrive();
-    this.atmosphere.beginArrival();
+    /* MEASURED IN THE DARK (stage/optics.ts RENDER.calibrate): frames drawn
+       unseen, held at the opening shot, the costliest view, before the
+       scene is revealed (reveal). */
+    this.camera.arrive();
+    this.calibration = { tier: this.tier, seen: 0, samples: [], since: performance.now() };
     /* The flowers posed before their first frame. */
     this.stepBloom(0);
     this.render();
-    this.options.onFirstFrame();
     this.syncLoop();
+  }
+
+  /**
+   * Measured: the visit starts on rung `rung`, and the scene comes up out
+   * of black on its ARRIVAL — the camera from where it starts and the air
+   * set moving (stage/motion.ts ARRIVAL, atmosphere/motion.ts
+   * ARRIVAL_AIR); under reduced motion it is simply there.
+   */
+  private reveal(rung: number): void {
+    this.calibration = null;
+    this.setRung(rung);
+    if (this.reduced) this.camera.settle();
+    else this.camera.arrive();
+    this.atmosphere.beginArrival();
+    /* The rain arrives on the visit's clock (weather/motion.ts
+       RAIN_MOTION.onset): the visit begins now. */
+    this.rainTime = 0;
+    this.slowSince = -1;
+    this.frameAverage = this.frameCap || 1000 / 60;
+    this.options.onFirstFrame();
+  }
+
+  /** Onto rung `rung` of the ladder: its frame rate, and its tier (the
+   *  targets rebuilt only if that changed). */
+  private setRung(rung: number): void {
+    this.rung = rung;
+    const step = RENDER.ladder[rung];
+    this.frameCap = step.fps > 0 ? 1000 / step.fps : 0;
+    if (step.tier !== this.tier) {
+      this.tier = step.tier;
+      this.measureFrame();
+    }
+  }
+
+  /**
+   * One frame drawn in the dark, its work `elapsed` ms: past the warm-up,
+   * counted; with enough, the rung decided (RENDER.ladder) — or a cheaper
+   * tier tried, still in the dark; at the last, the floor.
+   */
+  private calibrate(elapsed: number, now: number): void {
+    const c = this.calibration;
+    if (!c) return;
+    const C = RENDER.calibrate;
+    c.seen += 1;
+    /* The first tier warms the driver up; a cheaper one tried after only
+       rebuilds its targets. */
+    if (c.seen <= (c.tier === RENDER.ladder[0].tier ? C.warmup : 1)) {
+      c.since = now;
+      return;
+    }
+    /* Not a stall of the page (a tab put aside): a frame. */
+    if (elapsed > 0 && elapsed < 1000) c.samples.push(elapsed);
+    /* Enough to judge — or one frame so far over what a rung at 30 holds
+       that no more are needed. */
+    const enough =
+      c.samples.length >= C.frames ||
+      (c.samples.length >= 2 && now - c.since >= C.seconds * 1000) ||
+      elapsed > RENDER.holds.capped * 3;
+    if (!enough) return;
+    const sorted = c.samples.slice().sort((a, b) => a - b);
+    const work = sorted[sorted.length >> 1];
+    const ladder = RENDER.ladder;
+    if (c.tier === ladder[0].tier && work <= RENDER.holds.full) {
+      this.reveal(0);
+      return;
+    }
+    if (work <= RENDER.holds.capped) {
+      this.reveal(ladder.findIndex((step) => step.tier === c.tier && step.fps > 0));
+      return;
+    }
+    const last = RENDER.tiers.length - 1;
+    if (c.tier >= last) {
+      this.reachFloor();
+      this.reveal(ladder.length - 1);
+      return;
+    }
+    /* Far over (more than a third past what a rung at 30 holds): straight
+       to the slowest tier, not through each. */
+    this.tier = work > RENDER.holds.capped * 1.33 ? last : c.tier + 1;
+    this.measureFrame();
+    c.tier = this.tier;
+    c.seen = 0;
+    c.samples.length = 0;
+    c.since = now;
+  }
+
+  /** Even the slowest rung cannot keep up: the page is told, once. */
+  private reachFloor(): void {
+    if (this.floored) return;
+    this.floored = true;
+    this.options.onFloor?.();
   }
 
   setVisible(visible: boolean): void {
@@ -672,7 +780,7 @@ class Stage implements StageEngine {
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
     /* The scene at most `scenePixels`; the film pass makes up the rest. */
-    const sceneScale = Math.min(1, Math.sqrt((this.sceneCap || tier.scenePixels) / (w * h)));
+    const sceneScale = Math.min(1, Math.sqrt((this.sceneCap || tier.scenePixels) / (w * h)), tier.sceneDpr / this.dpr);
     this.resizeTargets(Math.max(1, Math.round(w * sceneScale)), Math.max(1, Math.round(h * sceneScale)));
     this.upscale = w / (this.sceneTarget?.width ?? w);
     /* The plant at the screen's own pixels where they are finer than the
@@ -731,11 +839,37 @@ class Stage implements StageEngine {
 
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
+    /* The display's own frame: the shortest interval between its frames. */
+    const display = now - this.lastDisplay;
+    this.lastDisplay = now;
+    if (display > 4 && display < this.vsync) this.vsync = display;
     const elapsed = now - this.lastTime;
+    /* A rung at 30 draws every other frame of a 60 Hz display (every
+       fourth at 120): evenly, the display's frame nearest the interval. */
+    if (this.frameCap > 0 && elapsed < this.frameCap - 0.5 * this.vsync) return;
     this.lastTime = now;
-    this.watchFrameRate(elapsed);
     const seconds = elapsed / 1000;
-    this.tick(Math.min(seconds, PARALLAX.maxFrame), true, Math.min(seconds, CLOCKS.maxFrame));
+    const dt = Math.min(seconds, PARALLAX.maxFrame);
+    const wall = Math.min(seconds, CLOCKS.maxFrame);
+    if (this.calibration) {
+      /* In the dark, held at the opening shot. WHAT THE FRAME COSTS, the
+         GPU's share included: a one-pixel read returns only once it is
+         drawn. Unseen, the browser does not wait on the GPU between
+         frames, so their intervals came back fast whatever the frame
+         cost (a 6 fps device measured as 120); and the wait the read
+         makes is one nobody sees. */
+      const start = performance.now();
+      this.tick(dt, false, wall);
+      this.camera.arrive();
+      this.render();
+      const gl = this.gl;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.probePixel);
+      this.calibrate(performance.now() - start, now);
+      return;
+    }
+    this.watchFrameRate(elapsed);
+    this.tick(dt, true, wall);
   };
 
   /** `dt`: the step for what has state (the springs, the air, the
@@ -776,8 +910,9 @@ class Stage implements StageEngine {
    *  rest), into `out`. */
   private airCell(p: readonly number[], air: NonNullable<Atmosphere["air"]>, out: [number, number]): [number, number] {
     const f = focalPx(this.cssW, this.cssH);
-    const u = ((p[0] / p[2]) * f) / this.cssW + 0.5;
-    const v = (((p[1] - CAMERA.eyeHeight) / p[2]) * f) / this.cssH + 1 - CAMERA.horizon;
+    const c = frameCenter(this.cssW, this.cssH, f, this.restCenter);
+    const u = ((p[0] / p[2]) * f) / this.cssW + c[0];
+    const v = (((p[1] - CAMERA.eyeHeight) / p[2]) * f) / this.cssH + c[1];
     out[0] = (u * air.map[0] + air.map[2]) * air.grid[0];
     out[1] = (v * air.map[1] + air.map[3]) * air.grid[1];
     return out;
@@ -995,31 +1130,36 @@ class Stage implements StageEngine {
   }
 
   /**
-   * The adaptive tier. The frame interval is what the visitor feels, so it
-   * is what is measured; a sustained slow average drops one quality tier.
-   * It never climbs back mid-visit: a scene that sharpens and softens as the
-   * frame rate wanders is worse than one that is slightly soft. It judges
-   * from the end of the arrival.
+   * The ladder, watched after the reveal (stage/optics.ts RENDER): the
+   * interval between drawn frames is what the visitor feels, so it is what
+   * is measured; a sustained slow average takes the next rung down. It
+   * never climbs back mid-visit: a scene that sharpens and softens as the
+   * frame rate wanders is worse than one that is slightly soft.
    */
   private watchFrameRate(elapsed: number): void {
     if (elapsed <= 0 || elapsed > 250) return;
-    /* NOT DURING THE ARRIVAL: its first frames carry the page's own warm-up
-       (first draws, uploads) and its opening shot shows more of the lake,
-       the costliest thing to draw (stage/motion.ts ARRIVAL.zoom). Judged
-       then, a fast machine could be dropped a tier for the whole visit by
-       its first three seconds. */
+    /* NOT DURING THE ARRIVAL: its opening shot shows more of the lake, the
+       costliest thing to draw (stage/motion.ts ARRIVAL.zoom), and was
+       measured in the dark already. */
     if (this.camera.arriving) {
-      this.slowFrames = 0;
-      this.frameAverage = 1000 / 60;
+      this.slowSince = -1;
+      this.frameAverage = this.frameCap || 1000 / 60;
       return;
     }
     this.frameAverage += (elapsed - this.frameAverage) * 0.05;
-    this.slowFrames = this.frameAverage > RENDER.slowFrameMs ? this.slowFrames + 1 : 0;
-    if (this.slowFrames > RENDER.slowFrames && this.tier < RENDER.tiers.length - 1) {
-      this.tier += 1;
-      this.slowFrames = 0;
-      this.frameAverage = 1000 / 60;
-      this.measureFrame();
+    if (this.frameAverage <= (this.frameCap > 0 ? RENDER.slowCappedMs : RENDER.slowFrameMs)) {
+      this.slowSince = -1;
+      return;
+    }
+    const now = performance.now();
+    if (this.slowSince < 0) this.slowSince = now;
+    if (now - this.slowSince < RENDER.slowSeconds * 1000) return;
+    this.slowSince = -1;
+    if (this.rung < RENDER.ladder.length - 1) {
+      this.setRung(this.rung + 1);
+      this.frameAverage = this.frameCap || 1000 / 60;
+    } else {
+      this.reachFloor();
     }
   }
 
@@ -1076,6 +1216,9 @@ class Stage implements StageEngine {
 
   advance(seconds: number): void {
     if (!this.ready) return;
+    /* Driven by hand, the page's own frames frozen: revealed as measured
+       fast, at once. */
+    if (this.calibration) this.reveal(0);
     const frames = Math.max(1, Math.round(seconds * 60));
     for (let i = 0; i < frames; i += 1) this.tick(1 / 60, false);
     this.render();

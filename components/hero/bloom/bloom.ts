@@ -38,7 +38,7 @@
  * draw).
  */
 
-import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
+import { CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
 import { bindTexture, createProgram, deleteTarget, type Program } from "../stage/gl";
 import { STONE } from "../stone/optics";
 import { FLUTTER, POLLEN } from "./motion";
@@ -1067,8 +1067,8 @@ function projectPx(camera: CameraFrame, x: number, y: number, z: number, w: numb
   const cz = vx * r[6] + vy * r[7] + vz * r[8];
   if (cz <= 0.1) return false;
   const [vw, vh] = camera.view;
-  out[0] = ((cx / cz) * (camera.focal / vw) + 0.5) * w;
-  out[1] = ((cy / cz) * (camera.focal / vh) + 1 - CAMERA.horizon) * h;
+  out[0] = ((cx / cz) * (camera.focal / vw) + camera.center[0]) * w;
+  out[1] = ((cy / cz) * (camera.focal / vh) + camera.center[1]) * h;
   out[2] = cz;
   return true;
 }

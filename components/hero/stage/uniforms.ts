@@ -250,7 +250,8 @@ export function setPlateUniforms(gl: WebGL2RenderingContext, u: Uniforms, camera
      reaches past the photograph's sides: there its edges fade into the
      fog over a width that grows with how far past them it looks, so the
      forest recedes into the fog instead of stopping at a line. */
-  const past = (0.5 * camera.view[0]) / camera.focal + CAMERA.edge.lean - BACKDROP.reach;
+  /* The frame's farther side from the lens's axis (a phone's crop shifts it). */
+  const past = (Math.max(camera.center[0], 1 - camera.center[0]) * camera.view[0]) / camera.focal + CAMERA.edge.lean - BACKDROP.reach;
   const fade = Math.min(CAMERA.edge.widest, CAMERA.edge.fade + CAMERA.edge.grow * Math.max(0, past));
   gl.uniform2f(u.uPlateAxis, BACKDROP.centerColumn / plateW, (fade * BACKDROP.texelsPerTan) / plateW);
   gl.uniform1f(u.uBackdropNearest, BACKDROP.nearest);

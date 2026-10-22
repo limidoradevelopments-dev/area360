@@ -32,12 +32,18 @@
  * the horizon and the stone are shares of the frame's HEIGHT,
  * and a wider screen simply sees more shore.
  *
- * UNTIL THE FRAME IS NARROW. On a tall phone a fixed vertical view crops in
- * until the stone fills half the width and both shores are gone: a close-up,
- * not the scene. So the horizontal view never drops below 22°. Past that the
- * lens widens instead: more fog above, more water below, the stone small
- * in the middle with a sliver of shore at the edge — negative space, which is
- * what a portrait frame is for. (Desktop and 4:3 never reach the floor.)
+ * ON A PHONE, THE USER'S CROP (2026-10-22, their frame of this scene on a
+ * phone: "for mobile use the exact same crop"). Upright, the fixed vertical
+ * view crops in until the stone fills half the width and the shores are
+ * gone but for a smudge of the far bank — which is their frame, a little
+ * larger (`portrait.zoom`), the horizon a little lower and the stone in the
+ * middle across: a SHIFT of the frame, not a turn, so it is the same view
+ * cropped, every edge of the stone still upright. Until then the lens
+ * widened below 22° across instead (the stone small in a tall frame of fog
+ * and water); that showed water the design never framed — the stone's
+ * whole reflection, the empty near water — and the user found it poorer.
+ * Wholly from `portrait.to` down, none from square up (desktop, landscape
+ * phones), eased between.
  *
  * NEVER PAST THE PHOTOGRAPH. The shores are one photograph, and it ends: a
  * frame wider than it covers (anything past ~16:9) would look beyond its
@@ -69,10 +75,14 @@ export const CAMERA = {
    * fit of the left bank's and the stone's edges (correlation 0.959), its
    * centre within 2 px of the axis and the horizon. A longer lens from the
    * same place: the same perspective, every shape the same, only larger. On
-   * every screen (phones included: their 22° across narrows with it). */
+   * every screen (a phone's crop is on top of it: `portrait`). */
   zoom: 1.093,
-  /* Degrees: the narrowest the view may get across a portrait frame. */
-  minHorizontalFov: 22,
+  /* THE PHONE CROP (above): from what shape (width ÷ height) it begins and
+   * where it is whole, how much longer the lens is then, and where the
+   * horizon sits (a share of the height from the top). Registered on the
+   * user's frame (780×1602): the stone 393 px across, in the middle, its
+   * top's front edge 1275 px down. */
+  portrait: { from: 1, to: 0.8, zoom: 1.083, horizon: 0.5949 },
   /* The point the camera orbits: over the stone's centre, a little above
    * its top. */
   pivot: [STONE.center[0], 1.1, DEPTH.subject] as const,
@@ -91,14 +101,39 @@ export const CAMERA = {
 
 const tanHalf = (degrees: number) => Math.tan(((degrees / 2) * Math.PI) / 180);
 
+/** How much of the phone crop a frame of this shape takes: none from
+ *  square up, all of it from `portrait.to` down, smoothly between. */
+function portraitShare(widthPx: number, heightPx: number): number {
+  const P = CAMERA.portrait;
+  const t = Math.min(1, Math.max(0, (P.from - widthPx / heightPx) / (P.from - P.to)));
+  return t * t * (3 - 2 * t);
+}
+
 /** Focal length in CSS px for a frame `widthPx × heightPx`. */
 export function focalPx(widthPx: number, heightPx: number): number {
-  const framed =
-    Math.min((0.5 * heightPx) / tanHalf(CAMERA.verticalFov), (0.5 * widthPx) / tanHalf(CAMERA.minHorizontalFov)) *
-    CAMERA.zoom;
+  let framed = ((0.5 * heightPx) / tanHalf(CAMERA.verticalFov)) * CAMERA.zoom;
+  const share = portraitShare(widthPx, heightPx);
+  if (share > 0) framed *= 1 + (CAMERA.portrait.zoom - 1) * share;
   /* Closed in until the frame's edges are inside the photograph. */
   const inside = (0.5 * widthPx) / (BACKDROP.reach - CAMERA.edge.lean - CAMERA.edge.fade);
   return Math.min(Math.max(framed, inside), framed * CAMERA.maxCloseIn);
+}
+
+/**
+ * Where the lens's axis meets a frame `widthPx × heightPx` (uv, y up), its
+ * lens at rest `focal` CSS px, into `out`: the rising front's horizon, and
+ * on a phone the user's crop — the horizon a little lower, the frame
+ * shifted across so the stone stands in its middle.
+ */
+export function frameCenter(widthPx: number, heightPx: number, focal: number, out: [number, number]): [number, number] {
+  out[0] = 0.5;
+  out[1] = 1 - CAMERA.horizon;
+  const share = portraitShare(widthPx, heightPx);
+  if (share > 0) {
+    out[0] = 0.5 - ((STONE.center[0] / STONE.center[1]) * focal * share) / widthPx;
+    out[1] = 1 - (CAMERA.horizon + (CAMERA.portrait.horizon - CAMERA.horizon) * share);
+  }
+  return out;
 }
 
 /** Everything a pass needs to look through the camera this frame. */
@@ -109,6 +144,8 @@ export interface CameraFrame {
   readonly focal: number;
   /** The lens at rest, CSS px: the frame the simulated air lives in. */
   readonly restFocal: number;
+  /** Where the lens's axis meets the frame (uv, y up): frameCenter. */
+  readonly center: readonly [number, number];
   /** Where the camera is, metres. */
   readonly position: readonly [number, number, number];
   /** Camera → world, column-major. */
@@ -130,8 +167,9 @@ export function setCameraUniforms(
   gl.uniform2f(uniforms.uView, frame.view[0], frame.view[1]);
   gl.uniform1f(uniforms.uFocal, frame.focal);
   gl.uniform1f(uniforms.uRestFocal, frame.restFocal);
-  /* The lens's axis on the frame, in uv (y up): risen by the front. */
-  gl.uniform2f(uniforms.uCenter, 0.5, 1 - CAMERA.horizon);
+  /* The lens's axis on the frame, in uv (y up): risen by the front, and
+     on a phone shifted by the crop. */
+  gl.uniform2f(uniforms.uCenter, frame.center[0], frame.center[1]);
   gl.uniform3f(uniforms.uCamPos, frame.position[0], frame.position[1], frame.position[2]);
   gl.uniformMatrix3fv(uniforms.uCamRot, false, frame.rotation);
   gl.uniform1f(uniforms.uEyeHeight, CAMERA.eyeHeight);
@@ -163,6 +201,7 @@ export class CameraRig {
   private age = Infinity;
   private readonly rotation = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   private readonly shift: [number, number, number] = [0, 0, 0];
+  private readonly center: [number, number] = [0.5, 1 - CAMERA.horizon];
 
   /** Start from the arrival's opening shot, to settle into place. */
   arrive(): void {
@@ -262,6 +301,9 @@ export class CameraRig {
       Math.atan2(py - (eye + up), pz - dz) - Math.atan2(py - eye, pz);
     const rest = focalPx(view[0], view[1]);
     const focal = rest * (1 + (Z.from - 1) * close);
+    /* Where the lens's axis meets the frame: the horizon's share from the
+       top. */
+    const horizon = 1 - frameCenter(view[0], view[1], rest, this.center)[1];
     if (close > 0) {
       /* The framing point (the flowers on the stone's top) placed at
          `frame` of the height from the top, eased back to where the lens
@@ -269,9 +311,9 @@ export class CameraRig {
       const [fx, fy, fz] = A.frameOn;
       const elevation = Math.atan2(fy - camY, Math.hypot(fx - lx, fz - dz));
       const below = pitch - elevation;
-      const natural = CAMERA.horizon + (Math.tan(below) * focal) / view[1];
+      const natural = horizon + (Math.tan(below) * focal) / view[1];
       const wanted = natural + (Z.frame - natural) * close;
-      pitch -= below - Math.atan(((wanted - CAMERA.horizon) * view[1]) / focal);
+      pitch -= below - Math.atan(((wanted - horizon) * view[1]) / focal);
     }
     const cy = Math.cos(yaw);
     const sy = Math.sin(yaw);
@@ -298,6 +340,7 @@ export class CameraRig {
       view,
       focal,
       restFocal: rest,
+      center: this.center,
       position: [lx, camY, dz],
       rotation: r,
       plateShift: this.shift,

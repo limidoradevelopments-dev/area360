@@ -32,7 +32,7 @@
     },
     {
       "name": "tablet",
-      "aspect": 0.6801,
+      "aspect": 0.8,
       "min": 0.62,
       "max": 0.8793,
       "widths": [
@@ -42,7 +42,7 @@
     },
     {
       "name": "phone",
-      "aspect": 0.4621,
+      "aspect": 0.6204,
       "min": null,
       "max": 0.62,
       "widths": [
@@ -63,5 +63,5 @@
       ]
     }
   ],
-  "version": "ecbd62ffee"
+  "version": "a9d347c953"
 }

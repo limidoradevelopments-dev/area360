@@ -19,7 +19,7 @@
  * no hit there — so the rects are drawn generously, never tight.
  */
 
-import { CAMERA_UNIFORMS, CAMERA, setCameraUniforms, type CameraFrame } from "../stage/camera";
+import { CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
 import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, exactTargetFormat, type Program, type Target } from "../stage/gl";
 import { DEPTH } from "../stage/layers";
 import {
@@ -292,8 +292,8 @@ function project(out: [number, number], camera: CameraFrame, x: number, y: numbe
   const cy = vx * r[3] + vy * r[4] + vz * r[5];
   const cz = vx * r[6] + vy * r[7] + vz * r[8];
   if (cz <= 1e-3) return false;
-  out[0] = ((cx / cz) * (camera.focal / camera.view[0]) + 0.5) * f.width;
-  out[1] = ((cy / cz) * (camera.focal / camera.view[1]) + 1 - CAMERA.horizon) * f.height;
+  out[0] = ((cx / cz) * (camera.focal / camera.view[0]) + camera.center[0]) * f.width;
+  out[1] = ((cy / cz) * (camera.focal / camera.view[1]) + camera.center[1]) * f.height;
   return true;
 }
 

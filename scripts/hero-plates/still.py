@@ -61,9 +61,12 @@ QUALITY = 82
 # widths written of it (the common screens land on one exactly: a still a
 # few pixels narrower than the screen makes the browser take the next size
 # up). The lens's own edges, from stage/camera.ts focalPx (with the user's
-# crop, CAMERA.zoom 1.093, since 2026-10-17): below 0.8793 it holds its
-# narrowest view across, so a taller screen sees more above and below; up
-# to 1.9381 it frames by height, so a wider screen sees more at the sides;
+# crop, CAMERA.zoom 1.093, since 2026-10-17): upright, below 0.8, it frames
+# by height with the user's phone crop (since 2026-10-22: CAMERA.portrait,
+# the stone in the middle across), so a wider screen sees more at the sides
+# and a narrower one is a crop of it about the middle; from 0.8 to square
+# the crop eases off; up to 1.9381 it frames by height, so a wider screen
+# sees more at the sides;
 # past that it closes in, up to 1.29×, so to 2.5002, every frame the same
 # width of the world, a wider one seeing less above and below; past that it
 # frames by height again. `cover` about the horizon is exact where the
@@ -87,10 +90,13 @@ STILLS = [
     # 2.2–2.5 (21:9 full screen): the lens closing in, taken at the band's
     # narrowest.
     {"name": "wide", "min": 2.2, "max": None, "widths": (2376, 1584)},
-    # Tablets upright: framed by width, taken at 0.68 (a 16:10 tablet's
-    # browser window), so an iPad's (0.70–0.79) is a crop of it.
+    # Tablets upright: the phone crop, framed by height, taken at 0.8, its
+    # widest shape, so an iPad's (0.70–0.79) is a crop of it; 0.8–0.88 eases
+    # the crop off, and takes this one, covered (the still is only ever the
+    # fallback, where there is no scene).
     {"name": "tablet", "min": 0.62, "max": 0.8793, "widths": (1080, 720)},
-    # Phones upright.
+    # Phones upright: the phone crop, taken at 0.62, the band's widest, so
+    # every phone is a crop of it about the middle.
     {"name": "phone", "min": None, "max": 0.62, "widths": (1170, 828, 480)},
     # Desktops and laptops, 0.88–2.2: taken at 1.9381, where the lens stops
     # framing by height and starts closing in.

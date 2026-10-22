@@ -12,7 +12,7 @@
  * moment of its fall.
  */
 
-import { CAMERA, type CameraFrame } from "../stage/camera";
+import type { CameraFrame } from "../stage/camera";
 import { createProgram, type Program } from "../stage/gl";
 import { RAIN_MOTION } from "./motion";
 import { RAIN } from "./optics";
@@ -49,7 +49,7 @@ export class RainPass {
     /* The horizon in the frame: the lens's axis tilted by the camera (a
        level direction's height in the camera's view). */
     const r = camera.rotation;
-    const horizon = CAMERA.horizon - (r[5] / Math.max(r[8], 1e-3)) * focal;
+    const horizon = 1 - camera.center[1] - (r[5] / Math.max(r[8], 1e-3)) * focal;
     gl.bindVertexArray(this.vao);
     gl.useProgram(this.program.handle);
     gl.uniform4f(u.uRain, amount, time, RAIN_MOTION.slant, 1 / heightPx);

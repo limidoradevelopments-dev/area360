@@ -332,6 +332,27 @@ Tried and not kept:
 - **The reflection search cut to 16 steps.** It misses thin trunks, so the reflections change.
 - **The search with exact Hi-Z skipping.** Parked: each block test costs ~4 reads, for an estimated 1–2 ms on Intel.
 
+## The device measured in the dark (2026-10-22)
+
+The user's rule for Phase 2 was that nothing about the picture may change while it is seen. Before, the frame-rate watcher judged only after the arrival and needed 90 slow frames per tier: on a phone-class GPU, ~20 s at the wrong quality, then changes in plain view. Now the engine measures the device before the scene is revealed (`stage/optics.ts` `RENDER.calibrate`, `engine.ts` `calibrate` and `reveal`).
+
+- **Unseen frames at the opening shot.** It renders the costliest view, held, skips 3 warm-up frames (1 when trying a cheaper tier), and takes the median cost of up to 6 frames or what 0.6 s allows.
+- **Each frame waited for to the GPU's end.** A one-pixel `readPixels` returns only once the frame is drawn. Unseen, the browser does not wait on the GPU between frames: frame intervals put a 6 fps Intel UHD 630 at 120. In the dark the wait the read makes can't be seen.
+- **The ladder.** Full quality at the display's rate (work ≤ 20 ms); full quality at an even 30 (≤ 30 ms), with every pixel the same; then tier 1 and tier 2 at 30, a far-over device going straight to tier 2. A 30 fps rung draws every other frame of a 60 Hz display (every fourth at 120): the shortest display interval seen is the vsync, and a frame is drawn when the cap less half a vsync has passed.
+- **Measured live:** see the table below. In the GTX 1050 Ti 4K case, the old engine ran an uneven ~35 fps and dropped a tier after the arrival.
+- **The floor.** Where even tier 2 at 30 doesn't hold, `onFloor` is called once. What stands in is the user's decision (a pre-rendered loop or the still); until then the slowest rung stays.
+- **Watched after, as before.** From the end of the arrival, an average over 24 ms (the full rate) or 37 ms (a rung at 30) for 1.5 s takes the next rung down, never back up.
+- **The slowest tier keeps the screen sharp.** The film prints at 2× and only the scene is at 1.5× (`sceneDpr`); it printed the whole screen at 1.5×.
+- **The harness.** Frozen-clock frames (`advance()`) reveal at once, so every frame is bit-identical to before (91 frames across 8 screen shapes). Only the slowest tier's frames on 2× screens differ, by design: they now print at 2×.
+
+| Device | Time in the dark | Rung chosen |
+|---|---|---|
+| GTX 1050 Ti, 1440 | 0.15 s | rung 0 |
+| GTX 1050 Ti, phone size | 0.1–0.2 s | rung 0 |
+| GTX 1050 Ti, 4K | 0.26 s | full quality at 30 |
+| Intel UHD 630, phone size | 0.8–1.4 s | tier 2 at 30, floor reached |
+| Intel UHD 630, 1440 | 1.2 s | tier 2 at 30, floor reached |
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

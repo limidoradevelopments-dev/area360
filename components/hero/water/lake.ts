@@ -7,7 +7,7 @@
  * there is no water to reflect anything.
  */
 
-import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms } from "../stage/camera";
+import { CAMERA_UNIFORMS, setCameraUniforms } from "../stage/camera";
 import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, exactTargetFormat, type Program, type Target } from "../stage/gl";
 import {
   DEVELOP_UNIFORMS,
@@ -101,11 +101,11 @@ export class LakePass {
 function belowHorizon(f: SetFrame): number {
   const { rotation: r, view, focal } = f.camera;
   let row = 0;
-  for (const x of [-0.5 * view[0], 0.5 * view[0]]) {
+  for (const x of [-f.camera.center[0] * view[0], (1 - f.camera.center[0]) * view[0]]) {
     /* World y of the camera-space ray (x, y, focal): r[1]·x + r[4]·y +
        r[7]·focal (shaders/camera.ts cameraRay; the matrix is column-major). */
     const y = -(r[1] * x + r[7] * focal) / r[4];
-    row = Math.max(row, (y / view[1] + 1 - CAMERA.horizon) * f.height);
+    row = Math.max(row, (y / view[1] + f.camera.center[1]) * f.height);
   }
   return row;
 }

@@ -182,10 +182,49 @@ export const FILM = {
 } as const;
 
 export const RENDER = {
-  /* If the average frame stays over this for `slowFrames` frames, drop one
-   * tier. Measured on the frame interval, which is what the visitor feels. */
+  /**
+   * THE DEVICE IS MEASURED IN THE DARK (2026-10-22, the user's realme C11,
+   * and their rule: nothing about the picture may change while it is seen).
+   * The page is black until the scene exists; the engine then draws frames
+   * unseen at the costliest view it will show — the opening shot, held
+   * (stage/motion.ts ARRIVAL) — skips the first `warmup` (the driver's
+   * first draws and uploads), and takes the median work of the next
+   * `frames` (each waited for to the GPU's end: engine.ts frame), or of
+   * what `seconds` allows (two at least). That picks the
+   * rung of the LADDER the visit starts on, trying a cheaper tier in the
+   * dark if it must; only then does the scene come up and its arrival
+   * begin. A fast device spends ~0.15 s; a phone that cannot keep up no
+   * longer runs ~20 s at the wrong quality and then changes before the
+   * visitor's eyes (the watcher below did, judging only after the arrival).
+   */
+  calibrate: { warmup: 3, frames: 6, seconds: 0.6 },
+  /**
+   * THE LADDER, best first: a quality tier and a frame rate (0: every frame
+   * the display shows). THE FRAME RATE GIVES WAY BEFORE THE PICTURE: an
+   * even 30 is every pixel the same, and a scene that moves this slowly
+   * reads at cinema's own rate (the grain re-seeds at 24: FILM.fps); an
+   * uneven 40-something judders. Then the tiers, at 30. In the dark a rung
+   * holds if a frame's work (CPU and GPU, end to end) is at most `holds`
+   * ms: the display's own rate needs 20 or less (50 fps); a rung at 30,
+   * 30 ms of work, a tenth of its interval spare.
+   */
+  ladder: [
+    { tier: 0, fps: 0 },
+    { tier: 0, fps: 30 },
+    { tier: 1, fps: 30 },
+    { tier: 2, fps: 30 },
+  ],
+  holds: { full: 20, capped: 30 },
+  /**
+   * AND WATCHED AFTER (a phone heating up, a tab beside it): from the end
+   * of the arrival, an average frame interval over `slowFrameMs` (the
+   * display's rate) or `slowCappedMs` (a rung at 30) for `slowSeconds`
+   * takes the next rung down. Never back up: a scene that sharpens and
+   * softens as the frame rate wanders is worse than one slightly soft.
+   */
   slowFrameMs: 24,
-  slowFrames: 90,
+  slowCappedMs: 37,
+  slowSeconds: 1.5,
   /**
    * Quality tiers, cheapest cut first: the air's pressure solve and the fog
    * sheets give way before the composite's pixels do.
@@ -195,11 +234,16 @@ export const RENDER = {
    * the film pass then develops it at the screen's own resolution (up to
    * `outputDpr`), putting back the photograph's full detail and the grain at
    * every device pixel. A 4K screen gets a 4K print for a fraction of a 4K
-   * render.
+   * render. And at most `sceneDpr` scene pixels to a CSS px.
+   *
+   * A PHONE KEEPS ITS SHARPNESS (2026-10-22): the slowest tier drew the
+   * whole screen at 1.5 device px to the CSS px, every edge softer; now
+   * only the scene is drawn at 1.5, and the film still prints at 2,
+   * putting back the photograph's detail and the grain there.
    */
   tiers: [
-    { pressureIterations: 20, volumeScale: 1, scenePixels: 3.7e6, outputDpr: 2 },
-    { pressureIterations: 12, volumeScale: 0.75, scenePixels: 2.2e6, outputDpr: 2 },
-    { pressureIterations: 10, volumeScale: 0.6, scenePixels: 1.2e6, outputDpr: 1.5 },
+    { pressureIterations: 20, volumeScale: 1, scenePixels: 3.7e6, outputDpr: 2, sceneDpr: 2 },
+    { pressureIterations: 12, volumeScale: 0.75, scenePixels: 2.2e6, outputDpr: 2, sceneDpr: 2 },
+    { pressureIterations: 10, volumeScale: 0.6, scenePixels: 1.2e6, outputDpr: 2, sceneDpr: 1.5 },
   ],
 } as const;
