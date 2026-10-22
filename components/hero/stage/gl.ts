@@ -147,17 +147,29 @@ const LINK_POLL_GIVE_UP_MS = 120_000;
  * programs never reporting done, holding the whole dead engine — its
  * context, its canvas, its plates — until the give-up.
  */
-export async function programsLinked(gl: WebGL2RenderingContext, alive: () => boolean = () => true): Promise<void> {
+export async function programsLinked(
+  gl: WebGL2RenderingContext,
+  alive: () => boolean = () => true,
+  onProgress?: (fraction: number) => void,
+): Promise<void> {
   const list = pending.get(gl) ?? [];
   pending.delete(gl);
   if (gl.getExtension("KHR_parallel_shader_compile")) {
     /* Everything started so far goes to the driver now. */
     gl.flush();
-    const done = () =>
-      !alive() || gl.isContextLost() || list.every((p) => gl.getProgramParameter(p.program.handle, COMPLETION_STATUS_KHR));
+    /* Done, and how many are (a share, for the page's loading count: the
+       same status query the wait already makes, nothing more asked). */
+    const done = () => {
+      if (!alive() || gl.isContextLost()) return true;
+      let finished = 0;
+      for (const p of list) if (gl.getProgramParameter(p.program.handle, COMPLETION_STATUS_KHR)) finished += 1;
+      onProgress?.(list.length ? finished / list.length : 1);
+      return finished === list.length;
+    };
     const giveUp = performance.now() + LINK_POLL_GIVE_UP_MS;
     while (!done() && performance.now() < giveUp) await new Promise((resolve) => setTimeout(resolve, LINK_POLL_MS));
   }
+  onProgress?.(1);
   if (!alive()) return;
   for (const { program, names, vs, fs } of list) {
     if (!gl.getProgramParameter(program.handle, gl.LINK_STATUS) && !gl.isContextLost()) {

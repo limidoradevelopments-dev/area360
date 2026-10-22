@@ -1,7 +1,8 @@
 /**
  * ─── Hero · motion ───
  *
- * The section's own timings: how the scene arrives out of black.
+ * The section's own timings: how the scene arrives out of its ground (the
+ * preloader's #111111).
  * Everything inside the scene has its own motion.ts beside its code:
  *
  *   stage/motion.ts        the camera's lean, and its arrival
@@ -13,9 +14,10 @@
 import { cubicBezier } from "@/components/ui/easing";
 
 /**
- * THE SCENE COMES UP OUT OF BLACK (2026-10-20, the user: no static picture
- * first — black until it is ready, then the scene, moving). The canvas fades
- * in over the black ground once its first frame exists, while the camera
+ * THE SCENE COMES UP OUT OF THE GROUND (2026-10-20, the user: no static
+ * picture first — dark until it is ready, then the scene, moving). The
+ * canvas fades in over the ground once its first frame exists and the
+ * preloader has begun to lift (StageReveal), while the camera
  * settles into place (stage/motion.ts ARRIVAL, 3 s) and the air rolls
  * (atmosphere/motion.ts ARRIVAL_AIR).
  *

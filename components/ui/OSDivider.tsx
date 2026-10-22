@@ -14,7 +14,7 @@ export interface OSDividerProps {
 }
 
 const LABEL = cx(
-  "font-switzer uppercase text-muted",
+  "font-cormorant uppercase text-muted",
   "text-[length:var(--text-label)] tracking-[var(--tracking-label)]",
 );
 

@@ -1,0 +1,322 @@
+/* ─── Preloader ───
+ *
+ * The curtain in front of the hero while its scene loads: the user's frame
+ * (2026-10-23, 876×520, read at the 1440 artboard, ×1.644) — a hairline
+ * axis, the half mark to its left, words to its right, the count at the top.
+ *
+ * FITTED, NOT EYEBALLED. Every word was matched to the frame pixel by pixel
+ * (rendered in Cormorant Garamond at candidate sizes and trackings, the
+ * error over its box minimised): the sizes come out whole numbers at 1440
+ * (32, 19, 32, 24, 30, 20), the tracking about −6%. Every place is measured
+ * from the axis's centre, which is where the composition hangs. */
+:root {
+  --preloader-unit: 1rem;
+
+  --color-preloader-ground: #111111;
+  --color-preloader-ink: #585858;
+  /* The axis: the ink at 83% in its middle third, thinning to 15% at its
+   * ends (the frame's line, read down its length). */
+  --color-preloader-axis: rgb(88 88 88 / 0.83);
+  --color-preloader-axis-end: rgb(88 88 88 / 0.15);
+  /* The faint words: a fifth and a tenth of the ink. */
+  --color-preloader-echo: rgb(88 88 88 / 0.225);
+  --color-preloader-far: rgb(88 88 88 / 0.1);
+
+  /* ── The axis ── where it stands from the screen's centre: a little left
+   * (the mark and the words are centred together, not the line) and a
+   * little low, as the frame hangs it. */
+  --space-preloader-axis-x: calc(var(--preloader-unit) * -1.695);
+  /* -27px */
+  --space-preloader-axis-y: calc(var(--preloader-unit) * 3.03);
+  /* 48.5px */
+  --size-preloader-axis: calc(var(--preloader-unit) * 22.7);
+  /* 363px */
+
+  /* ── The mark ── the half logo at its own proportions (96:146). */
+  --size-preloader-mark: calc(var(--preloader-unit) * 6.275);
+  /* 100px wide */
+  --space-preloader-mark-gap: calc(var(--preloader-unit) * 0.205);
+  /* 3px short of the axis */
+  --space-preloader-mark-top: calc(var(--preloader-unit) * -5.495);
+  /* -88px */
+
+  /* ── The count ── italic, its baseline 19px from the top. */
+  --text-preloader-count: calc(var(--preloader-unit) * 1.1875);
+  /* 19px */
+  --space-preloader-count: calc(var(--preloader-unit) * 1.18);
+  /* 19px */
+  --tracking-preloader-count: -0.06em;
+
+  /* ── The words ──
+   * A word's box is 1.25 of its size, its baseline 0.94 down it (Cormorant
+   * Garamond's ascent 0.92 and descent 0.29 centred in it): a place is
+   * given by its left edge and its BASELINE, as the frame was fitted. */
+  --leading-preloader-word: 1.25;
+  --space-preloader-baseline: 0.94em;
+
+  /* Perfection, italic. */
+  --space-preloader-a-x: calc(var(--preloader-unit) * 3.262);
+  /* 52px */
+  --space-preloader-a-y: calc(var(--preloader-unit) * -3.185);
+  /* -51px */
+  --text-preloader-a: calc(var(--preloader-unit) * 2);
+  /* 32px */
+  --tracking-preloader-a: -0.06em;
+
+  /* Meaningful, italic, small. */
+  --space-preloader-b-x: calc(var(--preloader-unit) * 5.548);
+  /* 89px */
+  --space-preloader-b-y: calc(var(--preloader-unit) * -1.336);
+  /* -21px */
+  --text-preloader-b: calc(var(--preloader-unit) * 1.1875);
+  /* 19px */
+  --tracking-preloader-b: -0.06em;
+
+  /* Designing. */
+  --space-preloader-c-x: calc(var(--preloader-unit) * 0.95);
+  /* 15px */
+  --space-preloader-c-y: calc(var(--preloader-unit) * 0.411);
+  /* 7px */
+  --text-preloader-c: calc(var(--preloader-unit) * 2);
+  /* 32px */
+  --tracking-preloader-c: -0.06em;
+
+  /* Meaningful, italic, faint. */
+  --space-preloader-d-x: calc(var(--preloader-unit) * 0.565);
+  /* 9px */
+  --space-preloader-d-y: calc(var(--preloader-unit) * 2.1575);
+  /* 35px */
+  --text-preloader-d: calc(var(--preloader-unit) * 1.5);
+  /* 24px */
+  --tracking-preloader-d: -0.06em;
+
+  /* Perfection, against the axis. */
+  --space-preloader-e-x: calc(var(--preloader-unit) * 0.103);
+  /* 2px */
+  --space-preloader-e-y: calc(var(--preloader-unit) * 4.418);
+  /* 71px */
+  --text-preloader-e: calc(var(--preloader-unit) * 1.875);
+  /* 30px */
+  --tracking-preloader-e: -0.08em;
+
+  /* Meaningful, italic, turned to read downward AND MIRRORED — a
+   * reflection (the frame's word correlates 0.76 with the mirror image, 0.51
+   * with the plain turn) — fainter still. Its place is where its baseline
+   * starts, which it turns about. */
+  --space-preloader-f-x: calc(var(--preloader-unit) * 1.644);
+  /* 26px */
+  --space-preloader-f-y: calc(var(--preloader-unit) * -5.959);
+  /* -95px */
+  --text-preloader-f: calc(var(--preloader-unit) * 1.25);
+  /* 20px */
+  --tracking-preloader-f: -0.08em;
+}
+
+/* Tablet and small laptop. */
+@media (max-width: 1279.98px) {
+  :root {
+    --preloader-unit: 0.9rem;
+  }
+}
+
+/* Phone: at 320px wide the composition is ~215px across, the axis 22px
+ * left of the centre — whole, with air either side. */
+@media (max-width: 767.98px) {
+  :root {
+    --preloader-unit: 0.8rem;
+  }
+}
+
+/* ── The curtain ──
+ * Its ground is the first paint (server-rendered), the same #111111 the
+ * hero's scene comes up out of. */
+[data-preloader] {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: clip;
+  background: var(--color-preloader-ground);
+  color: var(--color-preloader-ink);
+}
+
+/* Gone: out of the tree, not just transparent. */
+[data-preloader][data-preloader-done] {
+  display: none;
+}
+
+/* The page under it does not scroll while it stands. Lenis stands down on
+ * its own (autoToggle reads the root's overflow, and its stylesheet's 1ms
+ * overflow transition tells it when this lets go). */
+@media (scripting: enabled) {
+  html:has([data-preloader]:not([data-preloader-done])) {
+    overflow: clip;
+  }
+}
+
+/* No scripting: nothing could ever lift it. */
+@media (scripting: none) {
+  [data-preloader] {
+    display: none;
+  }
+}
+
+/* The point the composition hangs from: the axis's centre. */
+[data-preloader-anchor] {
+  position: absolute;
+  left: calc(50% + var(--space-preloader-axis-x));
+  top: calc(50% + var(--space-preloader-axis-y));
+  width: 0;
+  height: 0;
+}
+
+/* ── The axis ── a hairline: 1px at every size (a datum, not a divider). */
+[data-preloader-axis] {
+  position: absolute;
+  left: 0;
+  top: calc(var(--size-preloader-axis) / -2);
+  width: var(--size-rule);
+  height: var(--size-preloader-axis);
+  background: linear-gradient(
+    to bottom,
+    var(--color-preloader-axis-end),
+    var(--color-preloader-axis) 32%,
+    var(--color-preloader-axis) 68%,
+    var(--color-preloader-axis-end)
+  );
+  transform: scaleY(0);
+}
+
+/* ── The mark ── seen through a window that ends at the axis, so it can
+ * come out of the line and go back into it. */
+[data-preloader-mark] {
+  position: absolute;
+  right: var(--space-preloader-mark-gap);
+  top: var(--space-preloader-mark-top);
+  width: var(--size-preloader-mark);
+  aspect-ratio: 96 / 146;
+  overflow: clip;
+}
+
+[data-preloader-mark] svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: translateX(100%);
+}
+
+/* ── The count ── rises out of its own mask. The mask is widened by a
+ * fifth of an em each side so the italic's overhang is not shaved. */
+[data-preloader-count] {
+  position: absolute;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + var(--space-preloader-count) - var(--space-preloader-baseline));
+  translate: -50% 0;
+  overflow: clip;
+  padding-inline: 0.2em;
+  font-size: var(--text-preloader-count);
+  font-style: italic;
+  line-height: var(--leading-preloader-word);
+  letter-spacing: var(--tracking-preloader-count);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+[data-preloader-count-line] {
+  display: block;
+  transform: translateY(110%);
+}
+
+/* ── The words ── */
+[data-preloader-slot] {
+  position: absolute;
+  left: var(--slot-x);
+  top: calc(var(--slot-y) - var(--space-preloader-baseline));
+  font-size: var(--slot-size);
+  letter-spacing: var(--slot-tracking);
+  line-height: var(--leading-preloader-word);
+  white-space: nowrap;
+  contain: layout style;
+}
+
+[data-preloader-slot="a"] {
+  --slot-x: var(--space-preloader-a-x);
+  --slot-y: var(--space-preloader-a-y);
+  --slot-size: var(--text-preloader-a);
+  --slot-tracking: var(--tracking-preloader-a);
+  font-style: italic;
+}
+
+[data-preloader-slot="b"] {
+  --slot-x: var(--space-preloader-b-x);
+  --slot-y: var(--space-preloader-b-y);
+  --slot-size: var(--text-preloader-b);
+  --slot-tracking: var(--tracking-preloader-b);
+  font-style: italic;
+}
+
+[data-preloader-slot="c"] {
+  --slot-x: var(--space-preloader-c-x);
+  --slot-y: var(--space-preloader-c-y);
+  --slot-size: var(--text-preloader-c);
+  --slot-tracking: var(--tracking-preloader-c);
+}
+
+[data-preloader-slot="d"] {
+  --slot-x: var(--space-preloader-d-x);
+  --slot-y: var(--space-preloader-d-y);
+  --slot-size: var(--text-preloader-d);
+  --slot-tracking: var(--tracking-preloader-d);
+  font-style: italic;
+  color: var(--color-preloader-echo);
+}
+
+[data-preloader-slot="e"] {
+  --slot-x: var(--space-preloader-e-x);
+  --slot-y: var(--space-preloader-e-y);
+  --slot-size: var(--text-preloader-e);
+  --slot-tracking: var(--tracking-preloader-e);
+}
+
+/* Mirrored in its own frame, then turned a quarter clockwise about the
+ * start of its baseline: it reads downward as a reflection does, its
+ * letters' tops toward the axis. */
+[data-preloader-slot="f"] {
+  --slot-x: var(--space-preloader-f-x);
+  --slot-y: var(--space-preloader-f-y);
+  --slot-size: var(--text-preloader-f);
+  --slot-tracking: var(--tracking-preloader-f);
+  font-style: italic;
+  color: var(--color-preloader-far);
+  transform-origin: 0 var(--space-preloader-baseline);
+  rotate: 90deg;
+  scale: 1 -1;
+}
+
+/* A word is five copies of itself: the whole word (what rests, and sizes
+ * the place), its three strata, and the mist's double. PRE-ENTRANCE: all
+ * hidden; the section's timeline brings them up. */
+[data-preloader-layer] {
+  display: block;
+  opacity: 0;
+}
+
+[data-preloader-layer]:not([data-preloader-layer="whole"]) {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* The strata, cut where the type's own lines are: the x-height's top
+ * (0.55em: 44% of the box) and the baseline (0.94em: 75.2%). Wide open
+ * sideways and at the outer edges, so no overhang or accent is shaved. */
+[data-preloader-layer="cap"] {
+  clip-path: inset(-0.4em -0.6em 56% -0.6em);
+}
+
+[data-preloader-layer="body"] {
+  clip-path: inset(44% -0.6em 24.8% -0.6em);
+}
+
+[data-preloader-layer="foot"] {
+  clip-path: inset(75.2% -0.6em -0.4em -0.6em);
+}

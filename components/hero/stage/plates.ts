@@ -32,12 +32,32 @@ export interface Plates {
 
 const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-async function loadBitmap(url: string, signal?: AbortSignal): Promise<ImageBitmap> {
+async function loadBitmap(url: string, signal?: AbortSignal, onBytes?: (fraction: number) => void): Promise<ImageBitmap> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`stage: ${url} (${response.status})`);
+  /* Read in chunks where its length is known, for the page's loading
+     count; the same bytes as the whole body at once. */
+  const total = Number(response.headers.get("content-length")) || 0;
+  let blob: Blob;
+  if (onBytes && total > 0 && response.body) {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.byteLength;
+      onBytes(Math.min(loaded / total, 1));
+    }
+    blob = new Blob(chunks, { type: response.headers.get("content-type") ?? "" });
+  } else {
+    blob = await response.blob();
+  }
+  onBytes?.(1);
   /* Decoded exactly as stored: the depth is data, and the photograph's
      print values are undone by the film, not by the browser. */
-  return createImageBitmap(await response.blob(), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  return createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
 }
 
 /**
@@ -78,10 +98,21 @@ export function deletePlates(gl: WebGL2RenderingContext, plates: Plates): void {
  * the build — one image failing no longer leaves the other decoded and
  * held.
  */
-export async function buildPlates(gl: WebGL2RenderingContext, alive: () => boolean, signal?: AbortSignal): Promise<Plates | null> {
+export async function buildPlates(
+  gl: WebGL2RenderingContext,
+  alive: () => boolean,
+  signal?: AbortSignal,
+  onProgress?: (fraction: number) => void,
+): Promise<Plates | null> {
+  /* The two downloads' shares, the photograph the larger (~3:1 by bytes). */
+  const got = [0, 0];
+  const share = (i: number) => (f: number) => {
+    got[i] = f;
+    onProgress?.(0.75 * got[0] + 0.25 * got[1]);
+  };
   const settled = await Promise.allSettled([
-    loadBitmap(BACKDROP.plateUrl, signal),
-    loadBitmap(BACKDROP.depthUrl, signal),
+    loadBitmap(BACKDROP.plateUrl, signal, share(0)),
+    loadBitmap(BACKDROP.depthUrl, signal, share(1)),
     /* Not fetched while the low mist is off (MIST.on). */
     MIST.on
       ? loadBitmap(MIST.url, signal).catch((error: unknown) => {

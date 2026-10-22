@@ -14,12 +14,11 @@
   --color-hairline: #E5E5E5;
   --color-muted: rgba(0, 0, 0, 0.55);
 
-  /* Typography — mapped to the variables next/font injects on <html>.
-   * Display voice (headlines, big numbers) and interface voice (UI, body,
-   * technical labels). Rename the token when the family behind it changes;
-   * a utility named after a face it no longer renders is a class that lies. */
-  --font-cabinet: var(--font-cabinet-grotesk);
-  --font-switzer: var(--font-switzer-variable);
+  /* Typography — mapped to the variable next/font injects on <html>: the
+   * one face, Cormorant Garamond (semibold, semibold italic). Rename the
+   * token when the family behind it changes; a utility named after a face it
+   * no longer renders is a class that lies. */
+  --font-cormorant: var(--font-cormorant-garamond);
 }
 
 /* Grid & spacing — a SEPARATE, non-inline @theme block, on purpose.

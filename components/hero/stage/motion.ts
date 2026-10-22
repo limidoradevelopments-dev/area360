@@ -39,7 +39,7 @@ export const PARALLAX = {
    * the user's choice for the whole scene ("a subtle feel is enough"); the
    * up and down 3 cm. At 1440×810 the stone moves ~14 px and the shores
    * ~6 px the other way (the sky ~10), the near water ~30 px. */
-  sway: [0.12, 0.03] as const,
+  sway: [0.15, 0.12] as const,
   /* Metres down the lens's axis to the point the camera turns about: past
    * the stone (10 m), short of the shores (40–80 m). Nearer the stone it
    * pins the stone again; further, the shores stop answering. */
@@ -64,7 +64,7 @@ export const PARALLAX = {
    * cannot do this: the target moves mid-flight with every pointer event,
    * and a curve interrupted halfway restarts its easing; a spring just
    * keeps the velocity it has. */
-  frequency: 3.5,
+  frequency: 6.0,
   damping: 1,
   /* Fixed step, drained from wall time (the house rule for springs), and
    * the longest frame honoured before the rest is dropped. */

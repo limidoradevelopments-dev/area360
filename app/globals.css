@@ -27,6 +27,7 @@
 @import "./styles/utilities.css";
 
 /* Features, in page order. */
+@import "../components/preloader/preloader.css";
 @import "../components/hero/hero.css";
 @import "../components/intro/intro.css";
 

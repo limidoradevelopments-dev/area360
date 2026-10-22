@@ -261,6 +261,9 @@ export interface StageEngineOptions {
   onFirstFrame: () => void;
   /** The context is gone; the static paint must come back. */
   onLost: () => void;
+  /** How far the stage has got toward its first frame, 0–1: the shores'
+   *  downloads, the shaders compiled, the device measured in the dark. */
+  onProgress?: (fraction: number) => void;
   /** Even the slowest rung cannot keep up here (stage/optics.ts RENDER):
    *  what stands in is the page's to decide. Called once; without it the
    *  slowest rung stays. */
@@ -280,6 +283,10 @@ export interface StageEngine {
   pointerLeave(): void;
   /** The visitor did something that is not a pointer (scroll, a key). */
   activity(): void;
+  /** The page lets the scene come up (its curtain has begun to lift): the
+   *  arrival begins — at once if the stage is ready, else as soon as it is.
+   *  Until then a ready stage holds, drawing nothing. */
+  start(): void;
   /** Development only: run `seconds` of stage time synchronously, then paint. */
   advance(seconds: number): void;
   /** Development only: lean the camera toward a frame point (−1…1, y up). */
@@ -502,6 +509,13 @@ class Stage implements StageEngine {
      once the scene is revealed. */
   private calibration: { tier: number; seen: number; samples: number[]; since: number } | null = null;
   private readonly probePixel = new Uint8Array(4);
+  /* The page's curtain: the arrival waits for `start` (the preloader
+     stands in front until then), drawing nothing. */
+  private startAsked = false;
+  private waiting = false;
+  /* Shares of the way to the first frame (onProgress): the shores, the
+     shaders, the measuring in the dark. */
+  private readonly loaded = [0, 0, 0];
 
   /* The last pointer position, to tell a movement from a tremor. */
   private lastPointer: [number, number] | null = null;
@@ -576,7 +590,10 @@ class Stage implements StageEngine {
     const alive = () => !this.disposed && !this.lost;
     let plates: Plates | null;
     try {
-      [plates] = await Promise.all([buildPlates(this.gl, alive, this.fetches.signal), programsLinked(this.gl, alive)]);
+      [plates] = await Promise.all([
+        buildPlates(this.gl, alive, this.fetches.signal, (f) => this.progress(0, f)),
+        programsLinked(this.gl, alive, (f) => this.progress(1, f)),
+      ]);
     } catch (error) {
       if (alive()) {
         console.warn(error);
@@ -606,15 +623,41 @@ class Stage implements StageEngine {
     this.syncLoop();
   }
 
+  /** Part `part` of the way to the first frame is `fraction` done: the
+   *  page told the whole (the shores 0.4, the shaders 0.45, the measuring
+   *  0.15 — roughly their shares of a first visit's wait). */
+  private progress(part: number, fraction: number): void {
+    if (fraction <= this.loaded[part]) return;
+    this.loaded[part] = fraction;
+    this.options.onProgress?.(0.4 * this.loaded[0] + 0.45 * this.loaded[1] + 0.15 * this.loaded[2]);
+  }
+
   /**
-   * Measured: the visit starts on rung `rung`, and the scene comes up out
-   * of black on its ARRIVAL — the camera from where it starts and the air
-   * set moving (stage/motion.ts ARRIVAL, atmosphere/motion.ts
-   * ARRIVAL_AIR); under reduced motion it is simply there.
+   * Measured: the visit starts on rung `rung`, and the page is told the
+   * stage is ready. The arrival waits for the page's curtain (`start`).
    */
   private reveal(rung: number): void {
     this.calibration = null;
     this.setRung(rung);
+    this.progress(2, 1);
+    this.options.onFirstFrame();
+    if (this.startAsked) this.begin();
+    else this.waiting = true;
+  }
+
+  start(): void {
+    this.startAsked = true;
+    if (this.waiting) this.begin();
+  }
+
+  /**
+   * The scene comes up out of the dark on its ARRIVAL — the camera from
+   * where it starts and the air set moving (stage/motion.ts ARRIVAL,
+   * atmosphere/motion.ts ARRIVAL_AIR); under reduced motion it is simply
+   * there.
+   */
+  private begin(): void {
+    this.waiting = false;
     if (this.reduced) this.camera.settle();
     else this.camera.arrive();
     this.atmosphere.beginArrival();
@@ -624,7 +667,6 @@ class Stage implements StageEngine {
     this.fitPending = true;
     this.slowSince = -1;
     this.frameAverage = this.frameCap || 1000 / 60;
-    this.options.onFirstFrame();
   }
 
   /** Onto rung `rung` of the ladder: its frame rate, and its tier (the
@@ -649,6 +691,7 @@ class Stage implements StageEngine {
     if (!c) return;
     const C = RENDER.calibrate;
     c.seen += 1;
+    this.progress(2, Math.min(0.9, c.seen / (C.warmup + C.frames)));
     /* The first tier warms the driver up; a cheaper one tried after only
        rebuilds its targets. */
     if (c.seen <= (c.tier === RENDER.ladder[0].tier ? C.warmup : 1)) {
@@ -850,6 +893,11 @@ class Stage implements StageEngine {
 
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
+    /* Ready, and held behind the page's curtain: nothing to draw. */
+    if (this.waiting) {
+      this.lastTime = this.lastDisplay = now;
+      return;
+    }
     /* The display's own frame: the shortest interval between its frames. */
     const display = now - this.lastDisplay;
     this.lastDisplay = now;
@@ -1251,6 +1299,7 @@ class Stage implements StageEngine {
     /* Driven by hand, the page's own frames frozen: revealed as measured
        fast, at once. */
     if (this.calibration) this.reveal(0);
+    if (this.waiting) this.begin();
     const frames = Math.max(1, Math.round(seconds * 60));
     for (let i = 0; i < frames; i += 1) this.tick(1 / 60, false);
     this.render();

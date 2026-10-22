@@ -20,7 +20,7 @@ export default function IntroStatCard({ stat }: { stat: IntroStat }) {
     >
       <span
         className={cx(
-          "font-cabinet font-medium leading-none tracking-tighter text-ink",
+          "font-cormorant leading-none tracking-tighter text-ink",
           "text-[length:var(--text-intro-stat)]",
         )}
       >
@@ -28,7 +28,7 @@ export default function IntroStatCard({ stat }: { stat: IntroStat }) {
       </span>
       <span
         className={cx(
-          "font-switzer uppercase text-muted",
+          "font-cormorant uppercase text-muted",
           "text-[length:var(--text-label)] tracking-[var(--tracking-label)]",
         )}
       >

@@ -14,8 +14,12 @@ import type { StageEngine } from "./engine";
  * the engine, outside React.
  *
  * The engine is a dynamic import, so none of it (or its shaders) sits in
- * front of the first paint. Until its first frame exists the still
- * underneath IS the hero.
+ * front of the first paint. Until its first frame exists the ground
+ * underneath (or, with no scene, the still) IS the hero.
+ *
+ * HELD FOR THE CURTAIN: a ready engine draws nothing and starts no arrival
+ * until `started` (the page's curtain has begun to lift), so the opening
+ * shot is never spent behind the preloader.
  *
  * Pointer events are read from the whole section, not the canvas, so text
  * laid over the scene later still lets the fog feel the hand beneath it.
@@ -23,8 +27,14 @@ import type { StageEngine } from "./engine";
 
 export interface StageCanvasProps {
   reducedMotion: boolean;
-  /** The first frame is painted; the canvas can be faded in. */
+  /** The page lets the scene come up: its arrival begins (at once, or as
+   *  soon as the engine is ready). */
+  started: boolean;
+  /** The first frame is ready (drawn and measured in the dark); the canvas
+   *  can be faded in once `started`. */
   onReady: () => void;
+  /** How far the engine has got toward that first frame, 0–1. */
+  onProgress?: (fraction: number) => void;
   /** No WebGL2, no half-float targets, or the context was lost. */
   onUnavailable: () => void;
 }
@@ -40,14 +50,17 @@ const RESIZE_SETTLE_MS = 120;
    browser; the server never needs it. */
 const engineModule = typeof window === "undefined" ? null : import("./engine");
 
-export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: StageCanvasProps) {
+export default function StageCanvas({ reducedMotion, started, onReady, onProgress, onUnavailable }: StageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<StageEngine | null>(null);
   const [tuner, setTuner] = useState<Tuner | null>(null);
 
   const ready = useEffectEvent(() => onReady());
+  const progress = useEffectEvent((fraction: number) => onProgress?.(fraction));
   const unavailable = useEffectEvent(() => onUnavailable());
   const startsReduced = useEffectEvent(() => reducedMotion);
+  /* Read when the engine arrives: the curtain may have lifted first. */
+  const startedNow = useEffectEvent(() => started);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,6 +81,7 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
         frame,
         reducedMotion: startsReduced(),
         onFirstFrame: () => ready(),
+        onProgress: (fraction) => progress(fraction),
         onLost: () => unavailable(),
       });
       if (!engine) {
@@ -75,6 +89,7 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
         return;
       }
       engineRef.current = engine;
+      if (startedNow()) engine.start();
       syncVisibility();
 
       if (process.env.NODE_ENV !== "production") {
@@ -174,6 +189,10 @@ export default function StageCanvas({ reducedMotion, onReady, onUnavailable }: S
   useEffect(() => {
     engineRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
+
+  useEffect(() => {
+    if (started) engineRef.current?.start();
+  }, [started]);
 
   return (
     <>

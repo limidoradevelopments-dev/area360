@@ -31,11 +31,10 @@
  * Calibrate at the CROWDED end of each band: too small never breaks a layout,
  * too large does. */
 :root {
-  /* The families, restated. The @theme copies (theme.css) are not emitted at
+  /* The family, restated. The @theme copy (theme.css) is not emitted at
    * runtime (nothing references the variable), so a hand-written rule using
-   * var(--font-cabinet) would resolve to nothing without these lines. */
-  --font-cabinet: var(--font-cabinet-grotesk);
-  --font-switzer: var(--font-switzer-variable);
+   * var(--font-cormorant) would resolve to nothing without this line. */
+  --font-cormorant: var(--font-cormorant-garamond);
 
   /* ── Structure ──
    * Hairlines stay 1px at every viewport. A rule is a datum; one that
@@ -58,7 +57,7 @@
   --blur-glass: 1.5rem;
 
   /* ── Technical label (the badge voice) ──
-   * Small uppercase Switzer at wide tracking. 10px is the floor; never set
+   * Small uppercase Cormorant at wide tracking. 10px is the floor; never set
    * technical type below it. */
   --text-label: 0.625rem;
   /* 10px */

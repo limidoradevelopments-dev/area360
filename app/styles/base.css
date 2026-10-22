@@ -40,10 +40,10 @@ body::-webkit-scrollbar {
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: var(--font-switzer), system-ui, sans-serif;
-  /* 450, not 400: Switzer's variable axis reads a touch thin at 400 on
-   * light ground. The layout declares the 100–900 range so this lands. */
-  font-weight: 450;
+  font-family: var(--font-cormorant), Georgia, serif;
+  /* The only weight carried (layout.tsx): asked for anything else, the
+   * browser would synthesise it. */
+  font-weight: 600;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

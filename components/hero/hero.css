@@ -63,10 +63,12 @@
   --color-hero-pollen: #EBD49B;
 
   /* ── The first paint ──
-   * Black: the scene comes up out of it (HeroSection, motion.ts ENTRANCE),
-   * and the preloader will stand on it. The frame's own light band by band
-   * stood here until 2026-10-20, under the still the scene faded in over. */
-  --color-hero-ground: #000000;
+   * The preloader's own ground (components/preloader: the user's #111111,
+   * 2026-10-23): it stands on it, and the scene comes up out of it as the
+   * preloader leaves (HeroSection, motion.ts ENTRANCE) — no seam between
+   * them; the scene's own darkest is ~16. Black until then; the frame's own
+   * light band by band before 2026-10-20. */
+  --color-hero-ground: #111111;
 
   /* Registered below as <length>, so getComputedStyle hands the engine a
    * resolved px value rather than an unevaluated calc(). */
