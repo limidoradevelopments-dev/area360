@@ -30,6 +30,10 @@ uniform vec2 uPlateAxis;
 /* the nearest any of its land stands (metres): a reflected ray cannot meet
    the shore nearer than this, so its march starts there */
 uniform float uBackdropNearest;
+/* its trees: 1 shown; 0 on a phone (stage/camera.ts treesShown); and the
+   open channel's column (u), down the lake on the lens's axis, where it
+   holds only fog */
+uniform vec2 uPlateTrees;
 
 vec2 plateUvOfTan(vec2 t) {
   return vec2(uPlateAxis.x + t.x * uPlateGeo.x, uPlateGeo.z - t.y * uPlateGeo.y);
@@ -74,6 +78,16 @@ vec2 locateBackdrop(vec3 origin, vec3 ray, out float depth) {
    its print value undone through the film (film.ts undevelop). */
 vec3 plateRadiance(vec2 uv, vec2 dx, vec2 dy) {
   return undevelop(textureGrad(uPlate, uv, dx, dy).r);
+}
+
+/* ON A PHONE, NO TREES (stage/camera.ts treesShown): the photograph's own
+   sky and fog at uv's height, read in the open channel — at its level 4,
+   sixteen texels across, so no row carries one column's grain. The far
+   bank shares the sky's depth in the depth map (890 m, a smudge at the
+   horizon), so depth cannot fog it out; this leaves only fog by design. */
+vec3 plateLight(vec2 uv, vec2 dx, vec2 dy) {
+  if (uPlateTrees.x > 0.5) return plateRadiance(uv, dx, dy);
+  return undevelop(textureLod(uPlate, vec2(uPlateTrees.y, uv.y), 4.0).r);
 }
 
 /* A reflected ray against the photograph. A ray's image on the photograph is

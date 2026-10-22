@@ -99,7 +99,12 @@ void main() {
      of it, each within that. */
   vec2 step_ = 0.25 * gy;
   vec3 seen = vec3(0.0);
-  for (int k = 0; k < 4; k++) seen += plateRadiance(at + (float(k) - 1.5) * step_, gx, step_);
+  if (uPlateTrees.x > 0.5) {
+    for (int k = 0; k < 4; k++) seen += plateRadiance(at + (float(k) - 1.5) * step_, gx, step_);
+  } else {
+    /* On a phone, the photograph's fog only (shaders/backdrop.ts plateLight). */
+    seen = 4.0 * plateLight(at, gx, step_);
+  }
   vec3 photo = mix(air, 0.25 * seen, plateCover(at));
   float gain;
   /* The shore it mirrors carries the air by place it carries over it. */

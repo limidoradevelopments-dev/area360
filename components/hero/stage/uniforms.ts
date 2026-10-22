@@ -16,7 +16,7 @@ import { AERIAL, EXTINCTION, MIST, MIST_SEEN, OVER_PHOTO, SHEETS, SOFT_BLACK } f
 import { STONE } from "../stone/optics";
 import { GRAVITY, LAPS, TENSION, WATER_MOTION, WAVES } from "../water/motion";
 import { WATER, WATER_R0, WATER_UNDER } from "../water/optics";
-import { CAMERA, type CameraFrame } from "./camera";
+import { CAMERA, treesShown, type CameraFrame } from "./camera";
 import type { StageParams } from "./engine";
 import { bindTexture } from "./gl";
 import { BACKDROP, DEPTH, SHEET_EDGES } from "./layers";
@@ -232,7 +232,7 @@ export function setStoneUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
 
 /* ── stage/shaders/backdrop.ts ────────────────────────────────────────── */
 
-export const PLATE_UNIFORMS = ["uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis", "uBackdropNearest"] as const;
+export const PLATE_UNIFORMS = ["uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis", "uBackdropNearest", "uPlateTrees"] as const;
 
 /** The photograph and its depth, and their place in the camera. */
 export function setPlateUniforms(gl: WebGL2RenderingContext, u: Uniforms, camera: CameraFrame, plates: Plates): void {
@@ -255,6 +255,9 @@ export function setPlateUniforms(gl: WebGL2RenderingContext, u: Uniforms, camera
   const fade = Math.min(CAMERA.edge.widest, CAMERA.edge.fade + CAMERA.edge.grow * Math.max(0, past));
   gl.uniform2f(u.uPlateAxis, BACKDROP.centerColumn / plateW, (fade * BACKDROP.texelsPerTan) / plateW);
   gl.uniform1f(u.uBackdropNearest, BACKDROP.nearest);
+  /* On a phone, no trees: the photograph's own sky and fog, read in the
+     open channel on the lens's axis (shaders/backdrop.ts plateLight). */
+  gl.uniform2f(u.uPlateTrees, treesShown(camera.view[0], camera.view[1]) ? 1 : 0, BACKDROP.centerColumn / plateW);
 }
 
 /* ── stage/shaders/film.ts: the film backwards, for the photograph ────── */

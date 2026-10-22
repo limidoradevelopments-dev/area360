@@ -83,6 +83,11 @@ export const CAMERA = {
    * user's frame (780×1602): the stone 393 px across, in the middle, its
    * top's front edge 1275 px down. */
   portrait: { from: 1, to: 0.8, zoom: 1.083, horizon: 0.5949 },
+  /* ON A PHONE, NO TREES (2026-10-22, the user: "for mobile completely
+   * remove the trees — we only need them on tablet sizes"): upright and
+   * narrower than this (CSS px: the phone breakpoint, tokens.css), the
+   * crop's smudge of the far bank gives way to the fog (treesShown). */
+  bareBelow: 768,
   /* The point the camera orbits: over the stone's centre, a little above
    * its top. */
   pivot: [STONE.center[0], 1.1, DEPTH.subject] as const,
@@ -117,6 +122,12 @@ export function focalPx(widthPx: number, heightPx: number): number {
   /* Closed in until the frame's edges are inside the photograph. */
   const inside = (0.5 * widthPx) / (BACKDROP.reach - CAMERA.edge.lean - CAMERA.edge.fade);
   return Math.min(Math.max(framed, inside), framed * CAMERA.maxCloseIn);
+}
+
+/** Whether a frame of this size shows the photograph's trees: not on a
+ *  phone held upright (CAMERA.bareBelow). */
+export function treesShown(widthPx: number, heightPx: number): boolean {
+  return !(widthPx < CAMERA.bareBelow && widthPx < heightPx);
 }
 
 /**

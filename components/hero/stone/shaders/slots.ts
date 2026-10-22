@@ -121,9 +121,16 @@ void main() {
 export const MIRROR_SURFACE_FRAG = /* glsl */ `#version 300 es
 precision highp float;
 precision highp sampler2D;
+/* HIGHP INTEGERS, said outright: a fragment shader's integers are
+   mediump unless told, which GLSL ES lets a GPU keep in 16 bits. Desktop
+   GPUs keep 32 whatever they are told; a phone's need not — the user's
+   realme (PowerVR GE8322) cut every packed value to its low 16 bits, the
+   stone's reflection lost (its ray's bits) and half the fog's values
+   zeroed (2026-10-22). */
+precision highp int;
 
 in vec2 vUv;
-out uvec4 outSurface;
+out highp uvec4 outSurface;
 
 ${CAMERA_GLSL}
 ${WATER_GLSL}
@@ -147,6 +154,7 @@ void main() {
 export const STONE_MIRROR_FRAG = /* glsl */ `#version 300 es
 precision highp float;
 precision highp sampler2D;
+precision highp int;
 precision highp usampler2D;
 
 out vec4 outLight;

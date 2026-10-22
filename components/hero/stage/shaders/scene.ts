@@ -313,11 +313,12 @@ vec4 shade(vec2 uv, vec2 sigma, vec2 dx, vec2 dy, vec3 rx, vec3 ry) {
     float departure = fogDeparture(origin, ray, origin.z, zBack, perDepth, density, light, glow, weight);
     vec3 air = airOf(glow, weight, light);
     float cover = plateCover(backUv);
-    vec3 photo = mix(air, plateRadiance(backUv, dx, dy), cover);
+    vec3 photo = mix(air, plateLight(backUv, dx, dy), cover);
     float gain;
     vec3 seen = throughFog(photo, air, departure, zBack, localAir(tanOfPlate(backUv)).x, gain);
     behind += land * mistSeen(seen, density, light);
-    straight = land * gain * cover;
+    /* On a phone there is no photograph's detail to put back (plateLight). */
+    straight = land * gain * cover * uPlateTrees.x;
   }
   /* The low mist over all that lies behind the stone — the trees' feet,
      the water by them, the treetops faintly; and the photograph's finer
