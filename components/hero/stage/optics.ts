@@ -188,45 +188,76 @@ export const RENDER = {
    * The page is black until the scene exists; the engine then draws frames
    * unseen at the costliest view it will show — the opening shot, held
    * (stage/motion.ts ARRIVAL) — skips the first `warmup` (the driver's
-   * first draws and uploads), and takes the median work of the next
-   * `frames` (each waited for to the GPU's end: engine.ts frame), or of
-   * what `seconds` allows (two at least). That picks the
-   * rung of the LADDER the visit starts on, trying a cheaper tier in the
-   * dark if it must; only then does the scene come up and its arrival
-   * begin. A fast device spends ~0.15 s; a phone that cannot keep up no
-   * longer runs ~20 s at the wrong quality and then changes before the
-   * visitor's eyes (the watcher below did, judging only after the arrival).
+   * first draws and uploads), and judges the work of the next `frames`, or
+   * of what `seconds` allows (two at least). That picks the rung of the
+   * LADDER the visit starts on, trying a cheaper tier in the dark if it
+   * must; only then does the scene come up and its arrival begin. A fast
+   * device spends ~0.1 s; a phone that cannot keep up no longer runs ~20 s
+   * at the wrong quality and then changes before the visitor's eyes (the
+   * watcher below did, judging only after the arrival).
+   *
+   * MEASURED BY THE GPU'S OWN CLOCK, NOT THE WALL'S (2026-10-23). The
+   * curtain stands in front while this runs, and its animations kept the
+   * whole browser busy: the frames, timed end to end, read 2–5× their cost,
+   * and the user's own laptop (GTX 1050 Ti, 1920×1080 at 120 Hz) was put on
+   * the cheapest tier at 30 fps on 3 visits of 3 — a GPU that holds full
+   * quality at 60 (~11 ms a frame). Now a frame's work is the larger of its
+   * script's time and its GPU time (a timer query: the two overlap as the
+   * frames run), and the rung is judged on the `quantile` of the samples:
+   * a busy machine only ever adds time, so the quick end of them is the
+   * frame's own cost. Where the GPU's clock is not offered, the frame end
+   * to end (waited for by a one-pixel read), as before.
    */
-  calibrate: { warmup: 3, frames: 6, seconds: 0.6, burstMs: 50 },
+  calibrate: { warmup: 3, frames: 6, seconds: 0.6, burstMs: 50, quantile: 0.25 },
   /**
-   * THE LADDER, best first: a quality tier and a frame rate (0: every frame
-   * the display shows). THE FRAME RATE GIVES WAY BEFORE THE PICTURE: an
-   * even 30 is every pixel the same, and a scene that moves this slowly
-   * reads at cinema's own rate (the grain re-seeds at 24: FILM.fps); an
-   * uneven 40-something judders. Then the tiers, at 30. In the dark a rung
-   * holds if a frame's work (CPU and GPU, end to end) is at most `holds`
-   * ms: the display's own rate needs 20 or less (50 fps); a rung at 30,
-   * 30 ms of work, a tenth of its interval spare.
+   * THE LADDER, best first, laid out from the display's own frame (engine.ts
+   * ladderFor): full quality at every Nth frame the display shows — its own
+   * rate, then half, a third… down to `floorFps` — then the cheaper tiers
+   * at that slowest even rate. THE FRAME RATE GIVES WAY BEFORE THE PICTURE:
+   * an even rate is every pixel the same, and a scene that moves this slowly
+   * reads at cinema's own rate at 30 (the grain re-seeds at 24: FILM.fps).
+   * EVEN, NEVER IN BETWEEN: a frame that does not fit the display's frame
+   * is shown for one frame or two as it happens, and judders; so a 120 Hz
+   * screen gets 120, 60, 40 or 30, never an uneven 80. (Until 2026-10-23
+   * there was only the display's rate and 30: the 1050 Ti at 1080p on a
+   * 120 Hz screen had to choose between an uneven ~85 and 30.)
+   *
+   * A rung holds if a frame's work is at most `share` of its interval:
+   * measured on the GPU's clock (`share.timed`), or end to end, which
+   * counts the script and the GPU one after the other and so reads higher
+   * (`share.waited`: the old 20 ms at a 60 Hz display's rate, 30 at 30).
    */
-  ladder: [
-    { tier: 0, fps: 0 },
-    { tier: 0, fps: 30 },
-    { tier: 1, fps: 30 },
-    { tier: 2, fps: 30 },
-  ],
-  /* `fast`: two frames at most this settle a device at full quality at
-   * once (≥ 70 fps of work: a fast device in the dark ~0.05 s, not ~0.15). */
-  holds: { full: 20, capped: 30, fast: 14 },
+  floorFps: 29,
+  share: { timed: 0.88, waited: { full: 1.2, capped: 0.9 } },
+  /* `fast`: two frames at most this share of the display's frame settle a
+   * device at full quality at once (a fast device in the dark ~0.05 s). */
+  fastShare: 0.85,
+  /* The end-to-end ms past which a calibration frame is drawn on its own
+   * rAF, not in a burst (engine.ts frame): back to back, a frame near a
+   * rung's edge read ~30% dearer than it runs. */
+  burstFrameMs: 14,
   /**
    * AND WATCHED AFTER (a phone heating up, a tab beside it): from the end
-   * of the arrival, an average frame interval over `slowFrameMs` (the
-   * display's rate) or `slowCappedMs` (a rung at 30) for `slowSeconds`
-   * takes the next rung down. Never back up: a scene that sharpens and
-   * softens as the frame rate wanders is worse than one slightly soft.
+   * of the arrival, an average frame interval over `slowShare` of its
+   * rung's interval (`full`: the display's own rate, 24 ms at 60 Hz;
+   * `capped`: every Nth frame, 37 ms at 30) for `slowSeconds` takes the
+   * next rung down. The PICTURE never comes back: a scene that sharpens
+   * and softens as the frame rate wanders is worse than one slightly soft.
    */
-  slowFrameMs: 24,
-  slowCappedMs: 37,
+  slowShare: { full: 1.44, capped: 1.11 },
   slowSeconds: 1.5,
+  /**
+   * THE FRAME RATE MAY COME BACK (2026-10-23, the user's approval: every
+   * pixel the same, only steadier). A visit capped in the dark by a
+   * passing load, once the arrival is over, times its frames on the GPU's
+   * clock for `seconds` (no frame waited for: the timer's answers arrive
+   * frames later); if `quantile` of them fit the next faster rung of the
+   * same tier within `share` — the dark's own margin: timed at the slower
+   * rate the GPU runs at a lower clock, so they read dearer than they will
+   * run — it steps up, one rung at a time. Never once the watcher has
+   * stepped it down; never a tier.
+   */
+  stepUp: { seconds: 2.5, quantile: 0.9, share: 0.88, minFrames: 30 },
   /**
    * Quality tiers, cheapest cut first: the air's pressure solve and the fog
    * sheets give way before the composite's pixels do.

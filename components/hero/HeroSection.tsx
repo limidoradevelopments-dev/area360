@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
 
 import { cx } from "@/components/ui/cx";
 import { loadProgress } from "@/components/ui/loadProgress";
@@ -16,8 +14,6 @@ import { BACKDROP } from "./stage/layers";
 import StageCanvas from "./stage/StageCanvas";
 import { HERO_HEADING } from "./content";
 import { ENTRANCE, REDUCED } from "./motion";
-
-gsap.registerPlugin(useGSAP);
 
 /**
  * ─── HeroSection ───
@@ -101,23 +97,22 @@ export default function HeroSection({ className, respectReducedMotion = false }:
     loadProgress.begin(LOAD_NAME);
   }, []);
 
-  const { contextSafe } = useGSAP(
-    () => {
-      if (!ready || !revealed) return;
-      const calm = reducedAtEntrance.current;
-      const tl = gsap.timeline({ defaults: { overwrite: true } });
-      tl.fromTo(
-        "[data-hero-stage]",
-        { opacity: 0 },
-        {
-          opacity: 1,
-          duration: calm ? REDUCED.fadeSeconds : ENTRANCE.fadeSeconds,
-          ease: ENTRANCE.ease,
-        },
-      );
-    },
-    { scope, dependencies: [ready, revealed] },
-  );
+  /* The stage's one fade at a time (motion.ts ENTRANCE: on the compositor).
+     A new one replaces it from wherever it got to; none queues. */
+  const fade = useRef<Animation | null>(null);
+  const fadeStage = (frames: Keyframe[], seconds: number, easing: string) => {
+    const stage = scope.current?.querySelector<HTMLElement>("[data-hero-stage]");
+    if (!stage) return;
+    fade.current?.cancel();
+    fade.current = stage.animate(frames, { duration: seconds * 1000, easing, fill: "forwards" });
+  };
+
+  useEffect(() => {
+    if (!ready || !revealed) return;
+    const calm = reducedAtEntrance.current;
+    /* From the CSS pre-state (hero.css), stated, never read. */
+    fadeStage([{ opacity: 0 }, { opacity: 1 }], calm ? REDUCED.fadeSeconds : ENTRANCE.fadeSeconds, ENTRANCE.ease);
+  }, [ready, revealed]);
 
   const markReady = () => {
     setReady(true);
@@ -126,11 +121,13 @@ export default function HeroSection({ className, respectReducedMotion = false }:
 
   /* The scene is gone (no WebGL2, or the context was lost): the still is
      the hero. */
-  const restoreStill = contextSafe(() => {
+  const restoreStill = () => {
     setFallback(true);
     loadProgress.finish(LOAD_NAME);
-    gsap.to("[data-hero-stage]", { opacity: 0, duration: REDUCED.fadeSeconds, overwrite: true });
-  });
+    const stage = scope.current?.querySelector<HTMLElement>("[data-hero-stage]");
+    const from = stage ? getComputedStyle(stage).opacity : "0";
+    fadeStage([{ opacity: from }, { opacity: 0 }], REDUCED.fadeSeconds, REDUCED.out);
+  };
 
   return (
     <section

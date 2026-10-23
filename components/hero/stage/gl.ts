@@ -202,12 +202,32 @@ function allocateTexture(
   return tex;
 }
 
-function checkFramebuffer(gl: WebGL2RenderingContext): void {
+/* The formats a target has been found complete in, per context. */
+const complete = new WeakMap<WebGL2RenderingContext, Set<GLenum>>();
+
+/**
+ * ASKED ONCE A FORMAT, NOT ONCE A TARGET. Whether a framebuffer is complete
+ * is a question the page must wait on the GPU process for (a flush and a
+ * round trip), and it was asked of every one of the ~40 targets: 10–24 ms
+ * each, at times, while the GPU was busy — a hitch exactly as the arrival
+ * settled, when the stone's and the flowers' targets are made again round
+ * the resting scene (2026-10-23). A colour target's completeness depends
+ * on its format alone (every size here is at least 1×1), so one answer per
+ * format holds for every target of it.
+ */
+function checkFramebuffer(gl: WebGL2RenderingContext, internalFormat: GLenum): void {
+  let formats = complete.get(gl);
+  if (!formats) complete.set(gl, (formats = new Set()));
+  if (formats.has(internalFormat)) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return;
+  }
   const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   if (status !== gl.FRAMEBUFFER_COMPLETE && !gl.isContextLost()) {
     throw new Error(`stage: framebuffer incomplete (0x${status.toString(16)})`);
   }
+  formats.add(internalFormat);
 }
 
 export function createTarget(
@@ -222,7 +242,7 @@ export function createTarget(
   if (!fbo) throw new Error("stage: framebuffer allocation failed");
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-  checkFramebuffer(gl);
+  checkFramebuffer(gl, internalFormat);
   return { tex, fbo, width, height };
 }
 
@@ -332,6 +352,11 @@ function describe(gl: WebGL2RenderingContext, internalFormat: GLenum) {
  * through a footprint far taller than it is wide (the ripples smear it
  * vertically), and anisotropic filtering takes that footprint along its
  * length instead of blurring it to a circle as wide as it is tall.
+ *
+ * ONE CHANNEL STRAIGHT FROM THE IMAGE. Uploaded as RGBA and copied down to
+ * one channel on the GPU instead, the upload moved four times the bytes and
+ * took longer on the main thread (21 ms against 12 on a quiet machine,
+ * measured 2026-10-23): tried, and not kept.
  */
 export function createBackdrop(gl: WebGL2RenderingContext, image: TexImageSource): WebGLTexture {
   const tex = gl.createTexture();
@@ -375,6 +400,166 @@ export function createDataTexture(
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   return tex;
+}
+
+type Call = (...args: never[]) => unknown;
+
+/* Contexts already given the cache below: given once each, however many
+   engines start on one canvas (React's development double mount). */
+const cached = new WeakSet<WebGL2RenderingContext>();
+
+/* "Not known yet": the first call of each kind always goes through. */
+const UNKNOWN = Symbol("unknown");
+
+/**
+ * EACH CALL MADE ONLY WHEN IT CHANGES SOMETHING (2026-10-23). The passes set
+ * everything they draw with, every frame — ~680 uniform calls a frame, and
+ * the program, the vertex array, the viewport, every texture and target
+ * bound again — and most of it is what the GPU already holds: the optics,
+ * the tokens, the texture units, the one vertex array. Each call is a trip
+ * through the browser's validation into the GPU process's command stream;
+ * on a phone-class CPU (4× slower than the laptop it was measured on) the
+ * frame's script took ~12.7 ms of a 16.7 ms frame. On this context a call
+ * that would leave the state as it is now does nothing; every other call
+ * goes through as before, and the state it leaves is the same.
+ *
+ * Kept true to the GPU: a uniform is keyed by its location object, which
+ * each program asks for once (programsLinked) — never set one uniform
+ * through two locations; deleting a bound texture, target or vertex array
+ * unbinds it, as the GPU does. Every call of these kinds on this context
+ * must go through it (they do: every pass draws on this one object).
+ */
+export function sendChangedStateOnly(gl: WebGL2RenderingContext): void {
+  if (cached.has(gl)) return;
+  cached.add(gl);
+  const methods = gl as unknown as Record<string, Call>;
+  const plain = (name: string) => methods[name].bind(gl) as (...args: unknown[]) => unknown;
+
+  /* ── uniforms: what each location was last sent ── */
+  const held = new Map<WebGLUniformLocation, number[]>();
+  /* Whether `values` is what `location` holds; if not, it holds them now.
+     No arrays made but a location's first. */
+  const same = (location: WebGLUniformLocation, values: ArrayLike<number>, n: number): boolean => {
+    let last = held.get(location);
+    if (!last || last.length !== n) held.set(location, (last = new Array<number>(n).fill(Number.NaN)));
+    let i = 0;
+    while (i < n && last[i] === values[i]) i += 1;
+    if (i === n) return true;
+    for (; i < n; i += 1) last[i] = values[i];
+    return false;
+  };
+  const scalars = [0, 0, 0, 0];
+  for (const [name, n] of [["uniform1f", 1], ["uniform2f", 2], ["uniform3f", 3], ["uniform4f", 4], ["uniform1i", 1], ["uniform2i", 2]] as const) {
+    const send = plain(name);
+    methods[name] = ((location: WebGLUniformLocation | null, a: number, b: number, c: number, d: number) => {
+      scalars[0] = a;
+      scalars[1] = b;
+      scalars[2] = c;
+      scalars[3] = d;
+      /* No location: a uniform the program does not use. */
+      if (location && same(location, scalars, n)) return;
+      send(location, a, b, c, d);
+    }) as Call;
+  }
+  for (const name of ["uniform1fv", "uniform2fv", "uniform3fv", "uniform4fv"]) {
+    const send = plain(name);
+    methods[name] = ((location: WebGLUniformLocation | null, values: ArrayLike<number>, offset?: number, length?: number) => {
+      /* The WebGL 2 forms with a source offset and length: as they were. */
+      if (offset !== undefined) return void send(location, values, offset, length);
+      if (location && same(location, values, values.length)) return;
+      send(location, values);
+    }) as Call;
+  }
+  {
+    const send = plain("uniformMatrix3fv");
+    methods.uniformMatrix3fv = ((location: WebGLUniformLocation | null, transpose: boolean, values: ArrayLike<number>, offset?: number, length?: number) => {
+      if (offset !== undefined || transpose) return void send(location, transpose, values, offset, length);
+      if (location && same(location, values, values.length)) return;
+      send(location, transpose, values);
+    }) as Call;
+  }
+
+  /* ── the program and the vertex array (a deleted program in use stays in
+     use until another is, so deleting one changes nothing here) ── */
+  let program: unknown = UNKNOWN;
+  const useProgram = plain("useProgram");
+  methods.useProgram = ((p: WebGLProgram | null) => {
+    if (p === program) return;
+    program = p;
+    useProgram(p);
+  }) as Call;
+  let vao: unknown = UNKNOWN;
+  const bindVertexArray = plain("bindVertexArray");
+  methods.bindVertexArray = ((v: WebGLVertexArrayObject | null) => {
+    if (v === vao) return;
+    vao = v;
+    bindVertexArray(v);
+  }) as Call;
+  const deleteVertexArray = plain("deleteVertexArray");
+  methods.deleteVertexArray = ((v: WebGLVertexArrayObject | null) => {
+    if (v && v === vao) vao = null;
+    deleteVertexArray(v);
+  }) as Call;
+
+  /* ── the viewport ── */
+  const view = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+  const viewport = plain("viewport");
+  methods.viewport = ((x: number, y: number, w: number, h: number) => {
+    if (x === view[0] && y === view[1] && w === view[2] && h === view[3]) return;
+    view[0] = x;
+    view[1] = y;
+    view[2] = w;
+    view[3] = h;
+    viewport(x, y, w, h);
+  }) as Call;
+
+  /* ── textures: the active unit, and what each unit holds per target ── */
+  let unit: unknown = UNKNOWN;
+  const bound = new Map<number, WebGLTexture | null>();
+  const activeTexture = plain("activeTexture");
+  methods.activeTexture = ((u: GLenum) => {
+    if (u === unit) return;
+    unit = u;
+    activeTexture(u);
+  }) as Call;
+  const bindTex = plain("bindTexture");
+  methods.bindTexture = ((target: GLenum, tex: WebGLTexture | null) => {
+    /* Until the first activeTexture, the unit is not known: no skipping. */
+    if (unit === UNKNOWN) return void bindTex(target, tex);
+    const key = (unit as number) * 65536 + target;
+    if (bound.has(key) && bound.get(key) === tex) return;
+    bound.set(key, tex);
+    bindTex(target, tex);
+  }) as Call;
+  const deleteTexture = plain("deleteTexture");
+  methods.deleteTexture = ((tex: WebGLTexture | null) => {
+    if (tex) for (const [key, held] of bound) if (held === tex) bound.set(key, null);
+    deleteTexture(tex);
+  }) as Call;
+
+  /* ── targets: what is bound to draw into, and to read from ── */
+  let draw: unknown = UNKNOWN;
+  let read: unknown = UNKNOWN;
+  const bindFramebuffer = plain("bindFramebuffer");
+  methods.bindFramebuffer = ((target: GLenum, fbo: WebGLFramebuffer | null) => {
+    if (target === gl.FRAMEBUFFER) {
+      if (draw === fbo && read === fbo) return;
+      draw = read = fbo;
+    } else if (target === gl.DRAW_FRAMEBUFFER) {
+      if (draw === fbo) return;
+      draw = fbo;
+    } else if (target === gl.READ_FRAMEBUFFER) {
+      if (read === fbo) return;
+      read = fbo;
+    }
+    bindFramebuffer(target, fbo);
+  }) as Call;
+  const deleteFramebuffer = plain("deleteFramebuffer");
+  methods.deleteFramebuffer = ((fbo: WebGLFramebuffer | null) => {
+    if (fbo && draw === fbo) draw = null;
+    if (fbo && read === fbo) read = null;
+    deleteFramebuffer(fbo);
+  }) as Call;
 }
 
 /** Binds a texture to a unit and points a sampler uniform at it. */

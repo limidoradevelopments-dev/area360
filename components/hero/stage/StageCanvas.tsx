@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ComponentType } from "react";
 
-import type { StageEngine } from "./engine";
+import type { StageEngine, StageEngineOptions } from "./engine";
 
 /**
  * ─── StageCanvas ───
@@ -15,7 +15,9 @@ import type { StageEngine } from "./engine";
  *
  * The engine is a dynamic import, so none of it (or its shaders) sits in
  * front of the first paint. Until its first frame exists the ground
- * underneath (or, with no scene, the still) IS the hero.
+ * underneath (or, with no scene, the still) IS the hero. In production it
+ * starts the moment its code arrives, before this component mounts (`early`),
+ * and the component takes it over.
  *
  * HELD FOR THE CURTAIN: a ready engine draws nothing and starts no arrival
  * until `started` (the page's curtain has begun to lift), so the opening
@@ -50,6 +52,78 @@ const RESIZE_SETTLE_MS = 120;
    browser; the server never needs it. */
 const engineModule = typeof window === "undefined" ? null : import("./engine");
 
+type Handlers = Required<Pick<StageEngineOptions, "onFirstFrame" | "onProgress" | "onLost">>;
+
+/**
+ * What an engine started before the page hydrated says before the
+ * component is there to hear it: kept, and passed on once it connects.
+ */
+class Relay implements Handlers {
+  private to: Handlers | null = null;
+  private progressed = 0;
+  private framed = false;
+  private lost = false;
+  readonly onProgress = (fraction: number) => {
+    this.progressed = fraction;
+    this.to?.onProgress(fraction);
+  };
+  readonly onFirstFrame = () => {
+    this.framed = true;
+    this.to?.onFirstFrame();
+  };
+  readonly onLost = () => {
+    this.lost = true;
+    this.to?.onLost();
+  };
+  connect(to: Handlers): void {
+    this.to = to;
+    if (this.progressed > 0) to.onProgress(this.progressed);
+    if (this.framed) to.onFirstFrame();
+    if (this.lost) to.onLost();
+  }
+}
+
+interface Boot {
+  /* null: no stage here (no WebGL2, no half-float targets). */
+  readonly engine: StageEngine | null;
+  readonly canvas: HTMLCanvasElement;
+  readonly relay: Relay;
+  claimed: boolean;
+}
+
+/**
+ * THE ENGINE STARTS AS SOON AS ITS CODE HAS ARRIVED, not once the page has
+ * hydrated and this component's effect has run: the shaders start
+ * compiling, and the shores decoding, on the canvas the server already
+ * drew (2026-10-23). A first visit waits on that compile above all, and it
+ * runs 2–4× slower once the curtain's animations are going (any animation
+ * on the page does it: measured cold, Windows); started before them, the
+ * longest programs get that head start uncontended. The engine sizes and
+ * draws nothing until the component claims it (`attach`), so hydration
+ * finds the canvas as the server left it.
+ *
+ * Production only: in development a hot reload runs this module again, and
+ * a second engine would start on a canvas whose first still lives.
+ */
+const early: Promise<Boot | null> | null =
+  engineModule && process.env.NODE_ENV === "production"
+    ? engineModule
+        .then(({ createStageEngine }) => {
+          const canvas = document.querySelector<HTMLCanvasElement>("[data-hero-stage] canvas");
+          const frame = canvas?.closest("section");
+          if (!canvas || !frame) return null;
+          const relay = new Relay();
+          /* Reduced motion is the component's to say: told on attach. */
+          const engine = createStageEngine({ canvas, frame, reducedMotion: false, detached: true, ...relayed(relay) });
+          return { engine, canvas, relay, claimed: false };
+        })
+        .catch(() => null)
+    : null;
+
+function relayed(relay: Relay): Handlers {
+  return { onFirstFrame: relay.onFirstFrame, onProgress: relay.onProgress, onLost: relay.onLost };
+}
+
 export default function StageCanvas({ reducedMotion, started, onReady, onProgress, onUnavailable }: StageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<StageEngine | null>(null);
@@ -74,16 +148,42 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
     const syncVisibility = () =>
       engine?.setVisible(onScreen && document.visibilityState === "visible");
 
-    (engineModule ?? import("./engine")).then(({ createStageEngine }) => {
-      if (cancelled) return;
-      engine = createStageEngine({
-        canvas,
-        frame,
-        reducedMotion: startsReduced(),
-        onFirstFrame: () => ready(),
-        onProgress: (fraction) => progress(fraction),
-        onLost: () => unavailable(),
-      });
+    const handlers: Handlers = {
+      onFirstFrame: () => ready(),
+      onProgress: (fraction) => progress(fraction),
+      onLost: () => unavailable(),
+    };
+    /* The engine started early, if it started on this canvas and nobody has
+       it yet (React's development double mount, a remount: a new one). */
+    const take = async (): Promise<StageEngine | null> => {
+      const boot = await early;
+      if (cancelled) return null;
+      if (boot && !boot.claimed && boot.canvas === canvas) {
+        boot.claimed = true;
+        if (boot.engine) {
+          boot.relay.connect(handlers);
+          boot.engine.setReducedMotion(startsReduced());
+          boot.engine.attach();
+        }
+        return boot.engine;
+      }
+      /* Started on a canvas the page no longer has (a hydration that
+         rendered afresh): let go, not left drawing nowhere. */
+      if (boot && !boot.claimed) {
+        boot.claimed = true;
+        boot.engine?.dispose();
+      }
+      const { createStageEngine } = await (engineModule ?? import("./engine"));
+      if (cancelled) return null;
+      return createStageEngine({ canvas, frame, reducedMotion: startsReduced(), ...handlers });
+    };
+
+    take().then((made) => {
+      if (cancelled) {
+        made?.dispose();
+        return;
+      }
+      engine = made;
       if (!engine) {
         unavailable();
         return;

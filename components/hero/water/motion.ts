@@ -69,7 +69,9 @@ export const WATER_MOTION = {
      * half over two seconds. The footage's swell is ~3× this. */
     slope: 0.0018,
     spread: 0.6,
-  } satisfies WaveBand,
+    /* Off: the user's own value, 2026-10-20 (tuner). See SWELL_DRAWN. */
+    gain: 0,
+  } satisfies WaveBand & { gain: number },
   undulation: {
     count: 6,
     /* Long enough to be slow (periods 0.45–1 s, so the bands drift rather
@@ -181,14 +183,25 @@ function band(spec: WaveBand, seed: number): Wave[] {
   return waves;
 }
 
-/** The swell, the undulation, then the ripples (the shader tells them apart
- *  by index). */
+/**
+ * THE SWELL IS NOT DRAWN WHILE IT IS OFF (2026-10-23). At a gain of 0 its
+ * waves added exactly nothing — each one's slope and blur its amplitude
+ * times 0 — and were still summed at every pixel of the lake, in each of
+ * the three programs that draw it (6 of the 26 waves), and compiled into
+ * each. Off, they are left out, and the sums of the rest are what they
+ * were. The tuner (`?tune`), where it can be turned back on, always has it.
+ */
+const SWELL_DRAWN =
+  WATER_MOTION.swell.gain > 0 || (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("tune"));
+
+/** The swell (where drawn), the undulation, then the ripples (the shader
+ *  tells them apart by index). */
 export const WAVES: readonly Wave[] = [
-  ...band(WATER_MOTION.swell, 101),
+  ...(SWELL_DRAWN ? band(WATER_MOTION.swell, 101) : []),
   ...band(WATER_MOTION.undulation, 503),
   ...band(WATER_MOTION.ripples, 907),
 ];
-export const SWELL_COUNT = WATER_MOTION.swell.count;
+export const SWELL_COUNT = SWELL_DRAWN ? WATER_MOTION.swell.count : 0;
 
 /** The lapping: wavenumber (rad/m), amplitude (m) and phase, as the waves
  *  are drawn, but running out from the stone's faces. */

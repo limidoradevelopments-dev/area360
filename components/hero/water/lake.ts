@@ -30,7 +30,7 @@ import { LAKE_FRAG } from "./shaders/lake";
 
 /* Rows past the horizon's, px: the scene's own test of which pixels show
    water must never reach a row this pass left undrawn. */
-const HORIZON_PAD = 2;
+export const HORIZON_PAD = 2;
 
 export class LakePass {
   private readonly gl: WebGL2RenderingContext;
@@ -98,7 +98,7 @@ export class LakePass {
  * camera ray still points down: where its world y is 0, at the frame's
  * left and right edges (the camera only leans, so the horizon is a line).
  */
-function belowHorizon(f: SetFrame): number {
+export function belowHorizon(f: SetFrame): number {
   const { rotation: r, view, focal } = f.camera;
   let row = 0;
   for (const x of [-f.camera.center[0] * view[0], (1 - f.camera.center[0]) * view[0]]) {

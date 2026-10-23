@@ -17,6 +17,7 @@
  *   stone       the stone as the camera sees it and as the lake mirrors
  *               it, over rects round it (stone/)
  *   lake        the photograph reflected in the lake (water/lake.ts)
+ *   water       the open water's light, the lake laid in (water/open.ts)
  *   scene       the set, the water and the fog, front to back, as linear
  *               light, at the scene's resolution, reading the three above
  *               (shaders/scene.ts)
@@ -37,6 +38,7 @@ import { AERIAL, CLARITY, EXTINCTION, MIST, MIST_SEEN, SOFT_BLACK, LIGHT, OVER_P
 import { STONE } from "../stone/optics";
 import { SLOT_UNIFORMS, StonePass } from "../stone/stone";
 import { LakePass } from "../water/lake";
+import { OpenWaterPass } from "../water/open";
 import { WATER_MOTION } from "../water/motion";
 import { WATER } from "../water/optics";
 import { StillnessClock } from "../weather/clock";
@@ -52,6 +54,7 @@ import {
   drawsInTiles,
   parseColor,
   programsLinked,
+  sendChangedStateOnly,
   setTiledGpu,
   srgbToLinear,
   supportsHalfFloatTargets,
@@ -239,7 +242,7 @@ export function defaultParams(): StageParams {
     sheenFace: STONE.sheen.face,
     footAway: STONE.foot.away,
     footToward: STONE.foot.toward,
-    swell: 0,
+    swell: WATER_MOTION.swell.gain,
     undulation: 0.45,
     ripples: 1.45,
     waver: WATER.waver,
@@ -268,6 +271,9 @@ export interface StageEngineOptions {
    *  what stands in is the page's to decide. Called once; without it the
    *  slowest rung stays. */
   onFloor?: () => void;
+  /** Started before the page has hydrated (StageCanvas): it compiles and
+   *  loads at once, but neither sizes the canvas nor draws until `attach`. */
+  detached?: boolean;
 }
 
 export interface StageEngine {
@@ -287,6 +293,9 @@ export interface StageEngine {
    *  arrival begins — at once if the stage is ready, else as soon as it is.
    *  Until then a ready stage holds, drawing nothing. */
   start(): void;
+  /** The page has hydrated (an engine started `detached`): the frame may now
+   *  be measured and the canvas sized. */
+  attach(): void;
   /** Development only: run `seconds` of stage time synchronously, then paint. */
   advance(seconds: number): void;
   /** Development only: lean the camera toward a frame point (−1…1, y up). */
@@ -327,11 +336,17 @@ export function createStageEngine(options: StageEngineOptions): StageEngine | nu
     stencil: false,
     premultipliedAlpha: false,
     preserveDrawingBuffer: false,
-    powerPreference: "default",
+    /* The faster GPU where there are two and the browser lets a page
+       choose: a dual-GPU Mac (Safari, Chrome). Chrome and Edge on Windows
+       ignore it — the GPU process takes one adapter for every page
+       (measured 2026-10-23: the integrated one, asked either way). */
+    powerPreference: "high-performance",
   });
   if (!gl || !supportsHalfFloatTargets(gl)) return null;
   /* Phones' tiles: the passes say what they overwrite (gl.ts discardBound). */
   setTiledGpu(drawsInTiles(gl));
+  /* A uniform, a binding, the viewport: sent only when it changes (gl.ts). */
+  sendChangedStateOnly(gl);
   /* Asked for before the first shader, so every compile can run on the
      browser's own threads (gl.ts programsLinked). */
   gl.getExtension("KHR_parallel_shader_compile");
@@ -420,6 +435,24 @@ function unprintTable(pivot: number, shadows: number, highlights: number, toe: n
 /* The diffusion's pyramid: half the scene, then each level half again. */
 const GLOW_LEVELS = 5;
 
+/** EXT_disjoint_timer_query_webgl2's two names this engine uses. */
+type TimerQueries = { readonly TIME_ELAPSED_EXT: GLenum; readonly GPU_DISJOINT_EXT: GLenum };
+
+/**
+ * The slowest rung's interval, in display frames: the display's frame
+ * nearest RENDER.floorFps, as the cap at 30 has always drawn (every other
+ * frame at 60 Hz, every fourth at 120, every fifth at 144).
+ */
+function floorEvery(vsync: number): number {
+  return Math.max(1, Math.ceil(1000 / RENDER.floorFps / vsync - 0.5));
+}
+
+/** The `q` quantile of `values` (sorts a copy). */
+function quantile(values: readonly number[], q: number): number {
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1)))];
+}
+
 const COLOR_TOKENS = ["lit", "shade", "stone", "water", "petal", "disc", "stem", "cloth", "pollen"] as const;
 type ColorToken = (typeof COLOR_TOKENS)[number];
 
@@ -437,6 +470,7 @@ class Stage implements StageEngine {
   private readonly bloom: BloomPass;
   private readonly stone: StonePass;
   private readonly lake: LakePass;
+  private readonly water: OpenWaterPass;
   private readonly rain: RainPass;
   /* The steam's patches, drifting through the low mist (atmosphere/wisps.ts):
      not made while it is off (MIST.on). */
@@ -493,22 +527,36 @@ class Stage implements StageEngine {
   private frameAverage = 1000 / 60;
   /* Since when the average has been slow (ms), or −1. */
   private slowSince = -1;
-  /* The rung of the ladder the visit is on (stage/optics.ts RENDER), the
-     interval between drawn frames it asks (ms; 0: every frame the display
-     shows), and the display's own frame: the shortest interval seen. */
-  private rung = 0;
-  private frameCap = 0;
+  /* The rung of the ladder the visit is on (stage/optics.ts RENDER): its
+     tier, and every how many of the display's frames one is drawn (1:
+     each); and the display's own frame, the shortest interval seen. */
+  private every = 1;
   private vsync = 1000 / 60;
   private lastDisplay = 0;
+  private displayProbe = 0;
+  /* The display's last intervals (ms), the frame read from them. */
+  private readonly intervals: number[] = [];
+  private intervalsSeen = 0;
   private floored = false;
   /* The arrival's targets are to be fitted to the resting scene once it is
      over (stone.ts refit). */
   private fitPending = false;
   /* Measuring the device in the dark (RENDER.calibrate): the tier being
-     tried, the frames drawn of it, the intervals counted, since when. None
-     once the scene is revealed. */
-  private calibration: { tier: number; seen: number; samples: number[]; since: number } | null = null;
+     tried, the frames drawn of it, their work on the GPU's clock and end to
+     end, since when. None once the scene is revealed. */
+  private calibration: { tier: number; seen: number; timed: number[]; waited: number[]; since: number } | null = null;
   private readonly probePixel = new Uint8Array(4);
+  /* The GPU's own clock (EXT_disjoint_timer_query_webgl2), where offered,
+     and the frames timed on it whose answers have not come back yet (they
+     come back no sooner than the next task). */
+  private readonly timer: TimerQueries | null;
+  private readonly timing: { query: WebGLQuery; cpu: number; tier: number }[] = [];
+  /* The frame rate stepping back up after the arrival (RENDER.stepUp): the
+     window being timed, if any; done once tried, and never once the watcher
+     has stepped down. */
+  private stepUp: { since: number; samples: number[] } | null = null;
+  private stepUpTried = false;
+  private steppedDown = false;
   /* The page's curtain: the arrival waits for `start` (the preloader
      stands in front until then), drawing nothing. */
   private startAsked = false;
@@ -516,6 +564,9 @@ class Stage implements StageEngine {
   /* Shares of the way to the first frame (onProgress): the shores, the
      shaders, the measuring in the dark. */
   private readonly loaded = [0, 0, 0];
+  /* Started before the page hydrated: settled once it has (attach). */
+  private readonly attached: Promise<void>;
+  private markAttached: (() => void) | null = null;
 
   /* The last pointer position, to tell a movement from a tremor. */
   private lastPointer: [number, number] | null = null;
@@ -547,19 +598,26 @@ class Stage implements StageEngine {
     const vao = gl.createVertexArray();
     if (!vao) throw new Error("stage: no vertex array");
     this.vao = vao;
+    this.attached = options.detached ? new Promise((resolve) => (this.markAttached = resolve)) : Promise.resolve();
 
-    this.atmosphere = new Atmosphere(gl, vao);
-    this.bloom = new BloomPass(gl, vao, this.params.bloomSeed);
-    this.stone = new StonePass(gl, vao);
-    this.lake = new LakePass(gl, vao);
-    this.rain = new RainPass(gl, vao);
-    this.wisps = MIST.on ? createWisps(gl) : null;
+    /* THE LONGEST COMPILES ARE STARTED FIRST: the scene, the water, the
+       lake, the stone. A first visit waits for the last program, and on
+       Windows the scene alone took ~6 s of a ~7 s compile (2026-10-23):
+       created ~19th, it was linked ~0.35 s after the first. (Worth at most
+       that: Chrome does not compile strictly in the order programs are
+       created.) */
     this.scene = createProgram(gl, SCENE_FRAG, [
       ...CAMERA_UNIFORMS, ...FOG_UNIFORMS, ...SHEET_UNIFORMS, ...WATER_UNIFORMS,
       ...STONE_UNIFORMS, ...PLATE_UNIFORMS, ...DEVELOP_UNIFORMS, ...SLOT_UNIFORMS, ...MIST_UNIFORMS,
-      "uLakePhoto", "uLakeBurn",
-      "uBloomNear", "uBloomMirror", "uBloomRect", "uBloomMirrorRect", "uBloomMirrorFill", "uBloomPlane",
+      "uWaterOpen", "uLakeBurn", "uBloomNear", "uBloomRect",
     ]);
+    this.water = new OpenWaterPass(gl, vao);
+    this.lake = new LakePass(gl, vao);
+    this.stone = new StonePass(gl, vao);
+    this.atmosphere = new Atmosphere(gl, vao);
+    this.bloom = new BloomPass(gl, vao, this.params.bloomSeed);
+    this.rain = new RainPass(gl, vao);
+    this.wisps = MIST.on ? createWisps(gl) : null;
     this.film = createProgram(gl, FILM_FRAG, [
       ...CAMERA_UNIFORMS, "uFlowerPrint", "uFlowerTone", "uFlowerBox", "uClothPrint", "uClothBox", "uFlowerAir",
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
@@ -568,9 +626,50 @@ class Stage implements StageEngine {
     ]);
     this.down = createProgram(gl, DOWN_FRAG, ["uSource", "uTexel"]);
     this.up = createProgram(gl, UP_FRAG, ["uCoarse", "uFine", "uTexel", "uSpread"]);
+    this.timer = gl.getExtension("EXT_disjoint_timer_query_webgl2") as TimerQueries | null;
 
     options.canvas.addEventListener("webglcontextlost", this.handleLost);
+    this.probeDisplay();
     void this.load();
+  }
+
+  /**
+   * THE DISPLAY'S OWN FRAME, read all the while the shaders compile (its
+   * frames, nothing drawn: an idle loop costs the compile nothing, measured
+   * cold, where any animation slows it 2–4×), and after from the frame
+   * loop. The ladder is laid out from it (RENDER), so it must be known
+   * before the device is measured; read only in the page's first moments,
+   * busy hydrating, a 120 Hz display read as 60. The frames drawn in the
+   * dark are each waited for, and their intervals say nothing about it.
+   */
+  private probeDisplay(): void {
+    let last = 0;
+    const step = (now: number) => {
+      if (last > 0) this.displayInterval(now - last);
+      last = now;
+      this.displayProbe = this.ready || this.disposed ? 0 : requestAnimationFrame(step);
+    };
+    this.displayProbe = requestAnimationFrame(step);
+  }
+
+  /**
+   * One interval between the display's frames (ms). THE LOWER QUARTILE OF
+   * THE LAST 120, NOT THE SHORTEST: a frame's timestamp jitters, and the
+   * shortest ever seen crept from a 120 Hz display's 8.3 ms to 6.3, making
+   * every frame at 60 look late to the watcher, which stepped a fast GPU
+   * down to 30 (2026-10-23). A busy page only lengthens intervals (two
+   * frames' worth, three), so the quick end of them is the display's frame;
+   * and the estimate only ever comes down, or a device too slow for every
+   * frame would read its own slowness as the display's. Between 4 and 50 ms
+   * (250 to 20 Hz): anything else is a stall.
+   */
+  private displayInterval(ms: number): void {
+    if (ms <= 4 || ms >= 50) return;
+    const list = this.intervals;
+    list.push(ms);
+    if (list.length > 120) list.shift();
+    this.intervalsSeen += 1;
+    if (list.length >= 8 && (list.length < 120 || this.intervalsSeen % 30 === 0)) this.vsync = Math.min(this.vsync, quantile(list, 0.25));
   }
 
   get weather(): number {
@@ -602,6 +701,9 @@ class Stage implements StageEngine {
       return;
     }
     if (!plates) return;
+    /* Started before the page hydrated: the frame is measured (the canvas
+       sized) only once it has. */
+    await this.attached;
     if (!alive()) {
       /* Gone while the shaders compiled: the plates arrived after dispose
          and were never its to delete. */
@@ -616,7 +718,7 @@ class Stage implements StageEngine {
        unseen, held at the opening shot, the costliest view, before the
        scene is revealed (reveal). */
     this.camera.arrive();
-    this.calibration = { tier: this.tier, seen: 0, samples: [], since: performance.now() };
+    this.calibration = { tier: this.tier, seen: 0, timed: [], waited: [], since: performance.now() };
     /* The flowers posed before their first frame. */
     this.stepBloom(0);
     this.render();
@@ -633,12 +735,14 @@ class Stage implements StageEngine {
   }
 
   /**
-   * Measured: the visit starts on rung `rung`, and the page is told the
-   * stage is ready. The arrival waits for the page's curtain (`start`).
+   * Measured: the visit starts on tier `tier`, drawing every `every`th of
+   * the display's frames, and the page is told the stage is ready. The
+   * arrival waits for the page's curtain (`start`).
    */
-  private reveal(rung: number): void {
+  private reveal(tier: number, every: number): void {
     this.calibration = null;
-    this.setRung(rung);
+    this.dropTimings();
+    this.setRung(tier, every);
     this.progress(2, 1);
     this.options.onFirstFrame();
     if (this.startAsked) this.begin();
@@ -648,6 +752,11 @@ class Stage implements StageEngine {
   start(): void {
     this.startAsked = true;
     if (this.waiting) this.begin();
+  }
+
+  attach(): void {
+    this.markAttached?.();
+    this.markAttached = null;
   }
 
   /**
@@ -666,78 +775,158 @@ class Stage implements StageEngine {
     this.rainTime = 0;
     this.fitPending = true;
     this.slowSince = -1;
-    this.frameAverage = this.frameCap || 1000 / 60;
+    this.frameAverage = this.every * this.vsync;
   }
 
-  /** Onto rung `rung` of the ladder: its frame rate, and its tier (the
-   *  targets rebuilt only if that changed). */
-  private setRung(rung: number): void {
-    this.rung = rung;
-    const step = RENDER.ladder[rung];
-    this.frameCap = step.fps > 0 ? 1000 / step.fps : 0;
-    if (step.tier !== this.tier) {
-      this.tier = step.tier;
+  /** Onto a rung: its tier (the targets rebuilt only if that changed), and
+   *  every how many display frames one is drawn. */
+  private setRung(tier: number, every: number): void {
+    this.every = every;
+    if (tier !== this.tier) {
+      this.tier = tier;
       this.measureFrame();
     }
   }
 
   /**
-   * One frame drawn in the dark, its work `elapsed` ms: past the warm-up,
-   * counted; with enough, the rung decided (RENDER.ladder) — or a cheaper
-   * tier tried, still in the dark; at the last, the floor.
+   * Whether `work` ms a frame holds a rung drawing every `every`th display
+   * frame (RENDER.share): `timed` on the GPU's clock, else end to end.
    */
-  private calibrate(elapsed: number, now: number): void {
+  private holds(work: number, every: number, timed: boolean): boolean {
+    const share = timed ? RENDER.share.timed : every > 1 ? RENDER.share.waited.capped : RENDER.share.waited.full;
+    return work <= share * every * this.vsync;
+  }
+
+  /** A frame's GPU work is to be timed: its query begun, or null where
+   *  there is no GPU clock. End it right after the frame's last draw. */
+  private beginTiming(): WebGLQuery | null {
+    if (!this.timer) return null;
+    const query = this.gl.createQuery();
+    if (query) this.gl.beginQuery(this.timer.TIME_ELAPSED_EXT, query);
+    return query;
+  }
+
+  private endTiming(query: WebGLQuery | null): void {
+    if (query && this.timer) this.gl.endQuery(this.timer.TIME_ELAPSED_EXT);
+  }
+
+  /** An ended query to be read once its answer is back (collectTimings),
+   *  with its frame's script ms. */
+  private trackTiming(query: WebGLQuery | null, cpu: number): void {
+    if (query) this.timing.push({ query, cpu, tier: this.tier });
+  }
+
+  /**
+   * The timed frames whose answers are back, oldest first, each handed on
+   * as its work: the larger of its script's ms and its GPU's (the two run
+   * side by side). All are dropped if the GPU's clock was disturbed (a
+   * disjoint: its frequency changed, or another context took it), and so
+   * are answers that never come (a driver that does not keep the clock).
+   */
+  private collectTimings(take: (work: number, tier: number) => void): void {
+    const gl = this.gl;
+    if (!this.timer || this.timing.length === 0) return;
+    if (gl.getParameter(this.timer.GPU_DISJOINT_EXT)) {
+      this.dropTimings();
+      return;
+    }
+    while (this.timing.length > 0) {
+      const { query, cpu, tier } = this.timing[0];
+      if (!gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) break;
+      take(Math.max(cpu, (gl.getQueryParameter(query, gl.QUERY_RESULT) as number) / 1e6), tier);
+      gl.deleteQuery(query);
+      this.timing.shift();
+    }
+    if (this.timing.length > 60) this.dropTimings();
+  }
+
+  private dropTimings(): void {
+    for (const { query } of this.timing) this.gl.deleteQuery(query);
+    this.timing.length = 0;
+  }
+
+  /**
+   * One frame drawn in the dark: its script took `cpu` ms and the whole
+   * frame, waited for to the GPU's end, `wall`; `query` times it on the
+   * GPU's clock. Past the warm-up, counted; with enough, the rung decided
+   * (RENDER: the fastest rung of the tier that holds) — or a cheaper tier
+   * tried, still in the dark; at the last, the floor.
+   */
+  private calibrate(cpu: number, wall: number, query: WebGLQuery | null, now: number): void {
     const c = this.calibration;
-    if (!c) return;
+    if (!c) {
+      if (query) this.gl.deleteQuery(query);
+      return;
+    }
     const C = RENDER.calibrate;
     c.seen += 1;
     this.progress(2, Math.min(0.9, c.seen / (C.warmup + C.frames)));
     /* The first tier warms the driver up; a cheaper one tried after only
        rebuilds its targets. */
-    if (c.seen <= (c.tier === RENDER.ladder[0].tier ? C.warmup : 1)) {
+    if (c.seen <= (c.tier === 0 ? C.warmup : 1)) {
+      if (query) this.gl.deleteQuery(query);
       c.since = now;
       return;
     }
+    this.trackTiming(query, cpu);
     /* Not a stall of the page (a tab put aside): a frame. */
-    if (elapsed > 0 && elapsed < 1000) c.samples.push(elapsed);
+    if (wall > 0 && wall < 1000) c.waited.push(wall);
+    this.judge(now, wall);
+  }
+
+  /**
+   * The rung, once there is enough to go on: on the GPU's clock where its
+   * answers have come back, else end to end — also where they do not come
+   * back in twice the time allowed.
+   */
+  private judge(now: number, wall = 0): void {
+    const c = this.calibration;
+    if (!c) return;
+    this.collectTimings((work, tier) => {
+      if (tier === c.tier && work < 1000) c.timed.push(work);
+    });
+    const C = RENDER.calibrate;
+    const vsync = this.vsync;
     /* A FAST DEVICE IS SETTLED AT ONCE: two frames running well inside the
-       display's rate at full quality. */
-    const n = c.samples.length;
-    if (c.tier === RENDER.ladder[0].tier && n >= 2 && Math.max(c.samples[n - 1], c.samples[n - 2]) <= RENDER.holds.fast) {
-      this.reveal(0);
+       display's own frame at full quality. */
+    const fast = c.timed.length >= 2 ? c.timed : this.timer ? null : c.waited;
+    if (c.tier === 0 && fast && fast.length >= 2 && Math.max(fast[fast.length - 1], fast[fast.length - 2]) <= RENDER.fastShare * vsync) {
+      this.reveal(0, 1);
       return;
     }
-    /* Enough to judge — or one frame so far over what a rung at 30 holds
-       that no more are needed. */
-    const enough =
-      c.samples.length >= C.frames ||
-      (c.samples.length >= 2 && now - c.since >= C.seconds * 1000) ||
-      elapsed > RENDER.holds.capped * 3;
-    if (!enough) return;
-    const sorted = c.samples.slice().sort((a, b) => a - b);
-    const work = sorted[sorted.length >> 1];
-    const ladder = RENDER.ladder;
-    if (c.tier === ladder[0].tier && work <= RENDER.holds.full) {
-      this.reveal(0);
-      return;
-    }
-    if (work <= RENDER.holds.capped) {
-      this.reveal(ladder.findIndex((step) => step.tier === c.tier && step.fps > 0));
-      return;
+    const over = now - c.since;
+    const floor = floorEvery(vsync);
+    const enough = (n: number) => n >= C.frames || (n >= 2 && over >= C.seconds * 1000);
+    /* One frame so far over what the slowest rung holds that no more are
+       needed: the wall alone says so. */
+    const far = wall > 3 * floor * vsync;
+    const timed = enough(c.timed.length) && !far;
+    const late = !this.timer || far || (c.timed.length < 2 && over >= 2 * C.seconds * 1000);
+    if (!timed && !(late && (enough(c.waited.length) || far))) return;
+    const work = quantile(timed ? c.timed : c.waited, C.quantile);
+    for (let every = 1; every <= floor; every += 1) {
+      /* A cheaper tier is drawn at the slowest rate only. */
+      if (c.tier > 0 && every < floor) continue;
+      if (this.holds(work, every, timed)) {
+        this.reveal(c.tier, every);
+        return;
+      }
     }
     const last = RENDER.tiers.length - 1;
     if (c.tier >= last) {
       this.reachFloor();
-      this.reveal(ladder.length - 1);
+      this.reveal(last, floor);
       return;
     }
-    /* Far over (more than a third past what a rung at 30 holds): straight
-       to the slowest tier, not through each. */
-    this.tier = work > RENDER.holds.capped * 1.33 ? last : c.tier + 1;
+    /* Far over (more than a third past what the slowest rung holds):
+       straight to the cheapest tier, not through each. */
+    this.tier = this.holds(work / 1.33, floor, timed) ? c.tier + 1 : last;
     this.measureFrame();
+    this.dropTimings();
     c.tier = this.tier;
     c.seen = 0;
-    c.samples.length = 0;
+    c.timed.length = 0;
+    c.waited.length = 0;
     c.since = now;
   }
 
@@ -780,11 +969,15 @@ class Stage implements StageEngine {
     if (this.disposed) return;
     this.disposed = true;
     this.stopLoop();
+    if (this.displayProbe) cancelAnimationFrame(this.displayProbe);
+    /* Its load stops waiting, and finds itself gone. */
+    this.attach();
     /* The shores still on their way are not needed now. */
     this.fetches.abort();
     this.options.canvas.removeEventListener("webglcontextlost", this.handleLost);
     const gl = this.gl;
     if (gl.isContextLost()) return;
+    this.dropTimings();
     gl.deleteProgram(this.scene.handle);
     gl.deleteProgram(this.film.handle);
     gl.deleteProgram(this.down.handle);
@@ -794,6 +987,7 @@ class Stage implements StageEngine {
     this.bloom.dispose();
     this.stone.dispose();
     this.lake.dispose();
+    this.water.dispose();
     this.rain.dispose();
     if (this.wisps) gl.deleteTexture(this.wisps);
     if (this.plates) deletePlates(gl, this.plates);
@@ -842,6 +1036,7 @@ class Stage implements StageEngine {
     this.bloom.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h, this.cssW, this.cssH, w, h, this.tier < RENDER.tiers.length - 1);
     this.stone.resize();
     this.lake.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
+    this.water.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
 
     const volumeW = Math.max(1, Math.round(Math.min(this.cssW * VOLUME.scale, VOLUME.maxWidth) * tier.volumeScale));
     const volumeH = Math.max(1, Math.round((volumeW * this.cssH) / this.cssW));
@@ -893,19 +1088,21 @@ class Stage implements StageEngine {
 
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
+    /* The display's own frame (displayInterval), read while held too —
+       nothing else runs then — and never from the frames drawn in the dark,
+       each waited for. */
+    if (this.lastDisplay > 0 && !this.calibration) this.displayInterval(now - this.lastDisplay);
+    this.lastDisplay = now;
     /* Ready, and held behind the page's curtain: nothing to draw. */
     if (this.waiting) {
-      this.lastTime = this.lastDisplay = now;
+      this.lastTime = now;
       return;
     }
-    /* The display's own frame: the shortest interval between its frames. */
-    const display = now - this.lastDisplay;
-    this.lastDisplay = now;
-    if (display > 4 && display < this.vsync) this.vsync = display;
     const elapsed = now - this.lastTime;
-    /* A rung at 30 draws every other frame of a 60 Hz display (every
-       fourth at 120): evenly, the display's frame nearest the interval. */
-    if (this.frameCap > 0 && elapsed < this.frameCap - 0.5 * this.vsync) return;
+    /* A capped rung draws every `every`th of the display's frames — at 30,
+       every other frame of a 60 Hz display, every fourth at 120: evenly,
+       the display's frame nearest the interval. */
+    if (this.every > 1 && elapsed < (this.every - 0.5) * this.vsync) return;
     this.lastTime = now;
     const seconds = elapsed / 1000;
     const dt = Math.min(seconds, PARALLAX.maxFrame);
@@ -924,27 +1121,41 @@ class Stage implements StageEngine {
          the page free between: drawn back to back, a frame near a rung's
          edge read ~30% dearer than it runs (a GTX 1050 Ti at 4K: 45 ms
          against the 35 it holds), and dropped a tier it did not need. */
+      /* TIMED ON THE GPU'S OWN CLOCK TOO (RENDER.calibrate): its answer
+         comes back from a later task, and the rung is judged on those. */
       const gl = this.gl;
       const burst = performance.now();
       let step = dt;
       let stepWall = wall;
-      do {
+      /* The answers of the frames drawn before this task. */
+      this.judge(burst);
+      while (this.calibration && performance.now() - burst < RENDER.calibrate.burstMs) {
+        const query = this.beginTiming();
         const start = performance.now();
         this.tick(step, false, stepWall);
         this.camera.arrive();
         this.render();
+        this.endTiming(query);
+        const issued = performance.now();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.probePixel);
         const end = performance.now();
-        this.calibrate(end - start, end);
+        this.calibrate(issued - start, end - start, query, end);
         step = Math.min((end - start) / 1000, PARALLAX.maxFrame);
         stepWall = Math.min((end - start) / 1000, CLOCKS.maxFrame);
-        if (end - start > RENDER.holds.fast) break;
-      } while (this.calibration && performance.now() - burst < RENDER.calibrate.burstMs);
+        if (end - start > RENDER.burstFrameMs) break;
+      }
       return;
     }
     this.watchFrameRate(elapsed);
+    /* After the arrival, a capped visit may time its frames to step back up
+       (RENDER.stepUp). */
+    const query = this.stepUp && now >= this.stepUp.since ? this.beginTiming() : null;
+    const start = performance.now();
     this.tick(dt, true, wall);
+    this.endTiming(query);
+    this.trackTiming(query, performance.now() - start);
+    this.watchStepUp(now);
   };
 
   /** `dt`: the step for what has state (the springs, the air, the
@@ -1061,9 +1272,9 @@ class Stage implements StageEngine {
   }
 
   /**
-   * The set: the plant, the stone and the photograph in the lake, each by
-   * its own program, then the scene pass, which reads them (shaders/
-   * scene.ts, the top).
+   * The set: the plant, the stone, the photograph in the lake and the open
+   * water, each by its own program, then the scene pass, which reads them
+   * (shaders/scene.ts, the top).
    */
   private drawSet(camera: CameraFrame): void {
     this.drawBloom(camera);
@@ -1071,6 +1282,8 @@ class Stage implements StageEngine {
     if (!f) return;
     this.stone.render(f);
     this.lake.render(f);
+    const p = this.params;
+    this.water.render(f, [p.lakeBurnHorizon, p.lakeBurnFoot, p.lakeBurnShape, p.lakeContrast], this.bloom, this.stone, this.lake);
     this.drawScene(f);
     /* The pollen's motes, into the scene's light (bloom/bloom.ts drawMotes). */
     if (this.sceneTarget) this.bloom.drawMotes(camera, this.sceneTarget, this.colors);
@@ -1131,7 +1344,7 @@ class Stage implements StageEngine {
     gl.uniform4f(u.uLakeBurn, p.lakeBurnHorizon, p.lakeBurnFoot, p.lakeBurnShape, p.lakeContrast);
     this.bloom.bindScene(u, UNITS.bloom);
     this.stone.bindScene(u);
-    this.lake.bindScene(u);
+    this.water.bindScene(u);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
@@ -1218,16 +1431,17 @@ class Stage implements StageEngine {
    */
   private watchFrameRate(elapsed: number): void {
     if (elapsed <= 0 || elapsed > 250) return;
+    const interval = this.every * this.vsync;
     /* NOT DURING THE ARRIVAL: its opening shot shows more of the lake, the
        costliest thing to draw (stage/motion.ts ARRIVAL.zoom), and was
        measured in the dark already. */
     if (this.camera.arriving) {
       this.slowSince = -1;
-      this.frameAverage = this.frameCap || 1000 / 60;
+      this.frameAverage = interval;
       return;
     }
     this.frameAverage += (elapsed - this.frameAverage) * 0.05;
-    if (this.frameAverage <= (this.frameCap > 0 ? RENDER.slowCappedMs : RENDER.slowFrameMs)) {
+    if (this.frameAverage <= interval * (this.every > 1 ? RENDER.slowShare.capped : RENDER.slowShare.full)) {
       this.slowSince = -1;
       return;
     }
@@ -1235,12 +1449,60 @@ class Stage implements StageEngine {
     if (this.slowSince < 0) this.slowSince = now;
     if (now - this.slowSince < RENDER.slowSeconds * 1000) return;
     this.slowSince = -1;
-    if (this.rung < RENDER.ladder.length - 1) {
-      this.setRung(this.rung + 1);
-      this.frameAverage = this.frameCap || 1000 / 60;
+    /* Stepped down: the frame rate does not come back up this visit. */
+    this.steppedDown = true;
+    this.stopStepUp();
+    const floor = floorEvery(this.vsync);
+    const last = RENDER.tiers.length - 1;
+    if (this.tier === 0 && this.every < floor) {
+      /* To the even rate nearest what the frames were actually keeping, not
+         just the next: from 120 a device running at ~30 goes to 30, not
+         through 60 and 40, 1.5 s slow at each. Nearest, not the slower: a
+         frame now and then three display frames long put a device keeping
+         ~58 on 40. */
+      this.setRung(0, Math.min(floor, Math.max(this.every + 1, Math.round(this.frameAverage / this.vsync))));
+    } else if (this.tier < last) {
+      this.setRung(this.tier + 1, floor);
     } else {
       this.reachFloor();
+      return;
     }
+    this.frameAverage = this.every * this.vsync;
+  }
+
+  /**
+   * THE FRAME RATE STEPS BACK UP (RENDER.stepUp) where the dark measured a
+   * passing load: once the arrival is over, a capped rung at full quality
+   * times its frames on the GPU's clock (frame); if they fit the next
+   * faster rung, it goes there, and tries the next. Every pixel the same.
+   */
+  private watchStepUp(now: number): void {
+    if (!this.stepUpTried) {
+      if (this.camera.arriving || this.fitPending) return;
+      this.stepUpTried = true;
+      if (this.timer && !this.steppedDown && this.tier === 0 && this.every > 1) this.stepUp = { since: now + 500, samples: [] };
+      return;
+    }
+    const up = this.stepUp;
+    if (!up) return;
+    this.collectTimings((work) => up.samples.push(work));
+    const S = RENDER.stepUp;
+    if (now - up.since < S.seconds * 1000 || up.samples.length < S.minFrames) return;
+    const faster = this.every - 1;
+    if (quantile(up.samples, S.quantile) > S.share * faster * this.vsync) {
+      this.stopStepUp();
+      return;
+    }
+    this.dropTimings();
+    this.setRung(0, faster);
+    this.frameAverage = faster * this.vsync;
+    this.slowSince = -1;
+    this.stepUp = faster > 1 ? { since: now + 500, samples: [] } : null;
+  }
+
+  private stopStepUp(): void {
+    this.stepUp = null;
+    this.dropTimings();
   }
 
   /* ── Input ──────────────────────────────────────────────────────────── */
@@ -1298,7 +1560,7 @@ class Stage implements StageEngine {
     if (!this.ready) return;
     /* Driven by hand, the page's own frames frozen: revealed as measured
        fast, at once. */
-    if (this.calibration) this.reveal(0);
+    if (this.calibration) this.reveal(0, 1);
     if (this.waiting) this.begin();
     const frames = Math.max(1, Math.round(seconds * 60));
     for (let i = 0; i < frames; i += 1) this.tick(1 / 60, false);

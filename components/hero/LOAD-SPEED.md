@@ -353,6 +353,58 @@ The user's rule for Phase 2 was that nothing about the picture may change while 
 | Intel UHD 630, phone size | 0.8–1.4 s | tier 2 at 30, floor reached |
 | Intel UHD 630, 1440 | 1.2 s | tier 2 at 30, floor reached |
 
+## The curtain, the GPU's own clock and the open water (2026-10-23)
+
+A performance pass after an audit the user approved, on their rule: nothing about the picture may change. Measured on the user's own laptop (i7-8750H, GTX 1050 Ti, a 1920×1080 panel at 120 Hz, Edge 155), production export, a cold first visit made cold by a nonce in every shader in one warm profile.
+
+What the audit found:
+
+- **The device was measured wrong under the curtain.** Its frames, timed end to end while the preloader's animations ran, came back 2–5× their cost (75–110 ms apart against 17–20 without it). At 1920×1080 the GTX 1050 Ti was put on the cheapest tier at 30 fps on 3 visits of 3; at 1440 on 30 fps on 3 of 4, one a tier down. Without the curtain: full quality, full rate. Its GPU holds full quality at 60 there (~11 ms a frame), but the ladder had only the display's rate (120) and 30.
+- **Any animation on the page slows a cold compile 2–4×.** With nothing moving the set compiled in ~4 s; with the curtain ~9–15 s; with a single 1-px compositor animation ~12–19 s, in a visible window too. Pausing the curtain's animations brought it back to ~4 s (its blur was not the cause); an idle rAF loop costs nothing. The compile runs as D3DCompile on the GPU process's worker threads at the CPU's base clock, and the scene was the long pole: 5.9 s alone in the browser, 19.5 s with an animation running, everything else done seconds before it.
+- **Chrome and Edge on Windows ignore `powerPreference`**: a dual-GPU laptop's WebGL runs on the integrated GPU, asked either way. The Intel UHD 630 at 1440 keeps 12–22 fps at the cheapest tier (the floor: still the user's decision).
+
+What changed:
+
+| change | where | effect | pixels |
+|---|---|---|---|
+| the device timed on the GPU's clock (timer queries, answers read a task later), work the larger of script and GPU, judged on the quick quartile; end to end where no clock | `engine.ts` `calibrate`, `judge`; `RENDER.calibrate`, `share` | 1920×1080: cheapest tier at 30 → full quality at 60 (3 of 3; held 40 s 3 of 3 on a quiet machine, an earlier run settled to 40 and 30); 1440: 30 → 60 (3 of 3) | none |
+| an even ladder: full quality at every Nth display frame down to the one nearest 30, then the tiers there; the display's frame the lower quartile of its intervals | `RENDER.floorFps`, `engine.ts` `floorEvery`, `displayInterval` | no uneven 80-odd fps on 120 Hz; the shortest interval had crept 8.3 → 6.3 ms and stepped a fast GPU down | none |
+| the frame rate may step back up after the arrival, on the GPU's clock, never a tier | `RENDER.stepUp`, `engine.ts` `watchStepUp` | 1080p: the opening shot (~16 ms) says 40, the resting frames (~11–13) 60 | none |
+| a framebuffer's completeness asked once per format | `gl.ts` `checkFramebuffer` | 25–42 synchronous checks a load → 3; the 10–24 ms stall as the arrival settled (the refit) gone | none |
+| the fade-up a Web Animation on the compositor; GSAP off the page | `HeroSection.tsx`, `hero/motion.ts` | the fade no longer waits on the main thread | none |
+| the engine started the moment its code arrives, before hydration (`early`, detached, `attach`); the longest programs created first | `StageCanvas.tsx`, `engine.ts` | the context at ~0.47 s, the first compile at ~0.7 s (was 0.9–1.8) | none |
+| the open water its own program, the scene's code moved whole, handed over in 32-bit floats | `water/open.ts`, `water/shaders/open.ts`, `scene.ts` | FXC 1.48 s → 0.63 + 0.29 s; GPU 5.48 → 5.08 ms (1440), 8.86 → 8.74 (1080p), Intel within its noise | ≤ 3 levels, ≤ 0.018% |
+| the swell not compiled while its gain is 0 | `water/motion.ts` `SWELL_DRAWN` | 6 of 26 waves out of three programs; `?tune` keeps them | exact |
+| a call only when it changes something: uniforms, program, vertex array, viewport, bindings | `gl.ts` `sendChangedStateOnly` | ~682 uniform calls a frame → ~260; script a frame 1.9 → 1.6 ms (desktop), 15.3 → 11.7 ms (CPU 4× slower) | exact |
+| the shaders shipped without their comments | `scripts/glsl-loader.cjs`, `next.config.ts` | the engine's script 84.5 → 60.5 KB gzipped; the 25 programs token-identical | exact |
+| `powerPreference: "high-performance"` | `engine.ts` | the faster GPU on a dual-GPU Mac; nothing on Windows | none |
+
+**Measured, all of it against the committed code:**
+
+| | before | after |
+|---|---|---|
+| cold first visit with the curtain, scene up (6 rounds each, alternated) | median 12.4 s | **9.0 s** |
+| the same, shaders compiled | median 9.1 s | **5.9 s** |
+| 1920×1080 at 120 Hz, GTX 1050 Ti | cheapest tier, 30 fps | **full quality, 60 fps** |
+| 1440×900 | full quality, 30 fps (3 of 4) | **full quality, 60 fps** |
+| frames, frozen clock (5 shapes × 4 states, GTX 1050 Ti) | | ≤ 0.018% of pixels by ≤ 2–3 levels (the scene's water compiled apart); Intel UHD 630: bit-identical |
+
+A shader's source changed, so a returning visitor's browser compiles once more, cold, after this is deployed.
+
+Tried and not kept:
+
+- **The photograph uploaded as RGBA and copied to one channel on the GPU** (exact): four times the bytes through the upload, 21 ms against 12 on a quiet machine.
+- **Asking whether programs are done less often** (once per 250 ms each): no gain; the compile itself is what is slowed.
+- **`[loop]` on the scene's sheet loops** (offline): no change to the compiled code.
+- **The water's values passed as halves**: not exact; the water's finished light in 32-bit floats is.
+
+Rules from this round:
+
+- **Nothing animates during a cold compile that need not**, and the compile starts before the page's animations do: on Windows any animation costs it 2–4×.
+- **Time the device on the GPU's clock where the browser offers it.** A busy browser only adds wall time.
+- **Read the display's frame robustly**: the lower quartile of many intervals, never the shortest one seen.
+- **Kill every test browser by its profile, even when the script is killed.** Once, 85 headless Edge processes from nine killed runs went on drawing the scene in the background and every number beside them halved.
+
 ## Tried in phase 2 and not kept
 
 Each was measured and turned down.

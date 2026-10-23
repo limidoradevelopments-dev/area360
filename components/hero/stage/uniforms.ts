@@ -51,7 +51,7 @@ export interface SetFrame {
 
 /**
  * TEXTURE UNITS, one table for every program of the set, so no pass binds
- * over another's. (7 is free.)
+ * over another's.
  */
 export const UNITS = {
   sheetDensity: 0,
@@ -63,6 +63,8 @@ export const UNITS = {
   /** stone/stone.ts bindScene: two, from here. */
   stone: 8,
   lake: 10,
+  /** The open water (water/open.ts), for the scene. */
+  water: 7,
   /** The low mist's veil (atmosphere/shaders/mist.ts). */
   mist: 11,
   /** The wisps drifting through it (atmosphere/wisps.ts). */
