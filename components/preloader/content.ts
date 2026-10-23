@@ -13,8 +13,8 @@ export interface PreloaderSlot {
   id: PreloaderSlotId;
   /** The word it holds in the frame: an index into PRELOADER_WORDS. */
   word: number;
-  /** One of the frame's faint words (a fifth and a tenth of the ink):
-   *  further off, so it turns over more slowly. */
+  /** One of the frame's faint words: further off, so it surfaces and
+   *  sinks more slowly. */
   far: boolean;
 }
 
@@ -25,7 +25,8 @@ export interface PreloaderSlot {
  */
 export const PRELOADER_SLOTS: readonly PreloaderSlot[] = [
   /* Meaningful, italic, turned to read downward and mirrored (a
-   * reflection), a tenth of the ink. */
+   * reflection): as large as the largest, a fifth of the ink (the user's
+   * mock, 2026-10-23). */
   { id: "f", word: 1, far: true },
   /* Perfection, italic, the frame's largest. */
   { id: "a", word: 2, far: false },

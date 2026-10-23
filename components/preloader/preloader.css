@@ -7,8 +7,10 @@
  * FITTED, NOT EYEBALLED. Every word was matched to the frame pixel by pixel
  * (rendered in Cormorant Garamond at candidate sizes and trackings, the
  * error over its box minimised): the sizes come out whole numbers at 1440
- * (32, 19, 32, 24, 30, 20), the tracking about −6%. Every place is measured
- * from the axis's centre, which is where the composition hangs. */
+ * (32, 19, 32, 24, 30, 20), the tracking about −6%; the turned word has
+ * since been made as large as the largest (the user's mock: its block
+ * below). Every place is measured from the axis's centre, which is where
+ * the composition hangs. */
 :root {
   --preloader-unit: 1rem;
 
@@ -18,9 +20,16 @@
    * ends (the frame's line, read down its length). */
   --color-preloader-axis: rgb(88 88 88 / 0.83);
   --color-preloader-axis-end: rgb(88 88 88 / 0.15);
-  /* The faint words: a fifth and a tenth of the ink. */
+  /* The faint words: a fifth of the ink, and the turned reflection a
+   * little under that (it was a tenth: the user's mock, 2026-10-23, prints
+   * it at 30 on 17, where the ink is 88). */
   --color-preloader-echo: rgb(88 88 88 / 0.225);
-  --color-preloader-far: rgb(88 88 88 / 0.1);
+  --color-preloader-far: rgb(88 88 88 / 0.183);
+
+  /* A word's blurs, in its own em: FIXED, never animated (motion.ts BLUR):
+   * the strata's soft copies, and the mist's double. */
+  --blur-preloader-soft: 0.1em;
+  --blur-preloader-echo: 0.28em;
 
   /* ── The axis ── where it stands from the screen's centre: a little left
    * (the mark and the words are centred together, not the line) and a
@@ -101,14 +110,19 @@
 
   /* Meaningful, italic, turned to read downward AND MIRRORED — a
    * reflection (the frame's word correlates 0.76 with the mirror image, 0.51
-   * with the plain turn) — fainter still. Its place is where its baseline
-   * starts, which it turns about. */
-  --space-preloader-f-x: calc(var(--preloader-unit) * 1.644);
-  /* 26px */
-  --space-preloader-f-y: calc(var(--preloader-unit) * -5.959);
-  /* -95px */
-  --text-preloader-f: calc(var(--preloader-unit) * 1.25);
-  /* 20px */
+   * with the plain turn). Its place is where its baseline starts, which it
+   * turns about. LARGE SINCE 2026-10-23, the user's mock: as large as the
+   * largest words (it was 20px), its letters' tops just off the axis, it
+   * starts above the italic Perfection and its tail reaches the D of
+   * Designing — fitted against its neighbours in the mock (its length 0.86
+   * of the mark's height, 1.4 of Perfection's width), not its pixels: the
+   * mock's other words sit ~15% smaller against the mark than the frame's. */
+  --space-preloader-f-x: calc(var(--preloader-unit) * 1.95);
+  /* 31px */
+  --space-preloader-f-y: calc(var(--preloader-unit) * -7.22);
+  /* -115.5px */
+  --text-preloader-f: calc(var(--preloader-unit) * 2);
+  /* 32px */
   --tracking-preloader-f: -0.08em;
 }
 
@@ -292,31 +306,97 @@
   scale: 1 -1;
 }
 
-/* A word is five copies of itself: the whole word (what rests, and sizes
- * the place), its three strata, and the mist's double. PRE-ENTRANCE: all
- * hidden; the section's timeline brings them up. */
-[data-preloader-layer] {
-  display: block;
-  opacity: 0;
-}
-
-[data-preloader-layer]:not([data-preloader-layer="whole"]) {
+/* A stack: one word, laid over the place's other stacks. */
+[data-preloader-stack] {
   position: absolute;
   left: 0;
   top: 0;
 }
 
+/* Done with (the entrance's word, once it has sunk): out of the tree, its
+ * layers freed. */
+[data-preloader-stack][data-preloader-spent] {
+  display: none;
+}
+
+/* Sizes the stack (and so its strata); never painted. */
+[data-preloader-sizer] {
+  display: block;
+  visibility: hidden;
+}
+
+/* The mist's double, and the one the exit breathes out: a FIXED blur, which
+ * the compositor applies as it draws and only while the double shows; only
+ * its opacity and transform move. PRE-ENTRANCE: hidden, as is every ink
+ * below; the section's animations bring them up. */
+[data-preloader-echo],
+[data-preloader-out] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  filter: blur(var(--blur-preloader-echo));
+  opacity: 0;
+}
+
+[data-preloader-echo] {
+  will-change: opacity, transform;
+}
+
 /* The strata, cut where the type's own lines are: the x-height's top
- * (0.55em: 44% of the box) and the baseline (0.94em: 75.2%). Wide open
- * sideways and at the outer edges, so no overhang or accent is shaved. */
-[data-preloader-layer="cap"] {
-  clip-path: inset(-0.4em -0.6em 56% -0.6em);
+ * (0.55em: 44% of the box) and the baseline (0.94em: 75.2%), open 0.4em past
+ * the box's ends and 0.6em each side, so no overhang or accent is shaved. A
+ * RECTANGLE CLIP: snapped to whole pixels, so the three meet without a seam
+ * and no whole copy need stand in at rest. */
+[data-preloader-band] {
+  position: absolute;
+  left: -0.6em;
+  right: -0.6em;
+  overflow: clip;
 }
 
-[data-preloader-layer="body"] {
-  clip-path: inset(44% -0.6em 24.8% -0.6em);
+[data-preloader-band="cap"] {
+  top: -0.4em;
+  height: 0.95em;
 }
 
-[data-preloader-layer="foot"] {
-  clip-path: inset(75.2% -0.6em -0.4em -0.6em);
+[data-preloader-band="body"] {
+  top: 0.55em;
+  height: 0.39em;
+}
+
+[data-preloader-band="foot"] {
+  top: 0.94em;
+  height: 0.71em;
+}
+
+/* What a stratum shears. */
+[data-preloader-shear] {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+/* Each stratum twice, set where the word stands: sharp, and soft (a fixed
+ * blur). The blur clearing is the two cross-fading (motion.ts BLUR). */
+[data-preloader-ink] {
+  position: absolute;
+  left: 0.6em;
+  opacity: 0;
+  will-change: opacity;
+}
+
+[data-preloader-band="cap"] [data-preloader-ink] {
+  top: 0.4em;
+}
+
+[data-preloader-band="body"] [data-preloader-ink] {
+  top: -0.55em;
+}
+
+[data-preloader-band="foot"] [data-preloader-ink] {
+  top: -0.94em;
+}
+
+[data-preloader-ink="soft"] {
+  filter: blur(var(--blur-preloader-soft));
 }
