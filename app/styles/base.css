@@ -24,8 +24,7 @@ html {
    *
    * No clamp() anywhere else in the system, except when a size must answer
    * to viewport HEIGHT, which this curve knows nothing about. */
-  /* font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem); */
-  font-size: 93.75%;
+  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem);
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   scrollbar-width: none;

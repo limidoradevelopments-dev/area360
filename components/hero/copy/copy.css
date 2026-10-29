@@ -4,7 +4,7 @@
  * user's 1920 frame and their 390 phone frame, 2026-10-30), on the hero's
  * twelve columns — four on a phone. The headline Cormorant Garamond
  * semibold italic at 34px, −6%, the whole white; the copy Newsreader at
- * 14px, −1%; the notes Newsreader at 12px; every word but the headline at
+ * 14px, −1%; the notes Newsreader at 10px; every word but the headline at
  * 80% white (tokens.css: the soft white).
  *
  * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
@@ -26,8 +26,7 @@
  *   below that baseline, so the margin is the gap less that reach.
  *
  *   THE LEADING. The headline's lines 38.4px apart (31.7px on a phone); the
- *   body's 1.43 — 20px at 14px, 17px at 12px, the frame's pitches — which
- *   is also what sets the notes' first baselines 2px above the copy's.
+ *   body's 1.43 — 20px at 14px, the frame's pitch, 14px at the notes' 10px.
  *
  * NEVER TAKES THE POINTER: the scene reads the hand through it. */
 :root {
@@ -50,8 +49,9 @@
   --text-hero-lede: calc(var(--hero-copy-unit) * 0.875);
   /* 14px */
   --tracking-hero-lede: -0.01em;
-  --text-hero-note: calc(var(--hero-copy-unit) * 0.75);
-  /* 12px */
+  --text-hero-note: calc(var(--hero-copy-unit) * 0.625);
+  /* 10px: every supporting word (the user's sizes, 2026-10-30), as the
+   * header's clock is */
   --leading-hero-text: 1.43;
   --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.25);
   /* 4px: the byline to its year */
@@ -60,7 +60,7 @@
   --space-hero-row: 48.65%;
   --space-hero-axis: 0px;
   /* The row is never higher than lets the headline clear the header's
-   * clock (its box and zone end 70px down) by a gutter: on a short screen,
+   * clock (its box and zone end ~65px down) by a gutter: on a short screen,
    * a landscape phone, it comes down rather than climbing into the clock. */
   --space-hero-clear: calc(var(--hero-copy-unit) * 5.625);
   /* 90px */

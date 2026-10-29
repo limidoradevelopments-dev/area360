@@ -8,13 +8,14 @@
  * mark and the clock's box in the whole white.
  *
  * READ OFF THE FRAMES: every size below is the frame's px ÷ 16 (AGENTS.md).
- * The leading, 1.43, is the frame's own: 17px at 12px, which with a
- * hairline above and below is the clock box's 19px, and with a 6px gap the
- * nav's 23px pitch.
+ * The leading, 1.43, is the frame's own (17px at 12px). SINCE 2026-10-30,
+ * the user's sizes: the nav alone at 12px, the clock and its zone at 10px
+ * as every supporting word is (hero/copy: the notes) — the clock's box
+ * then 16px with its hairlines; the nav's words 4px apart, a 21px pitch.
  *
  * THE PHONE IS ITS OWN DRAWING, not the desktop scaled: its mark is a
  * fifth smaller and set a little higher, its nav two pixels smaller, its
- * clock the same size. So the phone block restates what it redraws, still
+ * clock the same 10px. So the phone block restates what it redraws, still
  * as multiples of the one unit.
  *
  * TAKES THE POINTER ONLY WHERE IT IS PRESSED: the scene reads the hand over
@@ -33,24 +34,24 @@
   /* Where the mark sits against the top line the clock and nav share. */
   --space-header-mark-y: 0px;
 
-  --text-header: calc(var(--header-unit) * 0.75);
-  /* 12px: the clock and its zone */
+  --text-header: calc(var(--header-unit) * 0.625);
+  /* 10px: the clock and its zone, supporting words */
   --text-header-nav: calc(var(--header-unit) * 0.75);
-  /* 12px */
+  /* 12px: the nav, the one thing here to press */
   --leading-header: 1.43;
 
-  /* The clock: the time in its box, the zone under it. The box is fitted to
-   * the frame's width (65px), not its padding: the browser sets the figures
-   * in the optical size drawn for 12px, a little wider than the frame's. */
-  --space-header-clock-pad: calc(var(--header-unit) * 0.4375);
-  /* 7px either side of the time */
+  /* The clock: the time in its box, the zone under it. The box holds the
+   * proportion the frame drew round its 12px time (65px wide), brought down
+   * with the type: about 0.6 em of air either side. */
+  --space-header-clock-pad: calc(var(--header-unit) * 0.375);
+  /* 6px either side of the time */
   --space-header-clock-gap: calc(var(--header-unit) * 0.25);
   /* 4px: the box to the zone */
 
   /* The nav: its words, the gap to the hairline, and the hairline running
    * on a little past the last word, as the frame draws it. */
-  --space-header-nav-gap: calc(var(--header-unit) * 0.375);
-  /* 6px between the words */
+  --space-header-nav-gap: calc(var(--header-unit) * 0.25);
+  /* 4px between the words (the frame's 6, closed up at the user's word) */
   --space-header-nav-rule: calc(var(--header-unit) * 0.5);
   /* 8px: the words to the rule */
   --space-header-rule-tail: calc(var(--header-unit) * 0.25);
@@ -64,8 +65,8 @@
   --color-header-strong: var(--color-on-night);
 }
 
-/* Tablet and small laptop: the same. The header is all small type, and
- * 12px is already the smallest the body's type is set. */
+/* Tablet and small laptop: the same. The header is all small type, already
+ * at the smallest it is set. */
 @media (max-width: 1279.98px) {
   :root {
     --header-unit: 1rem;
