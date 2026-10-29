@@ -1,0 +1,73 @@
+/* ─── Shared utilities ─── */
+
+/* Noise / grain over a cool silver base, for OS-level and interactive
+ * grounds. The ::after sits at z-0; give content above it z-[1]. */
+.bg-noise {
+  position: relative;
+  isolation: isolate;
+}
+
+.bg-noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Glass: stark white at low opacity, heavy blur, 1px light inner edge. */
+.glass {
+  background-color: var(--color-glass);
+  /* UNPREFIXED ONLY. Lightning CSS treats a hand-written webkit twin as a
+   * duplicate and keeps whichever is LAST — written webkit-second, Chrome got
+   * no blur at all. The build adds the prefix itself. */
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: inset 0 0 0 1px var(--color-glass-edge), var(--shadow-float);
+}
+
+/* The mask a line slides up out of. Padding-bottom + negative margin gives
+ * descenders room without shifting the baseline. The child is the line that
+ * GSAP moves (data-reveal-line). */
+[data-reveal-mask] {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+/* PRE-ENTRANCE STATE LIVES IN CSS, not in a gsap.set on mount. A set on mount
+ * runs after the first paint, so the server-rendered content would flash
+ * fully visible for a frame, vanish, then animate in. GSAP tweens FROM these
+ * values with an explicit fromTo. */
+[data-reveal-line] {
+  display: block;
+  transform: translateY(110%);
+}
+
+[data-reveal-fade] {
+  opacity: 0;
+}
+
+[data-reveal-card] {
+  opacity: 0;
+  transform: translateY(1.5rem) scale(0.98);
+  filter: blur(8px);
+}
+
+/* Without scripting nothing will ever run the entrance, so nothing may be
+ * left in its pre-entrance state. */
+@media (scripting: none) {
+
+  [data-reveal-line],
+  [data-reveal-fade],
+  [data-reveal-card] {
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}

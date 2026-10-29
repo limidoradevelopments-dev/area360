@@ -1,0 +1,135 @@
+/* ─── Hero · Still Water ───
+ *
+ * A stone in still water, in fog, seen from the shore. The scene is
+ * WebGL (components/hero/stage); this file holds everything CSS decides for
+ * it: its tokens (which the engine reads back at mount), its step-downs, and
+ * the static first paint that is also the no-WebGL fallback.
+ *
+ * MEASURED, NOT PICKED. Every grey is fitted to the user's reference frames
+ * (B&W; the first, 2000×1215, set the set's tones; the second, 942×567, the
+ * camera and the water): their banded means and percentiles. All of it is
+ * pure neutral — red, green and blue within a point of each other —
+ * because the moment the fog leans warm or cool it reads as a filter
+ * instead of as air.
+ *
+ * The engine converts these sRGB tokens to LINEAR light before any optics
+ * (fog is Beer–Lambert, reflection is Fresnel: both are linear in radiance),
+ * and the film grade (stage/optics.ts) takes the result back to display. */
+:root {
+  --hero-unit: 1rem;
+
+  /* ── The air ──
+   * Fog in full light (the backlit glow over the stone) and fog in its own
+   * shadow. Every fog sheet, and the sky, is a mix of these two by how much
+   * light reaches it through the fog above. */
+  --color-hero-lit: #FFFFFF;
+  --color-hero-shade: #B4B4B3;
+
+  /* ── The set ──
+   * Concrete, as a reflectance: what the stone returns of the light that
+   * reaches it. Weathered board-formed concrete is ~30%. */
+  --color-hero-stone: #9C9B98;
+  /* The lake itself, under the reflection: dark, deep water. */
+  --color-hero-water: #0C0D0D;
+
+  /* ── The bloom ──
+   * The two cut chamomiles on the stone, as reflectances, read off the
+   * user's photograph (assets/sources/flowers/chamomile.webp): the rays
+   * white, the disc a golden yellow, the stems a sage green. Kept quiet on
+   * purpose: in this light a saturated green reads as a sticker laid on the
+   * print. Measured in the frame, every other thing in it is neutral within
+   * a level or three (the stone's top, the warmest, ~3); at a reference's
+   * own green a stem printed ~10 levels green and read as pasted on, so
+   * each colour here keeps about half its reference's chroma — and its
+   * lightness, which is all the print keeps: the disc darker than the rays,
+   * as the reference's dark centres are; the stems darker than the top they
+   * lie on, as its dark lines are.
+   * SINCE 2026-10-19 THE PRINT IS PURE MONOCHROME (the user's brief: "no
+   * unnecessary accent colors inside the photograph"; stage/shaders/film.ts
+   * finish): these, and the pollen's gold below, now set only their greys.
+   * Kept as colours, so the light they take is still each one's own. */
+  --color-hero-petal: #F0EFE9;
+  --color-hero-disc: #CFA640;
+  --color-hero-stem: #7E8A55;
+  /* The cloth it is tied with: undyed cotton, an off-white a little warm
+   * (bleached white would be the brightest thing in the frame, brighter
+   * than the flower; the reference's strip prints just under its flowers'
+   * white). */
+  --color-hero-cloth: #ECE9E2;
+  /* Its pollen: motes of pale gold, each holding a little light (bloom/
+   * optics.ts BLOOM.pollen) — the warmest small note in the frame, the
+   * user's choice over white (2026-10-05). As light, not as a reflectance:
+   * a mote is a point too fine to be lit, only seen glowing. */
+  --color-hero-pollen: #EBD49B;
+
+  /* ── The first paint ──
+   * The preloader's own ground (components/preloader: the user's #111111,
+   * 2026-10-23): it stands on it, and the scene comes up out of it as the
+   * preloader leaves (HeroSection, motion.ts ENTRANCE) — no seam between
+   * them; the scene's own darkest is ~16. Black until then; the frame's own
+   * light band by band before 2026-10-20. */
+  --color-hero-ground: #111111;
+
+  /* Registered below as <length>, so getComputedStyle hands the engine a
+   * resolved px value rather than an unevaluated calc(). */
+  --size-hero-cell: calc(var(--hero-unit) * 0.25);
+  /* 4px: one cell of the simulated air */
+}
+
+/* The one hero token the engine measures. A registered <length> computes to
+ * absolute px; an unregistered custom property would come back as the raw
+ * calc() text. */
+@property --size-hero-cell {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 4px;
+}
+
+/* Tablet and small laptop. The air steps down less than type does: its
+ * unit sets the size of a swirl, and a swirl answers a finger or a cursor,
+ * which do not shrink with the screen. */
+@media (max-width: 1279.98px) {
+  :root {
+    --hero-unit: 0.9rem;
+  }
+}
+
+/* Phone. */
+@media (max-width: 767.98px) {
+  :root {
+    --hero-unit: 0.85rem;
+  }
+}
+
+/* The first paint: black, until the scene arrives out of it. */
+[data-hero-ground] {
+  background: var(--color-hero-ground);
+  /* A long press on a phone must stay a press: no callout, no selection. */
+  -webkit-touch-callout: none;
+}
+
+/* PRE-ENTRANCE STATE. The canvas is invisible until its first frame exists;
+ * the section's timeline brings it up out of the black. */
+[data-hero-stage] {
+  opacity: 0;
+}
+
+/* The still stands in only where there is no scene: undisplayed (so its
+ * lazy image is never fetched) until the section marks it needed. */
+[data-hero-still] {
+  display: none;
+}
+[data-hero-fallback] [data-hero-still] {
+  display: block;
+}
+
+/* No scripting, no engine: the canvas would only ever be an empty layer,
+ * and the still is the hero. */
+@media (scripting: none) {
+  [data-hero-stage] {
+    display: none;
+  }
+  [data-hero-still] {
+    display: block;
+  }
+}

@@ -1,0 +1,420 @@
+/**
+ * ─── Atmosphere ───
+ *
+ * The fog, as one object the stage talks to. It owns:
+ *
+ *   the air      a fluid simulation on the stone's plane (fluid.ts), stepped on a
+ *                fixed clock, fed by the visitor's hand and by the lake's
+ *                own gusts (forcing.ts, ambient.ts)
+ *   the sheets   the fog between the planes of the set, rendered at a
+ *                quarter resolution through the camera (shaders/sheets.ts): a
+ *                density and a light per sheet, for the composite to put
+ *                between things — drawn packed into one target, then laid
+ *                out into the two the scene reads
+ *
+ * Input arrives in frame CSS px. The hand acts on the air in front of the
+ * stone: the camera orbits it, so its plane never moves on screen, and a
+ * pointer position is a position on it without conversion.
+ */
+
+import { CAMERA, CAMERA_UNIFORMS, setCameraUniforms, type CameraFrame } from "../stage/camera";
+import { bindTexture, createProgram, createTarget, deleteTarget, discardBound, type Program, type Target } from "../stage/gl";
+import { breathing, Gusts } from "./ambient";
+import { carryPhase, FluidSim, type AirParams } from "./fluid";
+import { Forcing } from "./forcing";
+import { HandAir } from "./hand";
+import {
+  AIR_CLOCK,
+  ARRIVAL_AIR,
+  BREATHING,
+  FLUID,
+  FOG_WAVES,
+  GUST,
+  SHEET_WIND,
+  SPELL,
+  STRATIFICATION,
+  TOUCH,
+  TURBULENCE,
+} from "./motion";
+import { LIGHT, SHEETS, VOLUME } from "./optics";
+import { SHEETS_FRAG, SHEETS_UNPACK_FRAG } from "./shaders/sheets";
+
+/** What the fog's look reads from the live tuning. */
+export interface FogLook {
+  /** Scales every sheet's billow contrast. 1 = designed. */
+  detail: number;
+  /** Scales every sheet's lit-side contrast. 1 = designed. */
+  form: number;
+  selfShadow: number;
+  lightExtinction: number;
+  ambient: number;
+  /** Sheet 0's wisp sharpness (SHEETS[0].sharpness by default). */
+  wisps: number;
+}
+
+/** The hand's gains, tuned live. 1 = designed. */
+export interface HandGains {
+  breath: number;
+  spell: number;
+  wake: number;
+}
+
+interface Press {
+  at: number;
+  x: number;
+  y: number;
+  type: string;
+  casting: boolean;
+}
+
+export class Atmosphere {
+  private readonly gl: WebGL2RenderingContext;
+  private readonly vao: WebGLVertexArrayObject;
+  private readonly sim: FluidSim;
+  private readonly program: Program;
+  private readonly unpack: Program;
+  private readonly forcing = new Forcing();
+  /* The sheets as drawn (both sets, packed), and laid out. */
+  private packed: Target | null = null;
+  private densityTarget: Target | null = null;
+  private lightTarget: Target | null = null;
+
+  /* The air's own clock: it only advances while the stage runs. */
+  private clock: number = AIR_CLOCK.start;
+  private accumulator = 0;
+  private lastActive = -Infinity;
+  private gusts: Gusts;
+  private quietUntil = 0;
+  /* The hand's push on the air, kept on the CPU for what is posed there
+     (hand.ts), and where the hand was last frame (cells). */
+  readonly hand = new HandAir();
+  private handFrom: [number, number] | null = null;
+  /* The arrival's air still to come (motion.ts ARRIVAL_AIR): when it
+     began, and how many of its pulses have gone in. */
+  private arrivalAt: number | null = null;
+  private arrivalDone = 0;
+
+  /* The frame, in CSS px, and one cell of the air. */
+  private cssW = 1;
+  private cssH = 1;
+  private cellPx = 4;
+
+  /* Input, in cells. */
+  private press: Press | null = null;
+  private pointerCell: [number, number] | null = null;
+  private pointerType = "mouse";
+  private wakeFrom: [number, number] | null = null;
+
+  constructor(gl: WebGL2RenderingContext, vao: WebGLVertexArrayObject) {
+    this.gl = gl;
+    this.vao = vao;
+    this.sim = new FluidSim(gl, vao);
+    this.gusts = new Gusts(AIR_CLOCK.start);
+    this.program = createProgram(gl, SHEETS_FRAG, [
+      ...CAMERA_UNIFORMS,
+      "uFluid", "uCarry", "uGridMap", "uGrid", "uPhase", "uCellPx", "uPivotZ", "uTime", "uBreath", "uCarriedSets",
+      "uSheetPlane", "uSheetScale", "uSheetDetail", "uSheetResponse", "uSheetForm", "uSheetBlur", "uSheetSharp", "uSheetDrift",
+      "uStrata", "uEvolve", "uLight", "uTurb", "uWaveA", "uWaveB",
+    ]);
+    this.unpack = createProgram(gl, SHEETS_UNPACK_FRAG, ["uPacked", "uSet"]);
+  }
+
+  get time(): number {
+    return this.clock;
+  }
+
+  /** Nothing has pushed the air for a while: it is only drifting. */
+  get calm(): boolean {
+    return this.clock - this.lastActive > AIR_CLOCK.calmAfter;
+  }
+
+  /**
+   * The air as it stands — its target, and where the frame at rest lies on
+   * its grid (fluid uv = frame uv · map.xy + map.zw), the grid's size in
+   * cells and a cell's size in CSS px — for what answers it on the CPU
+   * (hand.ts, bloom/).
+   */
+  get air(): { target: Target; map: readonly [number, number, number, number]; grid: [number, number]; cellPx: number } | null {
+    const target = this.sim.fieldTarget;
+    if (!target) return null;
+    return { target, map: this.sim.gridMap, grid: [this.sim.gridW, this.sim.gridH], cellPx: this.cellPx };
+  }
+
+  /** The sheets' densities (one per channel, near → far). */
+  get density(): WebGLTexture | null {
+    return this.densityTarget?.tex ?? null;
+  }
+
+  /** The sheets' light: xyz sheets 0–2, w the plain light (far sheet, sky). */
+  get light(): WebGLTexture | null {
+    return this.lightTarget?.tex ?? null;
+  }
+
+  /**
+   * Re-measures the frame. `volumeW × volumeH` is the sheets pass's size.
+   * A grid rebuild resets the air: a swirl in flight has nowhere to be.
+   */
+  resize(cssW: number, cssH: number, cellPx: number, volumeW: number, volumeH: number, reduced: boolean): void {
+    this.cssW = cssW;
+    this.cssH = cssH;
+    this.cellPx = cellPx;
+    if (this.sim.resize(cssW / cellPx, cssH / cellPx, this.clock, reduced)) {
+      this.forcing.reset();
+      this.press = null;
+    }
+    const packed = this.packed;
+    if (!packed || packed.width !== volumeW || packed.height !== volumeH) {
+      const gl = this.gl;
+      this.deleteSheets();
+      this.packed = createTarget(gl, volumeW, volumeH, gl.RGBA32UI, gl.NEAREST);
+      this.densityTarget = createTarget(gl, volumeW, volumeH, gl.RGBA16F, gl.LINEAR);
+      this.lightTarget = createTarget(gl, volumeW, volumeH, gl.RGBA16F, gl.LINEAR);
+    }
+  }
+
+  /** Advances the air by `dt` seconds of wall time, in fixed steps. */
+  tick(dt: number, air: AirParams, hand: HandGains, pressureIterations: number, reduced: boolean): void {
+    this.clock += dt;
+    this.forcing.gain.breath = hand.breath;
+    this.forcing.gain.spell = hand.spell;
+    /* Reduced motion keeps what the visitor does and drops what the fog
+       does unasked (the wake is the visitor's motion, but unasked-for). */
+    this.forcing.gain.wake = reduced ? 0 : hand.wake;
+
+    /* A press that has lasted becomes warmth. */
+    const press = this.press;
+    if (press && !press.casting && this.clock - press.at >= SPELL.delay && this.pointerCell) {
+      press.casting = true;
+      this.forcing.beginSpell(this.pointerCell[0], this.pointerCell[1]);
+    }
+
+    if (this.arrivalAt !== null) this.arrive(reduced);
+
+    if (!reduced) {
+      const gust = this.gusts.due(this.clock, this.quietUntil);
+      if (gust) {
+        const [cx, cy] = this.toCells(gust[0] * this.cssW, gust[1] * this.cssH);
+        this.forcing.breathe(cx, cy, { sigma: GUST.sigma, rate: GUST.rate, seconds: GUST.seconds });
+      }
+    }
+
+    const hover = this.hoverCell();
+    this.forcing.setWake(hover ? (this.wakeFrom ?? hover) : null, hover, dt);
+    /* The same push, for the flowers (hand.ts). */
+    this.hand.update(dt);
+    if (hover && this.handFrom) this.hand.push(this.handFrom, hover, dt, this.forcing.gain.wake);
+    this.handFrom = hover;
+
+    /* Calm air steps half as often, each step twice as long. */
+    const stepDt = AIR_CLOCK.tick * (this.calm ? AIR_CLOCK.calmEvery : 1);
+    this.accumulator += dt;
+    const steps = Math.floor(this.accumulator / stepDt);
+    this.accumulator -= steps * stepDt;
+    for (let i = 0; i < steps; i += 1) {
+      if (this.forcing.collect(i, steps, stepDt) || this.forcing.busy) this.lastActive = this.clock;
+      this.sim.step(stepDt, this.clock, this.forcing.frame, air, pressureIterations, reduced);
+    }
+    /* Only a frame that consumed time may advance the wake; otherwise a fast
+       display's frame with no step would drop that stretch of path. */
+    if (steps > 0) this.wakeFrom = hover;
+  }
+
+  /** Renders the fog sheets through the camera, into the sheets targets. */
+  render(camera: CameraFrame, look: FogLook, reduced: boolean): void {
+    const sheets = this.packed;
+    const field = this.sim.field;
+    const carried = this.sim.carried;
+    if (!sheets || !this.densityTarget || !this.lightTarget || !field || !carried) return;
+    const gl = this.gl;
+    const u = this.program.uniforms;
+    gl.bindVertexArray(this.vao);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sheets.fbo);
+    discardBound(gl, true);
+    gl.viewport(0, 0, sheets.width, sheets.height);
+    gl.useProgram(this.program.handle);
+    setCameraUniforms(gl, u, camera);
+
+    bindTexture(gl, u.uFluid, 0, field);
+    bindTexture(gl, u.uCarry, 1, carried);
+    gl.uniform4f(u.uGridMap, ...this.sim.gridMap);
+    gl.uniform2f(u.uGrid, this.sim.gridW, this.sim.gridH);
+    gl.uniform1f(u.uPhase, carryPhase(this.clock));
+    gl.uniform1f(u.uCellPx, this.cellPx);
+    gl.uniform1f(u.uPivotZ, CAMERA.pivot[2]);
+    const time = reduced ? AIR_CLOCK.start : this.clock;
+    gl.uniform1f(u.uTime, time);
+    gl.uniform1f(u.uBreath, 1 + (reduced ? 0 : BREATHING.amount * breathing(this.clock)));
+    /* The two carried sets (fluid.ts carryPhase), as a uniform: shaders/
+       sheets.ts, one call of billows a sheet. */
+    gl.uniform1f(u.uCarriedSets, 2);
+
+    const per = <K extends keyof (typeof SHEETS)[number]>(key: K, scale = 1) =>
+      SHEETS.map((s) => (s[key] as number) * scale) as [number, number, number, number];
+    gl.uniform4f(u.uSheetPlane, ...per("plane"));
+    gl.uniform4f(u.uSheetScale, ...per("scale"));
+    gl.uniform4f(u.uSheetDetail, ...per("detail", look.detail));
+    gl.uniform4f(u.uSheetResponse, ...per("response"));
+    gl.uniform4f(u.uSheetForm, ...per("form", look.form));
+    gl.uniform4f(u.uSheetBlur, ...per("blurCells"));
+    gl.uniform4f(u.uSheetSharp, look.wisps, SHEETS[1].sharpness, SHEETS[2].sharpness, SHEETS[3].sharpness);
+    /* The wind's drift at each depth, accumulated: metres travelled. */
+    const drift = reduced ? 0.25 : 1;
+    gl.uniform4f(
+      u.uSheetDrift,
+      SHEET_WIND[0] * drift * time,
+      SHEET_WIND[1] * drift * time,
+      SHEET_WIND[2] * drift * time,
+      SHEET_WIND[3] * drift * time,
+    );
+    gl.uniform2f(u.uStrata, STRATIFICATION.stretch, STRATIFICATION.wispDrift);
+    gl.uniform2f(u.uEvolve, reduced ? 0 : VOLUME.evolve, look.selfShadow);
+    gl.uniform4f(u.uLight, LIGHT.position[0], LIGHT.position[1], look.lightExtinction, look.ambient);
+    gl.uniform4f(u.uTurb, TURBULENCE.visibleAt, TURBULENCE.tearing, TURBULENCE.wispScale, TURBULENCE.wispRate);
+    const wave = (i: number, location: WebGLUniformLocation | null) => {
+      const w = FOG_WAVES[i];
+      /* Phases seeded by a fixed stride (the golden angle), never randomly. */
+      gl.uniform4f(location, reduced ? 0 : w.amplitude, w.wavelength, (Math.PI * 2) / w.period, i * 2.39996);
+    };
+    wave(0, u.uWaveA);
+    wave(1, u.uWaveB);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    /* Laid out into the two textures the scene reads. */
+    const v = this.unpack.uniforms;
+    gl.useProgram(this.unpack.handle);
+    bindTexture(gl, v.uPacked, 0, sheets.tex);
+    for (const [target, set] of [[this.densityTarget, 0], [this.lightTarget, 1]] as const) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      discardBound(gl);
+      gl.uniform1f(v.uSet, set);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  }
+
+  private deleteSheets(): void {
+    deleteTarget(this.gl, this.packed);
+    deleteTarget(this.gl, this.densityTarget);
+    deleteTarget(this.gl, this.lightTarget);
+    this.packed = null;
+    this.densityTarget = null;
+    this.lightTarget = null;
+  }
+
+  /**
+   * Development only: the mean of each sheet's density and light over the
+   * frame's top, middle and bottom thirds, read back from the GPU.
+   * Rows of four: sheets 0–3 (light: 0–2 and the plain light).
+   */
+  probe(): { density: number[][]; light: number[][] } {
+    const density = this.densityTarget;
+    const light = this.lightTarget;
+    if (!density || !light) return { density: [], light: [] };
+    const gl = this.gl;
+    const { width, height } = density;
+    const read = (target: Target) => {
+      const out = new Float32Array(width * height * 4);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, out);
+      const thirds = [0, 1, 2].map(() => [0, 0, 0, 0]);
+      const counts = [0, 0, 0];
+      for (let y = 0; y < height; y += 1) {
+        const third = Math.min(2, Math.floor(((height - 1 - y) / height) * 3));
+        for (let x = 0; x < width; x += 1) {
+          const i = (y * width + x) * 4;
+          for (let c = 0; c < 4; c += 1) thirds[third][c] += out[i + c];
+          counts[third] += 1;
+        }
+      }
+      return thirds.map((t, i) => t.map((v) => Math.round((v / counts[i]) * 1000) / 1000));
+    };
+    return { density: read(density), light: read(light) };
+  }
+
+  /** The scene is coming up: the arrival's air goes in from now (the
+   *  pulses fall due in tick). */
+  beginArrival(): void {
+    this.arrivalAt = this.clock;
+    this.arrivalDone = 0;
+    this.quietUntil = Math.max(this.quietUntil, this.clock + ARRIVAL_AIR.quiet);
+  }
+
+  /** The arrival's pulses due by now, in order: the churn, the breaths. */
+  private arrive(reduced: boolean): void {
+    const A = ARRIVAL_AIR;
+    const since = this.clock - (this.arrivalAt ?? this.clock);
+    const pulses = [A.churn, ...A.breaths];
+    while (this.arrivalDone < pulses.length && since >= pulses[this.arrivalDone].at) {
+      const k = this.arrivalDone;
+      this.arrivalDone += 1;
+      /* Under reduced motion the scene does nothing unasked. */
+      if (reduced) continue;
+      if (k === 0) {
+        const c = A.churn;
+        const [cx, cy] = this.toCells(c.x * this.cssW, c.y * this.cssH);
+        this.forcing.stir(cx, cy, { sigma: c.sigma, energy: c.energy, seconds: c.seconds });
+      } else {
+        const b = A.breaths[k - 1];
+        const [cx, cy] = this.toCells(b.x * this.cssW, b.y * this.cssH);
+        this.forcing.breathe(cx, cy, { sigma: b.sigma, rate: b.rate, seconds: b.seconds });
+      }
+      this.lastActive = this.clock;
+    }
+    if (this.arrivalDone >= pulses.length) this.arrivalAt = null;
+  }
+
+  /* ── Input, in frame CSS px ─────────────────────────────────────────── */
+
+  pointerDown(x: number, y: number, pointerType: string): void {
+    const cell = this.toCells(x, y);
+    this.pointerType = pointerType;
+    this.pointerCell = cell;
+    /* A touch: a pinch of turbulence and the barest puff of moved air. */
+    this.forcing.stir(cell[0], cell[1], { sigma: TOUCH.sigma, energy: TOUCH.energy, seconds: TOUCH.seconds });
+    this.forcing.breathe(cell[0], cell[1], { sigma: TOUCH.puffSigma, rate: TOUCH.puffRate, seconds: TOUCH.seconds });
+    this.press = { at: this.clock, x, y, type: pointerType, casting: false };
+    this.quietUntil = this.clock + GUST.quietAfterTouch;
+    this.lastActive = this.clock;
+  }
+
+  /** `x`/`y` null: the pointer is outside the frame. */
+  pointerMove(x: number | null, y: number | null, pointerType: string): void {
+    this.pointerType = pointerType;
+    this.pointerCell = x === null || y === null ? null : this.toCells(x, y);
+    const press = this.press;
+    if (!press || x === null || y === null) return;
+    if (press.casting) {
+      if (this.pointerCell) this.forcing.moveSpell(this.pointerCell[0], this.pointerCell[1]);
+      return;
+    }
+    /* On touch, travel before the hold starts is a scroll, not a press. */
+    if (press.type === "touch" && Math.hypot(x - press.x, y - press.y) > SPELL.moveTolerancePx) this.press = null;
+  }
+
+  pointerUp(): void {
+    if (this.press?.casting) this.forcing.endSpell();
+    this.press = null;
+  }
+
+  pointerLeave(): void {
+    this.pointerUp();
+    this.pointerCell = null;
+    this.wakeFrom = null;
+  }
+
+  private hoverCell(): [number, number] | null {
+    if (this.press || this.pointerType === "touch") return null;
+    return this.pointerCell;
+  }
+
+  /** Frame CSS px (y down) → grid cells (y up, inside the margin). */
+  private toCells(x: number, y: number): [number, number] {
+    return [x / this.cellPx + FLUID.marginCells, (this.cssH - y) / this.cellPx + FLUID.marginCells];
+  }
+
+  dispose(): void {
+    this.gl.deleteProgram(this.program.handle);
+    this.gl.deleteProgram(this.unpack.handle);
+    this.deleteSheets();
+    this.sim.dispose();
+  }
+}
