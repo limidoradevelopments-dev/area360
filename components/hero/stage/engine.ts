@@ -213,6 +213,7 @@ export function defaultParams(): StageParams {
     swayX: PARALLAX.sway[0],
     swayY: PARALLAX.sway[1],
     swayRate: PARALLAX.frequency,
+    followMix: PARALLAX.follow.mix,
     exposure: FILM.exposure,
     footFrom: FILM.foot.from,
     footStops: FILM.foot.stops,
@@ -277,6 +278,13 @@ export interface StageEngineOptions {
    *  what stands in is the page's to decide. Called once; without it the
    *  slowest rung stays. */
   onFloor?: () => void;
+  /** The visitor's quality: a tier of RENDER.tiers (0 best) held for the
+   *  visit, only the frame rate giving way; null or absent, the device is
+   *  measured and watched (RENDER). Changed later by `setQuality`. */
+  quality?: number | null;
+  /** The tier the scene is drawing at, on the reveal and on every change
+   *  after it (the ladder's, or the visitor's). */
+  onTier?: (tier: number) => void;
   /** Started before the page has hydrated (StageCanvas): it compiles and
    *  loads at once, but neither sizes the canvas nor draws until `attach`. */
   detached?: boolean;
@@ -286,6 +294,9 @@ export interface StageEngine {
   readonly params: StageParams;
   setParams(next: Partial<StageParams>): void;
   setReducedMotion(reduced: boolean): void;
+  /** The visitor's quality (StageEngineOptions.quality): a tier, or null for
+   *  the device's own. Takes effect on the next frame; compiles nothing. */
+  setQuality(tier: number | null): void;
   setVisible(visible: boolean): void;
   /** Re-measure the frame and the tokens. */
   resize(): void;
@@ -453,6 +464,13 @@ function floorEvery(vsync: number): number {
   return Math.max(1, Math.ceil(1000 / RENDER.floorFps / vsync - 0.5));
 }
 
+/** A visitor's quality → a tier of RENDER.tiers, or null for the device's
+ *  own. */
+function fixedTier(quality: number | null | undefined): number | null {
+  if (quality === null || quality === undefined || !Number.isFinite(quality)) return null;
+  return Math.min(RENDER.tiers.length - 1, Math.max(0, Math.round(quality)));
+}
+
 /** The `q` quantile of `values` (sorts a copy). */
 function quantile(values: readonly number[], q: number): number {
   const sorted = values.slice().sort((a, b) => a - b);
@@ -501,6 +519,18 @@ class Stage implements StageEngine {
   /* Raised by the adaptive watcher and never lowered, so neither a resize
      nor a good second undoes a step-down the frame rate asked for. */
   private tier = 0;
+  /* The visitor's tier (StageEngineOptions.quality), held whatever the
+     frame rate does; null: the device's own, measured and watched. */
+  private fixed: number | null = null;
+  /* What the dark measured, for a visitor going back to Auto after the
+     reveal (nothing can be measured in the dark then: it is in view). */
+  private measured: { tier: number; every: number } | null = null;
+  /* The tier last told to the page (onTier). */
+  private reportedTier = -1;
+  /* The diffusion's pyramid holds this frame's light (RENDER.tiers
+     glowEvery), and the frames drawn since it was made. */
+  private glowValid = false;
+  private glowAge = 0;
   /* Development only: the scene's pixel cap raised past the tier's, for
      close-up stills of the plant (set from the console, then resize()). */
   private sceneCap = 0;
@@ -602,6 +632,9 @@ class Stage implements StageEngine {
     this.gl = gl;
     this.options = options;
     this.reduced = options.reducedMotion;
+    /* A visitor's tier is where the dark starts, and stays. */
+    this.fixed = fixedTier(options.quality);
+    this.tier = this.fixed ?? 0;
 
     const vao = gl.createVertexArray();
     if (!vao) throw new Error("stage: no vertex array");
@@ -752,6 +785,8 @@ class Stage implements StageEngine {
     this.calibration = null;
     this.dropTimings();
     this.setRung(tier, every);
+    if (this.fixed === null) this.measured = { tier, every };
+    this.reportTier();
     this.progress(2, 1);
     this.options.onFirstFrame();
     if (this.startAsked) this.begin();
@@ -795,6 +830,65 @@ class Stage implements StageEngine {
       this.tier = tier;
       this.measureFrame();
     }
+    if (!this.calibration) this.reportTier();
+  }
+
+  /** The page is told the tier, when it has changed. */
+  private reportTier(): void {
+    if (this.tier === this.reportedTier) return;
+    this.reportedTier = this.tier;
+    this.options.onTier?.(this.tier);
+  }
+
+  /**
+   * The fastest rung `tier` is drawn at, in display frames. The device's
+   * own: full quality at any even rate, a cheaper tier at the slowest only
+   * (RENDER, the ladder: the frame rate gives way before the picture). The
+   * visitor's: any even rate, but Low (`capped`) at the slowest — it is
+   * chosen to spare the device.
+   */
+  private fastestEvery(tier: number): number {
+    const floor = floorEvery(this.vsync);
+    if (this.fixed === null) return tier > 0 ? floor : 1;
+    return RENDER.tiers[tier].capped ? floor : 1;
+  }
+
+  setQuality(tier: number | null): void {
+    const next = fixedTier(tier);
+    if (next === this.fixed) return;
+    this.fixed = next;
+    /* Not linked yet: the dark starts on it (load). */
+    if (!this.linked) {
+      this.tier = next ?? 0;
+      return;
+    }
+    const c = this.calibration;
+    if (c) {
+      /* Still in the dark: measured again, from the new start. */
+      this.tier = next ?? 0;
+      this.measureFrame();
+      this.dropTimings();
+      c.tier = this.tier;
+      c.seen = 0;
+      c.timed.length = 0;
+      c.waited.length = 0;
+      c.since = performance.now();
+      return;
+    }
+    /* IN VIEW: onto the chosen tier — or, back to Auto, onto what the dark
+       measured — no faster than the frame rate now (a heavier tier may not
+       hold it); the step back up and the watcher start afresh from there,
+       so a lighter tier climbs to the rate it holds and a heavier one falls
+       to it. */
+    const target = next ?? this.measured?.tier ?? 0;
+    const every = next === null && this.measured ? this.measured.every : Math.max(this.fastestEvery(target), this.every);
+    this.stopStepUp();
+    this.steppedDown = false;
+    this.stepUpTried = false;
+    this.slowSince = -1;
+    this.setRung(target, every);
+    this.frameAverage = this.every * this.vsync;
+    if (this.ready && !this.raf) this.render();
   }
 
   /**
@@ -897,10 +991,11 @@ class Stage implements StageEngine {
     const C = RENDER.calibrate;
     const vsync = this.vsync;
     /* A FAST DEVICE IS SETTLED AT ONCE: two frames running well inside the
-       display's own frame at full quality. */
+       display's own frame at full quality — or at the visitor's tier, at
+       the fastest rate it is drawn at. */
     const fast = c.timed.length >= 2 ? c.timed : this.timer ? null : c.waited;
-    if (c.tier === 0 && fast && fast.length >= 2 && Math.max(fast[fast.length - 1], fast[fast.length - 2]) <= RENDER.fastShare * vsync) {
-      this.reveal(0, 1);
+    if (c.tier === (this.fixed ?? 0) && fast && fast.length >= 2 && Math.max(fast[fast.length - 1], fast[fast.length - 2]) <= RENDER.fastShare * vsync) {
+      this.reveal(c.tier, this.fastestEvery(c.tier));
       return;
     }
     const over = now - c.since;
@@ -913,13 +1008,17 @@ class Stage implements StageEngine {
     const late = !this.timer || far || (c.timed.length < 2 && over >= 2 * C.seconds * 1000);
     if (!timed && !(late && (enough(c.waited.length) || far))) return;
     const work = quantile(timed ? c.timed : c.waited, C.quantile);
-    for (let every = 1; every <= floor; every += 1) {
-      /* A cheaper tier is drawn at the slowest rate only. */
-      if (c.tier > 0 && every < floor) continue;
+    for (let every = this.fastestEvery(c.tier); every <= floor; every += 1) {
       if (this.holds(work, every, timed)) {
         this.reveal(c.tier, every);
         return;
       }
+    }
+    /* THE VISITOR'S TIER HOLDS, whatever the device: only the frame rate
+       gives way, to the slowest even one. */
+    if (this.fixed !== null) {
+      this.reveal(c.tier, floor);
+      return;
     }
     const last = RENDER.tiers.length - 1;
     if (c.tier >= last) {
@@ -1058,6 +1157,7 @@ class Stage implements StageEngine {
     const current = this.sceneTarget;
     if (current && current.width === width && current.height === height) return;
     this.deleteTargets();
+    this.glowValid = false;
     const gl = this.gl;
     this.sceneTarget = createTarget(gl, width, height, gl.RGBA16F, gl.LINEAR);
     let w = width;
@@ -1177,7 +1277,7 @@ class Stage implements StageEngine {
     if (!this.reduced) this.waterTime += wall;
     this.mistTime += this.reduced ? wall * 0.25 : wall;
     if (!this.reduced) this.rainTime += wall;
-    this.camera.update(dt, this.params.swayRate);
+    this.camera.update(dt, this.params.swayRate, this.params.followMix);
     if (this.fitPending && !this.camera.arriving) {
       this.fitPending = false;
       this.stone.refit();
@@ -1185,7 +1285,10 @@ class Stage implements StageEngine {
     }
     this.stillness.update(dt);
     const tier = RENDER.tiers[this.tier];
-    this.atmosphere.tick(dt, this.params, this.params, tier.pressureIterations, this.reduced);
+    /* Once a drawn frame at most: a step longer than the frame would make
+       the air move in jumps between frames. */
+    const stride = Math.max(1, Math.min(tier.airEvery, this.every));
+    this.atmosphere.tick(dt, this.params, this.params, tier.pressureIterations, this.reduced, stride);
     this.bloomClock += dt;
     this.stepBloom(dt);
     if (paint) this.render();
@@ -1243,7 +1346,14 @@ class Stage implements StageEngine {
     const camera = this.camera.pose([this.cssW, this.cssH], this.params);
     this.atmosphere.render(camera, this.params, this.reduced);
     this.drawSet(camera);
-    this.drawGlow();
+    /* The diffusion redrawn every `glowEvery` frames (RENDER.tiers), and
+       always once its targets are new. */
+    this.glowAge += 1;
+    if (!this.glowValid || this.glowAge >= RENDER.tiers[this.tier].glowEvery) {
+      this.drawGlow();
+      this.glowValid = true;
+      this.glowAge = 0;
+    }
     this.drawFilm(camera);
   }
 
@@ -1470,7 +1580,13 @@ class Stage implements StageEngine {
     this.stopStepUp();
     const floor = floorEvery(this.vsync);
     const last = RENDER.tiers.length - 1;
-    if (this.tier === 0 && this.every < floor) {
+    /* The visitor's tier holds: only the frame rate gives way, as at full
+       quality below; at the slowest even rate there is nothing more to
+       give, and it stays. */
+    if (this.fixed !== null) {
+      if (this.every >= floor) return;
+      this.setRung(this.tier, Math.min(floor, Math.max(this.every + 1, Math.round(this.frameAverage / this.vsync))));
+    } else if (this.tier === 0 && this.every < floor) {
       /* To the even rate nearest what the frames were actually keeping, not
          just the next: from 120 a device running at ~30 goes to 30, not
          through 60 and 40, 1.5 s slow at each. Nearest, not the slower: a
@@ -1496,7 +1612,9 @@ class Stage implements StageEngine {
     if (!this.stepUpTried) {
       if (this.camera.arriving || this.fitPending) return;
       this.stepUpTried = true;
-      if (this.timer && !this.steppedDown && this.tier === 0 && this.every > 1) this.stepUp = { since: now + 500, samples: [] };
+      /* Any rung faster than this one its tier may take: full quality only,
+         unless the tier is the visitor's (fastestEvery). */
+      if (this.timer && !this.steppedDown && this.every > this.fastestEvery(this.tier)) this.stepUp = { since: now + 500, samples: [] };
       return;
     }
     const up = this.stepUp;
@@ -1510,10 +1628,10 @@ class Stage implements StageEngine {
       return;
     }
     this.dropTimings();
-    this.setRung(0, faster);
+    this.setRung(this.tier, faster);
     this.frameAverage = faster * this.vsync;
     this.slowSince = -1;
-    this.stepUp = faster > 1 ? { since: now + 500, samples: [] } : null;
+    this.stepUp = faster > this.fastestEvery(this.tier) ? { since: now + 500, samples: [] } : null;
   }
 
   private stopStepUp(): void {
@@ -1576,7 +1694,7 @@ class Stage implements StageEngine {
     if (!this.ready) return;
     /* Driven by hand, the page's own frames frozen: revealed as measured
        fast, at once. */
-    if (this.calibration) this.reveal(0, 1);
+    if (this.calibration) this.reveal(this.fixed ?? 0, this.fastestEvery(this.fixed ?? 0));
     if (this.waiting) this.begin();
     const frames = Math.max(1, Math.round(seconds * 60));
     for (let i = 0; i < frames; i += 1) this.tick(1 / 60, false);

@@ -1,0 +1,290 @@
+/* ─── Settings · the dock ───
+ *
+ * A square button in the page's bottom-right corner, the page's sound
+ * beside it (a wave that plays while it is on), and the panel the button
+ * opens: the scene's quality
+ * (ui/renderQuality). Drawn to the user's Figma frame (2026-10-29): the
+ * page's black, one white at three strengths (tokens.css: the dark
+ * system), the amber accent for the choice, body type in Newsreader at
+ * 12 px. Square corners, a hairline edge, no shadow and no blur: the panel
+ * is a flat card of the night, not glass.
+ *
+ * COSTS NOTHING WHILE IT STANDS: a solid ground and no backdrop filter (over
+ * a canvas that changes every frame a backdrop filter is re-run every
+ * frame, on the very devices that chose Low to spare them).
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --settings-unit: 1rem;
+
+  --size-settings-panel: calc(var(--settings-unit) * 12.5);
+  /* 200px */
+  --space-settings-pad: calc(var(--settings-unit) * 0.5);
+  /* 8px: the panel's padding, every side */
+  --space-settings-rule: calc(var(--settings-unit) * 0.5);
+  /* 8px: either side of the rule under Auto */
+  --space-settings-row: calc(var(--settings-unit) * 0.375);
+  /* 6px: between the levels */
+  --space-settings-gap: calc(var(--settings-unit) * 0.75);
+  /* 12px: the panel to the button */
+  --space-settings-wave: calc(var(--settings-unit) * 0.375);
+  /* 6px: the sound's wave to the settings button */
+
+  --text-settings: calc(var(--settings-unit) * 0.75);
+  /* 12px: every word in it but Auto's note */
+  --text-settings-note: calc(var(--settings-unit) * 0.625);
+  /* 10px: Auto's note ("High Quality"), the user's frame */
+  /* Auto and its note sit close, one line on the next (15px); the levels
+   * each take a fuller line (16.5px), 6px apart: the frame's pitches. */
+  --leading-settings-pair: 1.25;
+  --leading-settings-row: 1.375;
+
+  --size-settings-button: calc(var(--settings-unit) * 1.25);
+  /* 20px */
+  --size-settings-glyph: calc(var(--settings-unit) * 0.75);
+  /* 12px */
+  --size-settings-cross: calc(var(--settings-unit) * 0.5);
+  /* 8px: the user's drawn cross, at its own size */
+  --size-settings-wave-w: calc(var(--settings-unit) * 1.5);
+  /* 24px */
+  --size-settings-wave-h: calc(var(--settings-unit) * 0.5);
+  /* 8px: room for the wave to rise as it plays */
+  /* TOUCH TARGETS: 44 CSS px tall for both buttons; across, each reaches
+   * half the gap toward the other and further outward, so the two never
+   * take each other's press (the sound's 24 + 10 + 3, the settings
+   * button's 20 + 3 + 12: both over WCAG's 24 px minimum). */
+  --size-settings-hit: 2.75rem;
+  --space-settings-hit-out: 0.625rem;
+  /* 10px */
+  --space-settings-hit-edge: 0.75rem;
+  /* 12px */
+
+  --color-settings-ground: var(--color-night);
+  --color-settings-ink: var(--color-on-night);
+  --color-settings-muted: var(--color-on-night-muted);
+  --color-settings-line: var(--color-on-night-line);
+  /* The choice's mark: the accent at the drawn cross's own 80% (its
+   * fill-opacity), the parentheses with it. */
+  --color-settings-pick: color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+/* Tablet and small laptop: the same; 12px is already the smallest the
+ * body's type is set. */
+@media (max-width: 1279.98px) {
+  :root {
+    --settings-unit: 1rem;
+  }
+}
+
+/* Phone: the same, for the same reason. */
+@media (max-width: 767.98px) {
+  :root {
+    --settings-unit: 1rem;
+  }
+}
+
+/* The dock sits in the margin, clear of a phone's home indicator.
+ * ONLY WHAT SHOWS TAKES THE POINTER: the dock's box is the panel's size
+ * even while the panel is hidden, and taking the pointer there it told the
+ * scene the hand had left — the camera swung back to the middle and the
+ * fog stopped answering wherever the hand went in that corner. The button
+ * takes it, and the panel while it is open. */
+[data-settings-dock] {
+  right: calc(var(--spacing-margin) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--spacing-margin) + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-weight: 400;
+  font-size: var(--text-settings);
+}
+
+[data-settings-button],
+[data-settings-sound],
+[data-settings-panel][data-open] {
+  pointer-events: auto;
+}
+
+/* ON A PHONE, THE SOUND ALONE, BOTTOM LEFT (the user's 390 frame,
+ * 2026-10-30): the byline takes the bottom-right corner (hero/copy), and
+ * the frame keeps only the sound's wave, on the mark's own axis — its 24px
+ * centred under the header's 64px mark — at the frame's 30px foot. No
+ * quality button there, as the frame draws it: the scene's Auto (measured
+ * in the dark) sets a phone's quality. */
+@media (max-width: 767.98px) {
+  [data-settings-dock] {
+    right: auto;
+    left: calc(
+      var(--spacing-margin) + (var(--size-header-mark) - var(--size-settings-wave-w)) / 2 + env(safe-area-inset-left, 0px)
+    );
+    bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
+    align-items: flex-start;
+  }
+
+  [data-settings-button],
+  [data-settings-panel] {
+    display: none;
+  }
+}
+
+/* PRE-ENTRANCE STATE IN CSS (AGENTS.md): GSAP tweens from these. */
+[data-settings-launcher] {
+  opacity: 0;
+  transform: translateY(0.75rem);
+  gap: var(--space-settings-wave);
+}
+
+/* The sound: its wave alone, no box — at half the white while silent,
+ * the whole white while it plays (the dark system: the thing itself, on)
+ * or under the hand. */
+[data-settings-sound] {
+  position: relative;
+  width: var(--size-settings-wave-w);
+  height: var(--size-settings-button);
+  color: var(--color-settings-muted);
+  transition: color 0.18s var(--ease-out-soft);
+}
+
+[data-settings-sound] svg {
+  width: var(--size-settings-wave-w);
+  height: var(--size-settings-wave-h);
+  overflow: visible;
+}
+
+[data-settings-sound]:hover,
+[data-settings-sound][aria-pressed="true"] {
+  color: var(--color-settings-ink);
+}
+
+[data-settings-sound]::after {
+  content: "";
+  position: absolute;
+  top: calc((var(--size-settings-button) - var(--size-settings-hit)) / 2);
+  bottom: calc((var(--size-settings-button) - var(--size-settings-hit)) / 2);
+  left: calc(var(--space-settings-hit-out) * -1);
+  right: calc(var(--space-settings-wave) / -2);
+}
+
+[data-settings-sound]:focus-visible {
+  outline: var(--size-rule) solid var(--color-settings-muted);
+  outline-offset: 2px;
+}
+
+/* The way to the night before a reload (motion.ts RELOAD): over the whole
+ * page, the curtain's own #111111, so the reload's curtain takes over from
+ * it without a seam. Out of the tree's hit-testing until it is used. */
+[data-settings-veil] {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background-color: var(--color-settings-ground);
+}
+
+/* The button: a hairline square, the edge at half the white — open or
+ * shut, as the frame draws it — and whole under the hand. The edge is a
+ * ring inside its box, not a border, so the square is 20px whatever it
+ * wears. */
+[data-settings-button] {
+  position: relative;
+  width: var(--size-settings-button);
+  height: var(--size-settings-button);
+  background-color: var(--color-settings-ground);
+  box-shadow: inset 0 0 0 var(--size-rule) var(--color-settings-muted);
+  color: var(--color-settings-ink);
+  /* A hover's tint, not a layout or a mount: a CSS transition is right. */
+  transition: box-shadow 0.18s var(--ease-out-soft);
+}
+
+[data-settings-button]::after {
+  content: "";
+  position: absolute;
+  top: calc((var(--size-settings-button) - var(--size-settings-hit)) / 2);
+  bottom: calc((var(--size-settings-button) - var(--size-settings-hit)) / 2);
+  left: calc(var(--space-settings-wave) / -2);
+  right: calc(var(--space-settings-hit-edge) * -1);
+}
+
+[data-settings-button]:hover {
+  box-shadow: inset 0 0 0 var(--size-rule) var(--color-settings-ink);
+}
+
+[data-settings-button]:focus-visible,
+[data-settings-option]:has(input:focus-visible) {
+  outline: var(--size-rule) solid var(--color-settings-muted);
+  outline-offset: 2px;
+}
+
+[data-settings-glyph] {
+  width: var(--size-settings-glyph);
+  height: var(--size-settings-glyph);
+}
+
+/* The panel: the night, a hairline at a tenth of the white inside its
+ * edge (the Figma frame's inside stroke: the padding is from the edge). */
+[data-settings-panel] {
+  visibility: hidden;
+  opacity: 0;
+  width: var(--size-settings-panel);
+  padding: var(--space-settings-pad);
+  margin-bottom: var(--space-settings-gap);
+  background-color: var(--color-settings-ground);
+  box-shadow: inset 0 0 0 var(--size-rule) var(--color-settings-line);
+  color: var(--color-settings-muted);
+  transform-origin: 100% 100%;
+}
+
+/* A choice: its label, then its mark at the line's end. The chosen one in
+ * the whole white, the rest at half; a hover lifts a label to the white. */
+[data-settings-option] {
+  color: var(--color-settings-muted);
+  line-height: var(--leading-settings-row);
+  transition: color 0.18s var(--ease-out-soft);
+}
+
+[data-settings-option] + [data-settings-option] {
+  margin-top: var(--space-settings-row);
+}
+
+[data-settings-option][data-auto] {
+  line-height: var(--leading-settings-pair);
+}
+
+[data-settings-option]:hover,
+[data-settings-option][data-checked] {
+  color: var(--color-settings-ink);
+}
+
+[data-settings-note] {
+  color: var(--color-settings-muted);
+  font-size: var(--text-settings-note);
+}
+
+[data-settings-rule] {
+  display: block;
+  height: var(--size-rule);
+  margin-block: var(--space-settings-rule);
+  background-color: var(--color-settings-line);
+}
+
+/* The mark: "( )", and the drawn cross between them on the choice — the
+ * parentheses at half the white, in the accent round the cross. */
+[data-settings-mark] {
+  color: var(--color-settings-muted);
+}
+
+[data-settings-option][data-checked] [data-settings-mark] {
+  color: var(--color-settings-pick);
+}
+
+[data-settings-slot] {
+  width: var(--size-settings-cross);
+  height: var(--size-settings-cross);
+}
+
+/* The user's cross (assets/sources/settings/cross.svg), drawn from a 64px
+ * render of it as a MASK: its own alpha, every brush mark, filled with the
+ * accent token — 2 KB where the drawing is 259 KB of path. */
+[data-settings-cross] {
+  background-color: var(--color-accent);
+  mask: url("/settings/cross.png") center / contain no-repeat;
+}

@@ -27,6 +27,7 @@ export default function StageTuner({ engine }: { engine: StageEngine }) {
         swayX: { value: d.swayX, min: 0, max: 0.35, step: 0.005, label: "lean x m (photo ≤ 0.12)" },
         swayY: { value: d.swayY, min: 0, max: 0.15, step: 0.005, label: "lean y m (photo ≤ 0.06)" },
         swayRate: { value: d.swayRate, min: 1, max: 12, step: 0.1, label: "spring ω" },
+        followMix: { value: d.followMix, min: 0, max: 1, step: 0.05, label: "toward your damp (1 = it)" },
       }),
       "Fog · atmosphere/optics": folder({
         nearExtinction: { value: d.nearExtinction, min: 0, max: 0.03, step: 0.0005, label: "β near" },

@@ -35,6 +35,32 @@
    * runtime (nothing references the variable), so a hand-written rule using
    * var(--font-cormorant) would resolve to nothing without this line. */
   --font-cormorant: var(--font-cormorant-garamond);
+  --font-newsreader: var(--font-newsreader-text);
+
+  /* ── The dark system ──
+   * The black and the accent, restated from theme.css for var(). On the
+   * black, ONE WHITE at three strengths (the user's Figma, 2026-10-29): the
+   * thing itself, chosen or read; everything beside it; and the lines that
+   * divide and edge. No greys of their own: a grey is white held back. */
+  --color-night: #111111;
+  --color-accent: #F2A500;
+  --color-on-night: rgb(255 255 255);
+  --color-on-night-muted: rgb(255 255 255 / 0.5);
+  --color-on-night-line: rgb(255 255 255 / 0.1);
+  /* And for words read over the hero's scene (the user's hero frame,
+   * 2026-10-30): every word but the headline at 80%. Over the fog's
+   * mid-greys the half white sinks out of reach; the headline keeps the
+   * whole white. */
+  --color-on-night-soft: rgb(255 255 255 / 0.8);
+
+  /* ── The frame's edge ──
+   * How far the page's chrome stands from the top and the bottom of the
+   * screen: the header above, the dock and a phone's byline below. 30px,
+   * the master margin at the origin — but it does NOT narrow on a phone:
+   * the user's 390 frame brings its sides in to 16px and keeps 30 above and
+   * below. */
+  --space-edge-y: 1.875rem;
+  /* 30px */
 
   /* ── Structure ──
    * Hairlines stay 1px at every viewport. A rule is a datum; one that
@@ -67,12 +93,14 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Phone: the one SHARED token that steps down. The outer margin narrows so a
- * phone's text column is not lost to air. (The token lives in the non-inline
- * @theme block in theme.css, which is what lets this override reach the
- * margin utilities.) */
+/* Phone: the two SHARED tokens that step down, the grid's. The outer margin
+ * narrows so a phone's text column is not lost to air, and the gutter with
+ * it: the user's 390 frame is four columns, 16px margins, 16px gutters.
+ * (Both live in the non-inline @theme block in theme.css, which is what
+ * lets this override reach the margin and gutter utilities.) */
 @media (max-width: 767.98px) {
   :root {
     --spacing-margin: 1rem;
+    --spacing-gutter: 1rem;
   }
 }

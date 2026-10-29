@@ -66,8 +66,23 @@ export const PARALLAX = {
    * keeps the velocity it has. */
   frequency: 6.0,
   damping: 1,
+  /* A LITTLE SMOOTHER, TOWARD THE USER'S OWN (2026-10-29: "make the old
+   * spring a bit smooth, but not fully like my reference"). Their camera
+   * damps straight toward the pointer (three.js MathUtils.damp at smoothK
+   * 5, which is ui/easing.ts approach): it moves the instant the hand does
+   * and glides in. The spring starts gently, as a weight does, and the
+   * first tenth of a second of every lean is spent getting going. So the
+   * lean is `mix` of their damp (`rate`, e-foldings a second) and the rest
+   * the spring: from rest, measured at 60 fps, 22% of the way at 0.1 s
+   * (the spring 13%, theirs 39%), 45% at 0.2 s (35%, 63%), 96% at 0.8 s
+   * (95%, 98%) — off the mark sooner, still settling as the spring does.
+   * At 1 it is theirs; at 0 the spring of before (`?tune`). */
+  follow: { rate: 5, mix: 0.4 },
   /* Fixed step, drained from wall time (the house rule for springs), and
-   * the longest frame honoured before the rest is dropped. */
+   * the longest frame honoured before the rest is dropped. THE FRAME IS
+   * DRAWN BETWEEN THE LAST TWO STEPS (camera.ts update): drawn at the last
+   * whole step, a frame of 4 steps followed by one of 3 or 5 (a frame's
+   * time is never a whole number of them) jerked the lean. */
   step: 1 / 120,
   maxFrame: 0.1,
   /* Below this (metres, m/s) the camera is at rest and costs nothing. */

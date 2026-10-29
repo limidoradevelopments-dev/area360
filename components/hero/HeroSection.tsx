@@ -9,10 +9,10 @@ import { useStageReveal } from "@/components/ui/StageReveal";
 import { usePrefersReducedMotion } from "@/components/ui/usePrefersReducedMotion";
 
 import { MIST } from "./atmosphere/optics";
+import HeroCopy from "./copy/HeroCopy";
 import HeroStill from "./HeroStill";
 import { BACKDROP } from "./stage/layers";
 import StageCanvas from "./stage/StageCanvas";
-import { HERO_HEADING } from "./content";
 import { ENTRANCE, REDUCED } from "./motion";
 
 /**
@@ -30,6 +30,10 @@ import { ENTRANCE, REDUCED } from "./motion";
  *                                   lost context, no scripting
  *   [data-hero-stage]               the scene (WebGL), coming up out of the
  *                                   black as it arrives (motion.ts ENTRANCE)
+ *   [data-hero-copy]                the words over it: the headline (the
+ *                                   section's h1), the copy, the notes
+ *                                   (copy/). Never takes the pointer, so the
+ *                                   scene reads the hand through it.
  *
  * THE SCENE ARRIVES, NOT A PICTURE (2026-10-20, the user: it read as an
  * image or a video). The first paint was the scene's own first frame as a
@@ -52,11 +56,10 @@ import { ENTRANCE, REDUCED } from "./motion";
  * script and are waiting when it asks (fetch, CORS, as the engine's own
  * request is — or the browser fetches them twice).
  *
- * PHASES 0–1: the stage — the camera, the fog, the parallax, the film — the
- * shores (one photograph with a depth for every pixel, framed and graded as
- * the user's 1200×700 design), the lake's moving surface and the stone.
- * What stands on the stone comes next; the weather arrives later, the
- * headline, nav and copy with the entrance in phase 5.
+ * THE WORDS (2026-10-30, the user's frames): the headline, the copy and the
+ * notes are this section's (copy/HeroCopy, arriving after the stone, as
+ * the scene settles); the nav and the clock are the site's header
+ * (components/header), over the top of this frame.
  */
 export interface HeroSectionProps {
   className?: string;
@@ -64,14 +67,17 @@ export interface HeroSectionProps {
    * Off by default: the scene moves for everyone. When on and the visitor
    * prefers reduced motion, the scene stops moving on its own — no lean, no
    * gusts, no breathing, no billowing, the wind slowed to a quarter, no
-   * cursor wake — and the canvas arrives with a short fade. Touching the fog
-   * and holding still in it work: that motion is the visitor's own.
+   * cursor wake — and the canvas arrives with a short fade, the words with
+   * it, without their rise. Touching the fog and holding still in it work:
+   * that motion is the visitor's own.
    */
   respectReducedMotion?: boolean;
 }
 
 /* The name the scene loads under in the page's load store. */
 const LOAD_NAME = "hero";
+/* The headline's id: the section is labelled by it. */
+const HEADING_ID = "hero-heading";
 
 export default function HeroSection({ className, respectReducedMotion = false }: HeroSectionProps) {
   preload(BACKDROP.plateUrl, { as: "fetch", crossOrigin: "anonymous" });
@@ -132,14 +138,11 @@ export default function HeroSection({ className, respectReducedMotion = false }:
   return (
     <section
       ref={scope}
-      aria-labelledby="hero-heading"
+      aria-labelledby={HEADING_ID}
       data-hero-ground
       data-hero-fallback={fallback ? "" : undefined}
       className={cx("relative h-svh w-full overflow-clip", "select-none touch-pan-y", className)}
     >
-      <h1 id="hero-heading" className="sr-only">
-        {HERO_HEADING}
-      </h1>
       <HeroStill />
       <StageCanvas
         reducedMotion={reduced}
@@ -148,6 +151,7 @@ export default function HeroSection({ className, respectReducedMotion = false }:
         onProgress={(fraction) => loadProgress.report(LOAD_NAME, fraction)}
         onUnavailable={restoreStill}
       />
+      <HeroCopy headingId={HEADING_ID} respectReducedMotion={respectReducedMotion} />
     </section>
   );
 }

@@ -172,8 +172,10 @@ export class Atmosphere {
     }
   }
 
-  /** Advances the air by `dt` seconds of wall time, in fixed steps. */
-  tick(dt: number, air: AirParams, hand: HandGains, pressureIterations: number, reduced: boolean): void {
+  /** Advances the air by `dt` seconds of wall time, in fixed steps, each
+   *  `stride` of AIR_CLOCK's ticks long (the stage's lightest tier steps
+   *  once a drawn frame: stage/optics.ts RENDER.tiers airEvery). */
+  tick(dt: number, air: AirParams, hand: HandGains, pressureIterations: number, reduced: boolean, stride = 1): void {
     this.clock += dt;
     this.forcing.gain.breath = hand.breath;
     this.forcing.gain.spell = hand.spell;
@@ -206,7 +208,7 @@ export class Atmosphere {
     this.handFrom = hover;
 
     /* Calm air steps half as often, each step twice as long. */
-    const stepDt = AIR_CLOCK.tick * (this.calm ? AIR_CLOCK.calmEvery : 1);
+    const stepDt = AIR_CLOCK.tick * stride * (this.calm ? AIR_CLOCK.calmEvery : 1);
     this.accumulator += dt;
     const steps = Math.floor(this.accumulator / stepDt);
     this.accumulator -= steps * stepDt;

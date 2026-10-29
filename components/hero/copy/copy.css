@@ -1,0 +1,230 @@
+/* ─── Hero · the words ───
+ *
+ * The headline, the copy under it and the two notes, over the scene (the
+ * user's 1920 frame and their 390 phone frame, 2026-10-30), on the hero's
+ * twelve columns — four on a phone. The headline Cormorant Garamond
+ * semibold italic at 34px, −6%, the whole white; the copy Newsreader at
+ * 14px, −1%; the notes Newsreader at 12px; every word but the headline at
+ * 80% white (tokens.css: the soft white).
+ *
+ * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
+ *
+ *   THE AXIS. Column 7's edge (column 2's on a phone): the clock's box
+ *   above, "Visceral," and "Not Just The Visible." and the copy all stand
+ *   on it; "Designing The" hangs out to its left (HeroTitle). On a phone
+ *   the frame moves the axis 5px in, under the clock's figures.
+ *
+ *   THE ROW. The copy and the notes share one top (the frame's guide), at
+ *   48.65% of the frame's height, where the notes' first baseline falls on
+ *   its middle; the phone frame lifts it to 40.65%, the headline in the sky
+ *   over the stone. A share of the height, as the scene frames the stone
+ *   and the horizon (hero/stage/camera.ts), so the words keep their place
+ *   in the picture on any screen.
+ *
+ *   THE GAP. The frame's 28px (24px on a phone) runs from the headline's
+ *   last baseline to the copy's line box. The headline's line box reaches
+ *   below that baseline, so the margin is the gap less that reach.
+ *
+ *   THE LEADING. The headline's lines 38.4px apart (31.7px on a phone); the
+ *   body's 1.43 — 20px at 14px, 17px at 12px, the frame's pitches — which
+ *   is also what sets the notes' first baselines 2px above the copy's.
+ *
+ * NEVER TAKES THE POINTER: the scene reads the hand through it. */
+:root {
+  --hero-copy-unit: 1rem;
+
+  /* ── The headline ── */
+  --text-hero-title: calc(var(--hero-copy-unit) * 2.125);
+  /* 34px */
+  --leading-hero-title: 1.13;
+  /* 38.4px */
+  --tracking-hero-title: -0.06em;
+  --space-hero-title-gap: calc(var(--hero-copy-unit) * 1.75);
+  /* 28px: the last baseline to the copy */
+  /* How far the headline's line box reaches below its last baseline:
+   * Cormorant Garamond's descent (0.287 em), plus half of what the leading
+   * adds to its 1.211 em box — here takes from it. */
+  --space-hero-title-foot: calc(var(--text-hero-title) * (0.287 + (var(--leading-hero-title) - 1.211) / 2));
+
+  /* ── The copy and the notes ── */
+  --text-hero-lede: calc(var(--hero-copy-unit) * 0.875);
+  /* 14px */
+  --tracking-hero-lede: -0.01em;
+  --text-hero-note: calc(var(--hero-copy-unit) * 0.75);
+  /* 12px */
+  --leading-hero-text: 1.43;
+  --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.25);
+  /* 4px: the byline to its year */
+
+  /* ── Where they stand ── */
+  --space-hero-row: 48.65%;
+  --space-hero-axis: 0px;
+  /* The row is never higher than lets the headline clear the header's
+   * clock (its box and zone end 70px down) by a gutter: on a short screen,
+   * a landscape phone, it comes down rather than climbing into the clock. */
+  --space-hero-clear: calc(var(--hero-copy-unit) * 5.625);
+  /* 90px */
+  --space-hero-row-least: calc(
+    var(--space-hero-clear) + 2 * var(--leading-hero-title) * var(--text-hero-title) + var(--space-hero-title-gap) -
+      var(--space-hero-title-foot)
+  );
+
+  --color-hero-title: var(--color-on-night);
+  --color-hero-text: var(--color-on-night-soft);
+}
+
+/* Tablet and small laptop: the same. The headline is already modest at
+ * 34px, and at the band's crowded end (768) the byline wraps into its
+ * three columns before it meets the copy. */
+@media (max-width: 1279.98px) {
+  :root {
+    --hero-copy-unit: 1rem;
+  }
+}
+
+/* Phone: the user's 390 frame, its own drawing (the headline 24px, the
+ * copy 12px, the byline 8px), restated as multiples of the one unit. */
+@media (max-width: 767.98px) {
+  :root {
+    --hero-copy-unit: 1rem;
+    --text-hero-title: calc(var(--hero-copy-unit) * 1.5);
+    /* 24px */
+    --leading-hero-title: 1.32;
+    /* 31.7px */
+    --space-hero-title-gap: calc(var(--hero-copy-unit) * 1.5);
+    /* 24px */
+    --text-hero-lede: calc(var(--hero-copy-unit) * 0.75);
+    /* 12px */
+    --text-hero-note: calc(var(--hero-copy-unit) * 0.5);
+    /* 8px */
+    --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.0625);
+    /* 1px */
+    --space-hero-row: 40.65%;
+    --space-hero-axis: calc(var(--hero-copy-unit) * 0.3125);
+    /* 5px */
+  }
+}
+
+/* The layer: over the stage, the section's height, the hero's grid. Three
+ * rows — down to the row (the headline at its foot), the row, and the rest
+ * of the height (the phone's byline at its foot). */
+[data-hero-copy] {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: max(var(--space-hero-row), var(--space-hero-row-least)) auto minmax(0, 1fr);
+  column-gap: var(--spacing-gutter);
+  padding-inline: var(--spacing-margin);
+  color: var(--color-hero-text);
+  font-size: var(--text-hero-note);
+  line-height: var(--leading-hero-text);
+  pointer-events: none;
+}
+
+/* ── The headline ── at the foot of the first row, on the axis. */
+[data-hero-title] {
+  grid-column: 7 / -1;
+  grid-row: 1;
+  align-self: end;
+  margin-bottom: calc(var(--space-hero-title-gap) - var(--space-hero-title-foot));
+  padding-left: var(--space-hero-axis);
+  color: var(--color-hero-title);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: var(--text-hero-title);
+  line-height: var(--leading-hero-title);
+  letter-spacing: var(--tracking-hero-title);
+}
+
+/* Its masks clip DOWN only: a line slides up out of the mask's foot, while
+ * the hung words, out to the left of the mask's box, and the italic's
+ * overhang stay whole. (Clip, not hidden: one axis can clip while the
+ * other stays visible.) */
+[data-hero-title] [data-reveal-mask] {
+  overflow: visible clip;
+}
+
+/* What a hung word stands against. */
+[data-hero-title] [data-reveal-line] {
+  position: relative;
+}
+
+/* A hung word: just left of what follows it, on the same line. */
+[data-hero-hang] {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  white-space: nowrap;
+}
+
+/* ── The copy ── at the top of the row, on the axis. */
+[data-hero-lede] {
+  grid-column: 7 / -1;
+  grid-row: 2;
+  padding-left: var(--space-hero-axis);
+  font-size: var(--text-hero-lede);
+  letter-spacing: var(--tracking-hero-lede);
+}
+
+/* ── The notes ── at the top of the row: the availability at the left
+ * margin, the byline right-aligned at the right one. */
+[data-hero-note] {
+  grid-row: 2;
+  align-self: start;
+}
+
+[data-hero-note="availability"] {
+  grid-column: 1 / span 3;
+  justify-self: start;
+}
+
+/* Three columns: where it runs out of room (a tablet's crowded end) it
+ * wraps, balanced, rather than run into the copy. */
+[data-hero-note="byline"] {
+  grid-column: 10 / -1;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-hero-note-gap);
+  text-align: right;
+  text-wrap: balance;
+}
+
+[data-hero-note] small {
+  font-size: inherit;
+}
+
+/* Phone: four columns, the axis on the second. Only "Designing" hangs
+ * ("The" stands in the line again, holding it); the byline goes to the
+ * frame's foot, 30px up like the header from the top, and the frame shows
+ * no availability. */
+@media (max-width: 767.98px) {
+  [data-hero-copy] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  [data-hero-title],
+  [data-hero-lede] {
+    grid-column: 2 / -1;
+  }
+
+  [data-hero-hang="2"] {
+    position: relative;
+    right: auto;
+    display: inline-block;
+  }
+
+  [data-hero-note="availability"] {
+    display: none;
+  }
+
+  [data-hero-note="byline"] {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    align-self: end;
+    margin-bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
+  }
+}

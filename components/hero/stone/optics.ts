@@ -85,12 +85,18 @@ export const STONE = {
    * noticeable"): under the print's pressed darks its grain read as a
    * smooth grey; with these and the lichen and pits below, its face's fine
    * contrast is the user's reference's (reference-3.webp: 12.2 levels of
-   * high-pass, ours 11.1 → 12.2), its tone as it was (~57). */
+   * high-pass, ours 11.1 → 12.2), its tone as it was (~57).
+   * THE FLECKS BLENDED IN (2026-10-29, the user: "blend this black pattern
+   * to it a bit and make it real"): read through the lattice noise that
+   * replaced the hash that day, the flecks at 0.85 printed as a pepper of
+   * near-black dots over every face. Now half as dark, soft-edged and
+   * clustered (shaders/stone.ts granite), and the face's detail carried by
+   * its relief, sparser pits and its lichen's crust instead. */
   granite: {
     cloud: 0.3,
     cloudAmount: 0.32,
     fleck: 0.006,
-    fleckAmount: 0.85,
+    fleckAmount: 0.55,
     fine: 0.0024,
     fineAmount: 0.5,
   },
@@ -110,7 +116,9 @@ export const STONE = {
    *              faces, strongest under the edge
    */
   edge: 0.04,
-  lichen: { size: 0.09, cover: 0.34, pale: 1.7, dark: 0.5 },
+  /* `dark` 0.5 → 0.65 (2026-10-29): the dark rosettes read as black
+   * blotches beside the flecks; a dark lichen is a shade under the stone. */
+  lichen: { size: 0.09, cover: 0.34, pale: 1.7, dark: 0.65 },
   runs: 0.18,
   /**
    * WEAR, sized to what a pixel can hold at 10 m (6 mm on a 1200×700 frame,
@@ -120,7 +128,8 @@ export const STONE = {
    * fresh granite under the weathered skin; `pits`: how dark the pits are
    * where a crystal fell out.
    */
-  wear: { polish: 0.45, chip: 0.03, chipTone: 1.3, pits: 0.7 },
+  /* `pits` 0.7 → 0.6 (2026-10-29), with the pits larger and sparser. */
+  wear: { polish: 0.45, chip: 0.03, chipTone: 1.3, pits: 0.6 },
   /**
    * THE WATER'S MARK. Lakes rise and fall with the seasons, and every rock
    * on a northern shore carries a band where the water stands half the year:

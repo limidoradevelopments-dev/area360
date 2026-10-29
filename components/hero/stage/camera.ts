@@ -56,6 +56,8 @@
  * photograph's edges fade into the fog instead (shaders/backdrop.ts).
  */
 
+import { approach } from "@/components/ui/easing";
+
 import { STONE } from "../stone/optics";
 import { BACKDROP, DEPTH } from "./layers";
 import { ARRIVAL, PARALLAX } from "./motion";
@@ -191,22 +193,38 @@ export interface SwayParams {
   swayX: number;
   swayY: number;
   swayRate: number;
+  /** How much of the lean is the user's damp rather than the spring, 0–1
+   *  (motion.ts PARALLAX.follow). */
+  followMix: number;
 }
 
 /**
- * The camera's lean: a critically damped spring on a fixed 1/120s step,
- * chasing a target set by the pointer. Per-frame state lives here, outside
- * React; the engine reads `pose()` once a frame.
+ * The camera's lean, chasing a target set by the pointer: a critically
+ * damped spring on a fixed 1/120s step, mixed with a straight damp toward
+ * the same target (PARALLAX.follow), and every frame drawn between the
+ * last two steps. Per-frame state lives here, outside React; the engine
+ * reads `pose()` once a frame.
  */
 export class CameraRig {
+  /* The spring, and the damp beside it (PARALLAX.follow), as shares of the
+     full lean. */
   private x = 0;
   private y = 0;
   private vx = 0;
   private vy = 0;
+  private dx = 0;
+  private dy = 0;
   /* Target, as shares of the full lean (−1…1). */
   private tx = 0;
   private ty = 0;
   private accumulator = 0;
+  /* The lean (the two mixed) now and one step back, and how far this frame
+     stands into the next step (0–1): the frame is drawn between the two. */
+  private leanX = 0;
+  private leanY = 0;
+  private lastX = 0;
+  private lastY = 0;
+  private between = 0;
   /* Seconds since the arrival began (motion.ts ARRIVAL); infinite: in
      place. */
   private age = Infinity;
@@ -247,18 +265,22 @@ export class CameraRig {
     const e = PARALLAX.restEpsilon;
     return (
       Math.abs(this.x - this.tx) < e && Math.abs(this.y - this.ty) < e &&
+      Math.abs(this.dx - this.tx) < e && Math.abs(this.dy - this.ty) < e &&
       Math.abs(this.vx) < e && Math.abs(this.vy) < e
     );
   }
 
-  /** Advances the arrival and the spring by `dt` seconds; `frequency` in
-   *  rad/s (PARALLAX). */
-  update(dt: number, frequency: number = PARALLAX.frequency): void {
+  /** Advances the arrival and the lean by `dt` seconds: the spring at
+   *  `frequency` rad/s, `mix` of it the damp (PARALLAX.follow). */
+  update(dt: number, frequency: number = PARALLAX.frequency, mix: number = PARALLAX.follow.mix): void {
     /* The arrival runs on wall time, the frame capped as the spring's is:
        a stalled frame holds it rather than jumping it. */
     if (this.age < Infinity) this.age += Math.min(dt, PARALLAX.maxFrame);
     if (this.resting) {
       this.accumulator = 0;
+      this.lastX = this.leanX;
+      this.lastY = this.leanY;
+      this.between = 0;
       return;
     }
     const h = PARALLAX.step;
@@ -267,13 +289,23 @@ export class CameraRig {
     const c = 2 * PARALLAX.damping * w;
     while (this.accumulator >= h) {
       this.accumulator -= h;
+      this.lastX = this.leanX;
+      this.lastY = this.leanY;
       /* Semi-implicit Euler: velocity first, then position with the new
          velocity. Stable here by a wide margin (ω·h ≈ 0.04). */
       this.vx += (w * w * (this.tx - this.x) - c * this.vx) * h;
       this.vy += (w * w * (this.ty - this.y) - c * this.vy) * h;
       this.x += this.vx * h;
       this.y += this.vy * h;
+      /* The damp beside it, exact over the step. */
+      this.dx = approach(this.dx, this.tx, PARALLAX.follow.rate, h);
+      this.dy = approach(this.dy, this.ty, PARALLAX.follow.rate, h);
+      this.leanX = this.x + (this.dx - this.x) * mix;
+      this.leanY = this.y + (this.dy - this.y) * mix;
     }
+    /* BETWEEN STEPS (motion.ts PARALLAX.step): what is left over is how far
+       this frame stands into the next step, and it is drawn there. */
+    this.between = this.accumulator / h;
   }
 
   /**
@@ -298,8 +330,9 @@ export class CameraRig {
     /* In and out (smootherstep): held a moment while the frame is still
        dark, out through the middle, landing without a jolt. */
     const close = 1 - t * t * t * (t * (t * 6 - 15) + 10);
-    const lx = this.x * sway.swayX;
-    const ly = this.y * sway.swayY;
+    /* The lean between its last two steps (update). */
+    const lx = (this.lastX + (this.leanX - this.lastX) * this.between) * sway.swayX;
+    const ly = (this.lastY + (this.leanY - this.lastY) * this.between) * sway.swayY;
     const up = crane * A.up;
     const dz = -crane * A.back;
     const [px, py, pz] = CAMERA.pivot;

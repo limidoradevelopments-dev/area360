@@ -151,6 +151,10 @@
   overflow: clip;
   background: var(--color-preloader-ground);
   color: var(--color-preloader-ink);
+  /* Display type, the titles' face: named here since the body became
+   * Newsreader (base.css), so the curtain is drawn as it was. */
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
 }
 
 /* Gone: out of the tree, not just transparent. */

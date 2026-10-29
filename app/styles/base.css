@@ -24,8 +24,8 @@ html {
    *
    * No clamp() anywhere else in the system, except when a size must answer
    * to viewport HEIGHT, which this curve knows nothing about. */
-  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem);
-
+  /* font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem); */
+  font-size: 93.75%;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   scrollbar-width: none;
@@ -40,10 +40,12 @@ body::-webkit-scrollbar {
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: var(--font-cormorant), Georgia, serif;
-  /* The only weight carried (layout.tsx): asked for anything else, the
-   * browser would synthesise it. */
-  font-weight: 600;
+  /* BODY TEXT IS NEWSREADER (2026-10-29, the user: "newsreader for body
+   * text, keep the existing one for titles"), at the one weight carried
+   * (layout.tsx): asked for another, the browser would synthesise it.
+   * Titles name Cormorant themselves, with its 600. */
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

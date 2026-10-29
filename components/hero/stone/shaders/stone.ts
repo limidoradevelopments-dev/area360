@@ -25,10 +25,16 @@
 
 import { STONE_NOISE_SIZE } from "../noise";
 
-/* E[smoothstep(0.25, 0.6, n)] over value noise n (measured, 2·10⁶ samples):
-   the flecks' mean, taken out so they darken nothing on average. The
-   lattice's values are uniform, as the hash's were, so it holds. */
-const FLECK_MEAN = 0.1876;
+/* E[smoothstep(0.15, 0.8, n) · cluster] over the lattice's value noise
+   (measured, 2·10⁶ samples, the cluster read at an eighth of the fleck's
+   frequency as granite() reads it): the flecks' mean, taken out so they
+   darken nothing on average. */
+const FLECK_MEAN = 0.0995;
+
+/* The faces' relief (shadeStone): the size of its rises (m), the step its
+   slope is read over (m), and how much of the light a slope gains or loses
+   (a share per unit of the noise's step: ±~8% on the steepest). */
+const RELIEF = { size: "0.05", step: "0.015", amount: "0.16" } as const;
 
 /**
  * The block's shape alone — where a ray meets it — for the programs that
@@ -225,11 +231,20 @@ float stoneResolved(float size, float footprint) {
 }
 
 /* The granite's reflectance at \`st\` (m on the cube's face), as a multiple
-   of its mean. */
+   of its mean.
+   THE DARK CRYSTALS BLENDED INTO THE GROUND (2026-10-29, the user: "blend
+   this black pattern to it"). Cut out of the noise at a hard threshold and
+   darkened by 85%, every fleck printed near black on the same density
+   everywhere: at 1080p a pepper of black dots stamped over the faces, not
+   crystals in a stone. Now each fades in over most of the noise's range
+   (a crystal half-weathered is half as dark) and they CLUSTER, as a
+   granite's mafic minerals do — thick in some places, sparse between, on
+   a ~5 cm patch read at an eighth of their frequency. */
 float granite(vec2 st, float footprint) {
   float cloud = 0.65 * stoneNoise(st / uStoneGrain.x) + 0.35 * stoneNoise(st * 2.7 / uStoneGrain.x + 3.1);
   float a = 1.0 + uStoneGrain.y * cloud * stoneResolved(uStoneGrain.x, footprint);
-  float fleck = smoothstep(0.25, 0.6, stoneNoise(st / uStoneGrain.z + 11.3)) - ${FLECK_MEAN};
+  float cluster = 0.6 + 0.4 * stoneNoise(st / (8.0 * uStoneGrain.z) + 61.0);
+  float fleck = smoothstep(0.15, 0.8, stoneNoise(st / uStoneGrain.z + 11.3)) * cluster - ${FLECK_MEAN};
   a *= 1.0 - uStoneGrain.w * fleck * stoneResolved(uStoneGrain.z, footprint);
   a *= 1.0 + uStoneFine.y * stoneNoise(st / uStoneFine.x + 27.1) * stoneResolved(uStoneFine.x, footprint);
   return a;
@@ -244,11 +259,15 @@ float lichen(vec2 st, float dry, float footprint) {
   vec2 q = st / uStoneWeather.z;
   float n = 0.6 * stoneNoise(q) + 0.3 * stoneNoise(q * 2.3 + 5.7) + 0.1 * stoneNoise(q * 5.1 + 1.3);
   float edge = 0.06 + footprint / uStoneWeather.z;
-  float pale = smoothstep(0.0, edge, n - 0.29 * (1.4 - 3.0 * uStoneWeather.w * dry));
+  /* A CRUST, NOT A STAIN. A rosette is a crust of small granules (its
+     areoles), and its margin is where they thin out: read once, they break
+     the patch's edge into them and crack its face. With a soft edge and a
+     faint crackle only, the patches read as smudges of grey paint. */
+  float areoles = stoneNoise(q * 9.0) * stoneResolved(uStoneWeather.z / 9.0, footprint);
+  float pale = smoothstep(0.0, edge, n + 0.16 * areoles - 0.29 * (1.4 - 3.0 * uStoneWeather.w * dry));
   float d = 0.6 * stoneNoise(q * 1.7 + 41.0) + 0.4 * stoneNoise(q * 4.3 + 9.0);
   float dark = smoothstep(0.0, edge, d - 0.29 * (1.4 - 0.25 * uStoneWeather.w * dry)) * (1.0 - pale);
-  /* A rosette is not flat: its areoles crack it into a finer pattern. */
-  float tone = uStoneLichen.x * (1.0 + 0.12 * stoneNoise(q * 9.0) * stoneResolved(uStoneWeather.z / 9.0, footprint));
+  float tone = uStoneLichen.x * (1.0 + 0.3 * areoles);
   return mix(mix(1.0, tone, pale), uStoneLichen.y, dark);
 }
 
@@ -313,14 +332,27 @@ vec3 shadeStone(vec3 world, vec3 local, vec3 normal, vec3 view, float footprint,
 
   float albedo = granite(st, spread);
   float irradiance = stoneIrradiance(bent);
+  /* RELIEF (2026-10-29, the user: "make it real a bit"). A weathered face
+     is never sawn flat: it undulates over a few centimetres, and under a
+     light from above each rise takes a little more of the dome on its
+     upper slope and a little less under it. Read as the height's step up
+     the face, against the light alone (the reflectance keeps its grain):
+     what makes a face read as stone and not as a print laid on a box.
+     Faces only: the top looks at the dome either way. */
+  if (!top) {
+    float h0 = stoneNoise(st / ${RELIEF.size} + 71.0);
+    float h1 = stoneNoise((st + vec2(0.0, ${RELIEF.step})) / ${RELIEF.size} + 71.0);
+    irradiance *= 1.0 - ${RELIEF.amount} * (h1 - h0) * stoneResolved(${RELIEF.size}, spread);
+  }
   /* WEAR. Chips along the edges, where frost and ice took a flake: fresh
      granite under the weathered skin, paler and rougher, a few centimetres
      deep at most, here and there. Pits in the faces, where a crystal fell
-     out, as fine as the grain. */
+     out: about a centimetre, sparse — at 7 mm and denser they were one more
+     pepper of dark pixels over the flecks. */
   float chipDepth = uStoneWear.y * smoothstep(0.35, 0.85, stoneNoise(vec2(alongEdge * 22.0, face * 4.7)));
   float chip = 1.0 - smoothstep(0.6 * chipDepth, chipDepth, toEdge);
   albedo *= mix(1.0, uStoneWear.z, chip);
-  float pit = smoothstep(0.7, 0.9, stoneNoise(st / 0.007 + 51.0)) * stoneResolved(0.007, spread);
+  float pit = smoothstep(0.62, 0.84, stoneNoise(st / 0.011 + 51.0)) * stoneResolved(0.011, spread);
   albedo *= 1.0 - uStoneWear.w * pit;
 
   float soaked = 0.0;

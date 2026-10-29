@@ -1,0 +1,232 @@
+/* ─── Header · the masthead ───
+ *
+ * The site's head over the hero's frame (the user's 1920 frame and their
+ * 390 phone frame, 2026-10-30): the mark at the left margin, the time in a
+ * hairline box on the copy's column (7; 2 on a phone), the nav at the
+ * right margin, its words right-aligned against a hairline. Newsreader,
+ * white at 80% (tokens.css: the soft white, words over the scene); the
+ * mark and the clock's box in the whole white.
+ *
+ * READ OFF THE FRAMES: every size below is the frame's px ÷ 16 (AGENTS.md).
+ * The leading, 1.43, is the frame's own: 17px at 12px, which with a
+ * hairline above and below is the clock box's 19px, and with a 6px gap the
+ * nav's 23px pitch.
+ *
+ * THE PHONE IS ITS OWN DRAWING, not the desktop scaled: its mark is a
+ * fifth smaller and set a little higher, its nav two pixels smaller, its
+ * clock the same size. So the phone block restates what it redraws, still
+ * as multiples of the one unit.
+ *
+ * TAKES THE POINTER ONLY WHERE IT IS PRESSED: the scene reads the hand over
+ * the hero, and a box over the top of it would tell the scene the hand had
+ * left — the camera swinging back to the middle (the dock's lesson,
+ * settings.css). Only the links take it.
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --header-unit: 1rem;
+
+  /* The user's mark, its own 66×47 box drawn 80px across (its wings ~79px
+   * of ink, as the frame measures). */
+  --size-header-mark: calc(var(--header-unit) * 5);
+  /* 80px */
+  /* Where the mark sits against the top line the clock and nav share. */
+  --space-header-mark-y: 0px;
+
+  --text-header: calc(var(--header-unit) * 0.75);
+  /* 12px: the clock and its zone */
+  --text-header-nav: calc(var(--header-unit) * 0.75);
+  /* 12px */
+  --leading-header: 1.43;
+
+  /* The clock: the time in its box, the zone under it. The box is fitted to
+   * the frame's width (65px), not its padding: the browser sets the figures
+   * in the optical size drawn for 12px, a little wider than the frame's. */
+  --space-header-clock-pad: calc(var(--header-unit) * 0.4375);
+  /* 7px either side of the time */
+  --space-header-clock-gap: calc(var(--header-unit) * 0.25);
+  /* 4px: the box to the zone */
+
+  /* The nav: its words, the gap to the hairline, and the hairline running
+   * on a little past the last word, as the frame draws it. */
+  --space-header-nav-gap: calc(var(--header-unit) * 0.375);
+  /* 6px between the words */
+  --space-header-nav-rule: calc(var(--header-unit) * 0.5);
+  /* 8px: the words to the rule */
+  --space-header-rule-tail: calc(var(--header-unit) * 0.25);
+  /* 4px */
+  /* A link's press area reaches this far left of its word (and across the
+   * gaps to its neighbours, and on to the rule). */
+  --space-header-link-reach: calc(var(--header-unit) * 0.75);
+  /* 12px */
+
+  --color-header-ink: var(--color-on-night-soft);
+  --color-header-strong: var(--color-on-night);
+}
+
+/* Tablet and small laptop: the same. The header is all small type, and
+ * 12px is already the smallest the body's type is set. */
+@media (max-width: 1279.98px) {
+  :root {
+    --header-unit: 1rem;
+  }
+}
+
+/* Phone: the user's 390 frame. */
+@media (max-width: 767.98px) {
+  :root {
+    --header-unit: 1rem;
+    --size-header-mark: calc(var(--header-unit) * 4);
+    /* 64px */
+    /* The frame sets the mark 7px above the clock's and the nav's line: its
+     * wings, the drawing's weight, then sit level with the clock's box. */
+    --space-header-mark-y: calc(var(--header-unit) * -0.4375);
+    /* -7px */
+    --text-header-nav: calc(var(--header-unit) * 0.625);
+    /* 10px */
+    --space-header-clock-pad: calc(var(--header-unit) * 0.0625);
+    /* 1px: the phone's box holds the time close (the frame's 52px) */
+    --space-header-nav-gap: calc(var(--header-unit) * 0.5);
+    /* 8px */
+    --space-header-nav-rule: calc(var(--header-unit) * 0.25);
+    /* 4px */
+    --space-header-rule-tail: 0px;
+  }
+}
+
+/* Over the top of the page (so over the hero), on the hero's grid, from
+ * the frame's top edge: 30px at every size (tokens.css --space-edge-y). */
+[data-site-header] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--spacing-gutter);
+  align-items: start;
+  padding-inline: var(--spacing-margin);
+  padding-top: calc(var(--space-edge-y) + env(safe-area-inset-top, 0px));
+  color: var(--color-header-ink);
+  font-size: var(--text-header);
+  line-height: var(--leading-header);
+  pointer-events: none;
+}
+
+/* ── The mark ── spans three columns so a tablet's narrow column never
+ * squeezes it; it stands at the margin whatever the span. */
+[data-header-mark] {
+  grid-column: 1 / span 3;
+  justify-self: start;
+  display: block;
+  width: var(--size-header-mark);
+  margin-top: var(--space-header-mark-y);
+  color: var(--color-header-strong);
+  pointer-events: auto;
+}
+
+[data-header-mark] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 66 / 47;
+}
+
+/* ── The clock ── on the copy's column: its box's edge is the edge the
+ * headline and the copy stand on below it. */
+[data-header-clock] {
+  grid-column: 7 / span 3;
+  justify-self: start;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-header-clock-gap);
+}
+
+/* The time's box: a hairline round one line of the body's leading, as
+ * wide as the time (the figures are tabular: the box never twitches as
+ * they turn). */
+[data-header-time] {
+  display: block;
+  width: fit-content;
+  padding-inline: var(--space-header-clock-pad);
+  border: var(--size-rule) solid var(--color-header-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The nav ── right-aligned against a hairline at the right margin; the
+ * rule is the list's own edge, so it runs exactly as far as the words. */
+[data-header-nav] {
+  grid-column: 10 / -1;
+  justify-self: end;
+}
+
+[data-header-nav] ul {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-header-nav-gap);
+  padding-right: var(--space-header-nav-rule);
+  padding-bottom: var(--space-header-rule-tail);
+  border-right: var(--size-rule) solid var(--color-header-ink);
+  font-size: var(--text-header-nav);
+  text-align: right;
+}
+
+/* A word, and under the hand the whole white. A hover's tint, not a layout
+ * or a mount: a CSS transition is right. */
+[data-header-link] {
+  position: relative;
+  display: block;
+  pointer-events: auto;
+  transition: color 0.18s var(--ease-out-soft);
+}
+
+/* THE PRESS AREA, wider than the word: over the gaps to its neighbours (so
+ * the list has no dead lines between its words), on to the rule, and a
+ * little to the left. */
+[data-header-link]::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-header-nav-gap) / -2);
+  bottom: calc(var(--space-header-nav-gap) / -2);
+  left: calc(var(--space-header-link-reach) * -1);
+  right: calc(var(--space-header-nav-rule) * -1);
+}
+
+[data-header-link]:hover,
+[data-header-link]:focus-visible {
+  color: var(--color-header-strong);
+}
+
+[data-header-mark]:focus-visible,
+[data-header-link]:focus-visible {
+  outline: var(--size-rule) solid var(--color-on-night-muted);
+  outline-offset: 2px;
+}
+
+/* Phone: four columns; the clock on the second, the nav on the last. */
+@media (max-width: 767.98px) {
+  [data-site-header] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  [data-header-mark] {
+    grid-column: 1 / span 1;
+  }
+
+  [data-header-clock] {
+    grid-column: 2 / span 2;
+  }
+
+  [data-header-nav] {
+    grid-column: 4 / -1;
+  }
+}
+
+/* No scripting: the clock would hold its placeholder forever, a time that
+ * is not the time. */
+@media (scripting: none) {
+  [data-header-clock] {
+    display: none;
+  }
+}

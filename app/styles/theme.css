@@ -13,12 +13,20 @@
   --color-ink: #1A1A1A;
   --color-hairline: #E5E5E5;
   --color-muted: rgba(0, 0, 0, 0.55);
+  /* THE DARK SYSTEM (2026-10-29, the user's Figma): the page's black — the
+   * preloader's and the scene's ground — and the one accent, a lamp's
+   * amber, for what is chosen. Everything on the black is white, told apart
+   * by opacity alone (tokens.css). */
+  --color-night: #111111;
+  --color-accent: #F2A500;
 
-  /* Typography — mapped to the variable next/font injects on <html>: the
-   * one face, Cormorant Garamond (semibold, semibold italic). Rename the
-   * token when the family behind it changes; a utility named after a face it
-   * no longer renders is a class that lies. */
+  /* Typography — mapped to the variables next/font injects on <html>: the
+   * TITLES' face, Cormorant Garamond (semibold, semibold italic), and since
+   * 2026-10-29 the BODY's, Newsreader (regular). Rename a token when the
+   * family behind it changes; a utility named after a face it no longer
+   * renders is a class that lies. */
   --font-cormorant: var(--font-cormorant-garamond);
+  --font-newsreader: var(--font-newsreader-text);
 }
 
 /* Grid & spacing — a SEPARATE, non-inline @theme block, on purpose.

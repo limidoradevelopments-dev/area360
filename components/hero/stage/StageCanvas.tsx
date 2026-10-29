@@ -3,6 +3,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ComponentType } from "react";
 
+import { renderQuality, type QualityChoice, type QualityLevel } from "@/components/ui/renderQuality";
+
 import type { StageEngine, StageEngineOptions } from "./engine";
 
 /**
@@ -52,7 +54,15 @@ const RESIZE_SETTLE_MS = 120;
    browser; the server never needs it. */
 const engineModule = typeof window === "undefined" ? null : import("./engine");
 
-type Handlers = Required<Pick<StageEngineOptions, "onFirstFrame" | "onProgress" | "onLost">>;
+type Handlers = Required<Pick<StageEngineOptions, "onFirstFrame" | "onProgress" | "onLost" | "onTier">>;
+
+/* THE VISITOR'S QUALITY, as the engine's tiers (stage/optics.ts
+   RENDER.tiers, best first): the settings control speaks in levels
+   (ui/renderQuality), the engine in tiers, and this is the one place the
+   two meet. */
+const LEVELS: readonly QualityLevel[] = ["high", "medium", "low"];
+const tierOf = (choice: QualityChoice): number | null => (choice === "auto" ? null : LEVELS.indexOf(choice));
+const levelOf = (tier: number): QualityLevel => LEVELS[Math.min(LEVELS.length - 1, Math.max(0, tier))];
 
 /**
  * What an engine started before the page hydrated says before the
@@ -63,6 +73,7 @@ class Relay implements Handlers {
   private progressed = 0;
   private framed = false;
   private lost = false;
+  private tier = -1;
   readonly onProgress = (fraction: number) => {
     this.progressed = fraction;
     this.to?.onProgress(fraction);
@@ -75,9 +86,14 @@ class Relay implements Handlers {
     this.lost = true;
     this.to?.onLost();
   };
+  readonly onTier = (tier: number) => {
+    this.tier = tier;
+    this.to?.onTier(tier);
+  };
   connect(to: Handlers): void {
     this.to = to;
     if (this.progressed > 0) to.onProgress(this.progressed);
+    if (this.tier >= 0) to.onTier(this.tier);
     if (this.framed) to.onFirstFrame();
     if (this.lost) to.onLost();
   }
@@ -113,15 +129,17 @@ const early: Promise<Boot | null> | null =
           const frame = canvas?.closest("section");
           if (!canvas || !frame) return null;
           const relay = new Relay();
-          /* Reduced motion is the component's to say: told on attach. */
-          const engine = createStageEngine({ canvas, frame, reducedMotion: false, detached: true, ...relayed(relay) });
+          /* Reduced motion is the component's to say: told on attach. The
+             quality is the visitor's stored choice, known already. */
+          const quality = tierOf(renderQuality.current.choice);
+          const engine = createStageEngine({ canvas, frame, reducedMotion: false, detached: true, quality, ...relayed(relay) });
           return { engine, canvas, relay, claimed: false };
         })
         .catch(() => null)
     : null;
 
 function relayed(relay: Relay): Handlers {
-  return { onFirstFrame: relay.onFirstFrame, onProgress: relay.onProgress, onLost: relay.onLost };
+  return { onFirstFrame: relay.onFirstFrame, onProgress: relay.onProgress, onLost: relay.onLost, onTier: relay.onTier };
 }
 
 export default function StageCanvas({ reducedMotion, started, onReady, onProgress, onUnavailable }: StageCanvasProps) {
@@ -131,7 +149,11 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
 
   const ready = useEffectEvent(() => onReady());
   const progress = useEffectEvent((fraction: number) => onProgress?.(fraction));
-  const unavailable = useEffectEvent(() => onUnavailable());
+  /* No live scene: nothing for the settings control to set. */
+  const unavailable = useEffectEvent(() => {
+    renderQuality.settle(null);
+    onUnavailable();
+  });
   const startsReduced = useEffectEvent(() => reducedMotion);
   /* Read when the engine arrives: the curtain may have lifted first. */
   const startedNow = useEffectEvent(() => started);
@@ -152,6 +174,7 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
       onFirstFrame: () => ready(),
       onProgress: (fraction) => progress(fraction),
       onLost: () => unavailable(),
+      onTier: (tier) => renderQuality.settle(levelOf(tier)),
     };
     /* The engine started early, if it started on this canvas and nobody has
        it yet (React's development double mount, a remount: a new one). */
@@ -175,7 +198,16 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
       }
       const { createStageEngine } = await (engineModule ?? import("./engine"));
       if (cancelled) return null;
-      return createStageEngine({ canvas, frame, reducedMotion: startsReduced(), ...handlers });
+      const quality = tierOf(renderQuality.current.choice);
+      return createStageEngine({ canvas, frame, reducedMotion: startsReduced(), quality, ...handlers });
+    };
+    /* The visitor's choice, as it changes: the engine takes it on its next
+       frame (an engine started early was told the stored one at its start,
+       and is told again here in case it changed before it was claimed). */
+    let unsubscribe: (() => void) | null = null;
+    const followQuality = (live: StageEngine) => {
+      live.setQuality(tierOf(renderQuality.current.choice));
+      unsubscribe = renderQuality.subscribe(() => live.setQuality(tierOf(renderQuality.current.choice)));
     };
 
     take().then((made) => {
@@ -189,6 +221,7 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
         return;
       }
       engineRef.current = engine;
+      followQuality(engine);
       if (startedNow()) engine.start();
       syncVisibility();
 
@@ -277,8 +310,10 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
       resizeObserver.disconnect();
       intersection.disconnect();
       window.clearTimeout(resizeTimer);
+      unsubscribe?.();
       engine?.dispose();
       engineRef.current = null;
+      renderQuality.settle(null);
       /* The development handle let go too: holding the disposed engine, it
          kept its context, canvas and every array alive after unmount. */
       const handle = window as unknown as { __kaviStage?: StageEngine };

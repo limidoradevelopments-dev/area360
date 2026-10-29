@@ -273,10 +273,40 @@ export const RENDER = {
    * whole screen at 1.5 device px to the CSS px, every edge softer; now
    * only the scene is drawn at 1.5, and the film still prints at 2,
    * putting back the photograph's detail and the grain there.
+   *
+   * THE VISITOR'S HIGH, MEDIUM AND LOW (2026-10-29: the settings control,
+   * ui/renderQuality). Auto measures the device onto one of these as
+   * before; a visitor's choice holds its tier and lets only the frame rate
+   * give way. NOTHING HERE SWAPS A PROGRAM: every cut is a size, a count or
+   * a pass skipped, so changing it mid-visit compiles nothing (a new program
+   * is seconds of compile on Windows, and the scene would stop for them).
+   * Every tier is the same picture made with less work: softer at Low,
+   * never flatter.
+   *   `capped`     drawn at the slowest even rate (~30) only, when it is the
+   *                visitor's choice: Low is chosen to spare the device, and
+   *                30 frames a second halve both the GPU's and the CPU's work
+   *                (a cheaper tier the device was measured onto is held there
+   *                anyway: RENDER, the ladder)
+   *   `airEvery`   the air stepped once per this many of its ticks (1/60 s)
+   *                at most once a drawn frame: at 30 a frame, one step
+   *                instead of two — the fluid's 27 draws halved, nothing
+   *                visible (PERFORMANCE-AUDIT.md cut 5: stable fluids hold any
+   *                step)
+   *   `glowEvery`  the diffusion's pyramid redrawn every this many frames,
+   *                read as it was between: a blur of the whole frame five
+   *                levels deep at 1% and its halation at 0.14, a frame late
+   *                (33 ms at 30) is not to be seen
+   * Medium's scene: ~1.5 Mpx at 1.5 scene px a CSS px (it was 2.2 at 2,
+   * which drew a 1080p screen exactly as High did): at 1080p ~0.85 of
+   * High's scene each way, on a phone the scene at 1.5 and the print at 2
+   * (PERFORMANCE-AUDIT.md cut 8: −30% of a phone's frame).
+   * Low's scene: ~0.9 Mpx at 1.25 scene px a CSS px (it was 1.2 at 1.5): on
+   * a phone ~30% fewer of the scene's pixels again, the stone's grain and
+   * the fog softer, the print still at 2.
    */
   tiers: [
-    { pressureIterations: 20, volumeScale: 1, scenePixels: 3.7e6, outputDpr: 2, sceneDpr: 2 },
-    { pressureIterations: 12, volumeScale: 0.75, scenePixels: 2.2e6, outputDpr: 2, sceneDpr: 2 },
-    { pressureIterations: 10, volumeScale: 0.6, scenePixels: 1.2e6, outputDpr: 2, sceneDpr: 1.5 },
+    { pressureIterations: 20, volumeScale: 1, scenePixels: 3.7e6, outputDpr: 2, sceneDpr: 2, capped: false, airEvery: 1, glowEvery: 1 },
+    { pressureIterations: 12, volumeScale: 0.75, scenePixels: 1.5e6, outputDpr: 2, sceneDpr: 1.5, capped: false, airEvery: 1, glowEvery: 1 },
+    { pressureIterations: 10, volumeScale: 0.5, scenePixels: 0.9e6, outputDpr: 2, sceneDpr: 1.25, capped: true, airEvery: 2, glowEvery: 2 },
   ],
 } as const;
