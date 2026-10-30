@@ -11,12 +11,13 @@
  * The leading, 1.43, is the frame's own (17px at 12px). SINCE 2026-10-30,
  * the user's sizes: the nav alone at 12px, the clock and its zone at 10px
  * as every supporting word is (hero/copy: the notes) — the clock's box
- * then 16px with its hairlines; the nav's words 4px apart, a 21px pitch.
+ * then 16px with its hairlines; the nav's words 2px apart, a 19px pitch.
  *
  * THE PHONE IS ITS OWN DRAWING, not the desktop scaled: its mark is a
- * fifth smaller and set a little higher, its nav two pixels smaller, its
- * clock the same 10px. So the phone block restates what it redraws, still
- * as multiples of the one unit.
+ * fifth smaller and set a little higher, its words nearer the rule; its nav
+ * (12px, the user's, as on the desktop) and its clock the same. So the
+ * phone block restates only what it redraws, still as multiples of the
+ * one unit.
  *
  * TAKES THE POINTER ONLY WHERE IT IS PRESSED: the scene reads the hand over
  * the hero, and a box over the top of it would tell the scene the hand had
@@ -50,8 +51,9 @@
 
   /* The nav: its words, the gap to the hairline, and the hairline running
    * on a little past the last word, as the frame draws it. */
-  --space-header-nav-gap: calc(var(--header-unit) * 0.25);
-  /* 4px between the words (the frame's 6, closed up at the user's word) */
+  --space-header-nav-gap: calc(var(--header-unit) * 0.125);
+  /* 2px between the words (the frame's 6, closed up at the user's word,
+   * twice): a 19px pitch, the list read as one block */
   --space-header-nav-rule: calc(var(--header-unit) * 0.5);
   /* 8px: the words to the rule */
   --space-header-rule-tail: calc(var(--header-unit) * 0.25);
@@ -73,7 +75,8 @@
   }
 }
 
-/* Phone: the user's 390 frame. */
+/* Phone: the user's 390 frame. The nav keeps the desktop's 12px and its
+ * gap (the user, 2026-10-30), so neither is restated here. */
 @media (max-width: 767.98px) {
   :root {
     --header-unit: 1rem;
@@ -83,12 +86,8 @@
      * wings, the drawing's weight, then sit level with the clock's box. */
     --space-header-mark-y: calc(var(--header-unit) * -0.4375);
     /* -7px */
-    --text-header-nav: calc(var(--header-unit) * 0.625);
-    /* 10px */
     --space-header-clock-pad: calc(var(--header-unit) * 0.0625);
     /* 1px: the phone's box holds the time close (the frame's 52px) */
-    --space-header-nav-gap: calc(var(--header-unit) * 0.5);
-    /* 8px */
     --space-header-nav-rule: calc(var(--header-unit) * 0.25);
     /* 4px */
     --space-header-rule-tail: 0px;
