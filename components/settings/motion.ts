@@ -8,18 +8,21 @@
 
 import { CARD_ENTRANCE, REVEAL_EASE, REVEAL_EASE_FN } from "@/components/ui/motion";
 import { cubicBezier } from "@/components/ui/easing";
+import { STAGE_CUES } from "@/components/ui/stageCues";
 
 export const DOCK_MOTION = {
   ease: REVEAL_EASE_FN,
 
-  /* THE BUTTON WAITS FOR THE SCENE. The curtain lifts and the hero's
-   * opening shot widens over ~4 s (hero/stage/motion.ts ARRIVAL.zoom): the
-   * first thing seen must be the stone, not the chrome. 1.6 s in, the fade
-   * up is done (hero/motion.ts ENTRANCE, 1.8 s, mostly up by then) and the
-   * camera is still settling, so the button arrives inside the shot. */
-  enterDelay: 1.6,
+  /* THE BUTTON WAITS FOR THE SHOT. The curtain lifts and the hero's
+   * opening shot widens over 4.2 s (hero/stage/motion.ts ARRIVAL.zoom): the
+   * stone first, then the headline, then — near the shot's end — the
+   * chrome, down the page; the dock is its foot, last (ui/stageCues.ts).
+   * It comes DOWN into place, as every line over the hero does (the user,
+   * 2026-10-30: "top to bottom"): the lift is negative, from above; its
+   * pre-state is settings.css's. */
+  enterDelay: STAGE_CUES.chrome.foot,
   enterSeconds: 0.9,
-  enterLiftRem: 0.75,
+  enterLiftRem: -0.75,
 
   /* The panel floats up out of a blur, as a card does (ui/motion.ts
    * CARD_ENTRANCE), shorter: it answers a click, and at the card's 0.9 s a

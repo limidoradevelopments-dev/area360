@@ -108,6 +108,42 @@
   -webkit-touch-callout: none;
 }
 
+/* THE FRAME IS PINNED (the descent, HeroSection): fixed to the screen,
+ * the page scrolling over it — on the compositor, so it holds still at any
+ * scroll speed, as a frame moved from script every scroll would not. Its
+ * ground the same black, AS TALL AS THE LARGE VIEWPORT (lvh): when a
+ * phone's URL bar slides away mid-scroll, the strip it leaves is ground,
+ * not the page's white. Every later section scrolls over it, on it. */
+[data-hero-frame] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100lvh;
+  background: var(--color-hero-ground);
+}
+
+/* The scene: A SCREEN TALL BY THE SMALL VIEWPORT (svh), as the section is
+ * and the words over it are laid out — the engine sizes to it, so a URL
+ * bar coming and going never resizes the canvas (a rebuild of every
+ * target) or moves the stone off the words' row. Its light is the
+ * descent's (written from the scroll), on its own layer so a change of it
+ * is the compositor's alone. */
+[data-hero-scene] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100svh;
+  will-change: opacity;
+}
+
+/* Gone dark on the way down (HeroSection: the light at zero): out of the
+ * visibility tree, and the engine draws nothing (StageCanvas). */
+[data-hero-scene][data-dark] {
+  visibility: hidden;
+}
+
 /* PRE-ENTRANCE STATE. The canvas is invisible until its first frame exists;
  * the section's timeline brings it up out of the black. */
 [data-hero-stage] {
@@ -119,6 +155,7 @@
 [data-hero-still] {
   display: none;
 }
+
 [data-hero-fallback] [data-hero-still] {
   display: block;
 }
@@ -129,7 +166,15 @@
   [data-hero-stage] {
     display: none;
   }
+
   [data-hero-still] {
     display: block;
+  }
+
+  /* Nothing will take the light away as the page scrolls: the frame goes
+   * with the section instead of staying behind the page. */
+  [data-hero-frame] {
+    position: absolute;
+    height: 100%;
   }
 }

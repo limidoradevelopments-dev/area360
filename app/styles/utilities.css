@@ -49,7 +49,21 @@
   transform: translateY(110%);
 }
 
+/* A part whose lines DROP into their masks from above (ui/motion.ts
+ * LINE_DROP) waits above them instead. */
+[data-reveal-drop] [data-reveal-line] {
+  transform: translateY(-110%);
+}
+
 [data-reveal-fade] {
+  opacity: 0;
+}
+
+/* A paragraph wrapped by its box, to be split into its lines when its
+ * entrance plays (ui/splitLines.ts): until then it has no lines to hold
+ * in their masks, so it waits unseen — transparent, not hidden, so a
+ * screen reader still reads it. Split, its lines wait in their masks. */
+[data-reveal-lines=""] {
   opacity: 0;
 }
 
@@ -64,6 +78,7 @@
 @media (scripting: none) {
 
   [data-reveal-line],
+  [data-reveal-lines],
   [data-reveal-fade],
   [data-reveal-card] {
     transform: none !important;

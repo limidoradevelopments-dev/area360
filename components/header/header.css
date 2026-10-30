@@ -58,6 +58,12 @@
   /* 8px: the words to the rule */
   --space-header-rule-tail: calc(var(--header-unit) * 0.25);
   /* 4px */
+  /* The scroll cue: the gap that runs down the rule (its ends feathered
+   * inside it, so the rule at rest is whole to its top). */
+  --size-header-cue: calc(var(--header-unit) * 2);
+  /* 32px, against the rule's ~79 */
+  --size-header-cue-soft: calc(var(--header-unit) * 0.75);
+  /* 12px of feather each end */
   /* A link's press area reaches this far left of its word (and across the
    * gaps to its neighbours, and on to the rule). */
   --space-header-link-reach: calc(var(--header-unit) * 0.75);
@@ -155,8 +161,10 @@
 }
 
 /* ── The nav ── right-aligned against a hairline at the right margin; the
- * rule is the list's own edge, so it runs exactly as far as the words. */
+ * rule spans the nav's own box, so it runs exactly as far as the words
+ * (and the tail past them). */
 [data-header-nav] {
+  position: relative;
   grid-column: 10 / -1;
   justify-self: end;
 }
@@ -167,9 +175,44 @@
   row-gap: var(--space-header-nav-gap);
   padding-right: var(--space-header-nav-rule);
   padding-bottom: var(--space-header-rule-tail);
-  border-right: var(--size-rule) solid var(--color-header-ink);
   font-size: var(--text-header-nav);
   text-align: right;
+}
+
+/* ── The rule, and the scroll cue on it (scrollCue.ts) ──
+ * A hairline window down the nav's right edge. PRE-ENTRANCE: not yet
+ * drawn — it draws down from its top as the nav's words arrive (the
+ * curtain's own axis does the same, on the same curve). */
+[data-header-rule] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--size-rule);
+  overflow: clip;
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+
+/* THE CUE: a strip twice the rule's height and a gap more — the line, a
+ * soft gap, the line again — standing so that its lower line fills the
+ * window and the gap waits just above it. Moved down by a line and a gap
+ * it brings the gap through the window from top to bottom and ends showing
+ * its upper line, the same picture as at rest: so it simply lets go, and
+ * nothing jumps. One transform, on the compositor. */
+[data-header-rule-ink] {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  top: calc(-100% - var(--size-header-cue));
+  height: calc(200% + var(--size-header-cue));
+  background: linear-gradient(
+    to bottom,
+    var(--color-header-ink) calc(50% - var(--size-header-cue) / 2),
+    transparent calc(50% - var(--size-header-cue) / 2 + var(--size-header-cue-soft)),
+    transparent calc(50% + var(--size-header-cue) / 2 - var(--size-header-cue-soft)),
+    var(--color-header-ink) calc(50% + var(--size-header-cue) / 2)
+  );
 }
 
 /* A word, and under the hand the whole white. A hover's tint, not a layout
@@ -228,5 +271,10 @@
 @media (scripting: none) {
   [data-header-clock] {
     display: none;
+  }
+
+  /* Nothing will draw it: it stands drawn. */
+  [data-header-rule] {
+    transform: none;
   }
 }

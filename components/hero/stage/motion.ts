@@ -146,3 +146,39 @@ export const ARRIVAL = {
   zoom: { from: 1.6, seconds: 4.2, frame: 0.66 },
   frameOn: [STONE.center[0] - 0.05, STONE.top + 0.05, STONE.center[1] - 0.1] as const,
 } as const;
+
+/**
+ * THE DESCENT (2026-10-30, the user: scrolling on from the hero, "the
+ * camera angle moves down on the y axis while the hero fades and the page
+ * scrolls to the next section"). The scene stays where it is while the
+ * page scrolls over it (hero.css: the frame is pinned), and the scroll's
+ * way through the hero's height (0–1, StageCanvas) takes the camera down:
+ *
+ *   IT TILTS DOWN `tilt` degrees, IN STEP WITH THE SCROLL (linear): the
+ *   world rises through the frame at a fixed share of the page's speed —
+ *   at 9° about two-fifths of it (the horizon ~315 px over an 810 px
+ *   scroll at 1440) — so it reads as depth behind the page, the words
+ *   lifting away at the page's speed and the place more slowly behind
+ *   them. Any curve here would make the scene's speed wander against the
+ *   page's, which reads as slack; the scroll's own smoothing (Lenis, a
+ *   finger's momentum) is the ease. A turn of the view: the photograph
+ *   takes it without tearing.
+ *
+ *   IT SINKS `down` metres toward the water, slow at first (`power`): the
+ *   stone rises against the shores, nearer things faster, the depth the
+ *   eye reads as the camera itself going down — mostly in the second half,
+ *   as the scene goes into the dark (hero/motion.ts DESCENT_FADE). The
+ *   PHOTOGRAPH'S EYE STAYS (camera.ts `plateShift`, as for the lean past
+ *   what it takes): travel tears it where trees stand against the sky,
+ *   and shores 40–80 m off moving a few pixels less than they should is
+ *   not something an eye can tell; the stone, the water and the fog are
+ *   built and move truly.
+ *
+ * A function of the scroll, not a tween: the scroll is the clock, and a
+ * restored scroll position is simply the camera there.
+ */
+export const DESCENT = {
+  tilt: 9,
+  down: 0.3,
+  power: 2,
+} as const;

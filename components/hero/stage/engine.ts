@@ -298,6 +298,9 @@ export interface StageEngine {
    *  the device's own. Takes effect on the next frame; compiles nothing. */
   setQuality(tier: number | null): void;
   setVisible(visible: boolean): void;
+  /** How far the page has scrolled through the hero, 0–1: the camera goes
+   *  down with it (motion.ts DESCENT). Takes effect on the next frame. */
+  setDescent(progress: number): void;
   /** Re-measure the frame and the tokens. */
   resize(): void;
   pointerDown(clientX: number, clientY: number, pointerType: string): void;
@@ -1050,6 +1053,10 @@ class Stage implements StageEngine {
     this.syncLoop();
   }
 
+  setDescent(progress: number): void {
+    this.camera.descend(progress);
+  }
+
   setReducedMotion(reduced: boolean): void {
     this.reduced = reduced;
     if (reduced) {
@@ -1560,8 +1567,10 @@ class Stage implements StageEngine {
     const interval = this.every * this.vsync;
     /* NOT DURING THE ARRIVAL: its opening shot shows more of the lake, the
        costliest thing to draw (stage/motion.ts ARRIVAL.zoom), and was
-       measured in the dark already. */
-    if (this.camera.arriving) {
+       measured in the dark already. NOR ON THE WAY DOWN (DESCENT): tilted
+       down, the frame shows more lake too, for as long as the visitor
+       scrolls past — never the frame rate of the visit. */
+    if (this.camera.arriving || this.camera.descending) {
       this.slowSince = -1;
       this.frameAverage = interval;
       return;
@@ -1619,6 +1628,14 @@ class Stage implements StageEngine {
     }
     const up = this.stepUp;
     if (!up) return;
+    /* On the way down the lake costs more than at rest: what it times then
+       is not the resting frame. Dropped, and timed afresh once back. */
+    if (this.camera.descending) {
+      this.dropTimings();
+      up.samples.length = 0;
+      up.since = now + 500;
+      return;
+    }
     this.collectTimings((work) => up.samples.push(work));
     const S = RENDER.stepUp;
     if (now - up.since < S.seconds * 1000 || up.samples.length < S.minFrames) return;

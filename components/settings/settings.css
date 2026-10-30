@@ -129,7 +129,7 @@
 /* PRE-ENTRANCE STATE IN CSS (AGENTS.md): GSAP tweens from these. */
 [data-settings-launcher] {
   opacity: 0;
-  transform: translateY(0.75rem);
+  transform: translateY(-0.75rem);
   gap: var(--space-settings-wave);
 }
 

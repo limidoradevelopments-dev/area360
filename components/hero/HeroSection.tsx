@@ -10,10 +10,11 @@ import { usePrefersReducedMotion } from "@/components/ui/usePrefersReducedMotion
 
 import { MIST } from "./atmosphere/optics";
 import HeroCopy from "./copy/HeroCopy";
+import { followDescent } from "./descent";
 import HeroStill from "./HeroStill";
 import { BACKDROP } from "./stage/layers";
 import StageCanvas from "./stage/StageCanvas";
-import { ENTRANCE, REDUCED } from "./motion";
+import { descentLight, ENTRANCE, REDUCED } from "./motion";
 
 /**
  * ─── HeroSection ───
@@ -25,15 +26,28 @@ import { ENTRANCE, REDUCED } from "./motion";
  * LAYERS, bottom to top:
  *   the section's own background   #111111 (CSS, [data-hero-ground]): the
  *                                   first paint, the preloader's own ground
- *   [data-hero-still]               the scene's frame as a picture — only
+ *   [data-hero-frame]               PINNED to the screen (hero.css), on the
+ *                                   same ground: the page scrolls over it
+ *     [data-hero-scene]             the scene's light (the descent fades it)
+ *       [data-hero-still]           the scene's frame as a picture — only
  *                                   where there is no scene: no WebGL2, a
  *                                   lost context, no scripting
- *   [data-hero-stage]               the scene (WebGL), coming up out of the
+ *       [data-hero-stage]           the scene (WebGL), coming up out of the
  *                                   black as it arrives (motion.ts ENTRANCE)
  *   [data-hero-copy]                the words over it: the headline (the
  *                                   section's h1), the copy, the notes
  *                                   (copy/). Never takes the pointer, so the
- *                                   scene reads the hand through it.
+ *                                   scene reads the hand through it. They
+ *                                   scroll with the page.
+ *
+ * THE DESCENT (2026-10-30, the user: scrolling on, the camera goes down
+ * while the hero fades and the page scrolls to the next section). The
+ * scene stays pinned while the section's height scrolls by: the words and
+ * the header go with the page at its speed, the camera tilts and sinks
+ * with the scroll (stage/motion.ts DESCENT, StageCanvas), and the scene's
+ * light goes into the ground the next section stands on (motion.ts
+ * DESCENT_FADE), which rises over it from below (promise.css: its veil).
+ * The scroll is its clock (descent.ts): scrolled back, it comes back.
  *
  * THE SCENE ARRIVES, NOT A PICTURE (2026-10-20, the user: it read as an
  * image or a video). The first paint was the scene's own first frame as a
@@ -69,7 +83,8 @@ export interface HeroSectionProps {
    * gusts, no breathing, no billowing, the wind slowed to a quarter, no
    * cursor wake — and the canvas arrives with a short fade, the words with
    * it, without their rise. Touching the fog and holding still in it work:
-   * that motion is the visitor's own.
+   * that motion is the visitor's own. Scrolled past, the scene's light still
+   * goes; the camera stays where it stands.
    */
   respectReducedMotion?: boolean;
 }
@@ -101,6 +116,23 @@ export default function HeroSection({ className, respectReducedMotion = false }:
 
   useEffect(() => {
     loadProgress.begin(LOAD_NAME);
+  }, []);
+
+  /* THE DESCENT'S LIGHT, written straight to the scene on every scroll
+     (per-frame work outside React): its opacity, and once it is gone the
+     scene marked dark (data-dark: out of the visibility tree, hero.css;
+     and the next section's veil gives way to its whole ground,
+     promise.css). The mark changes only as the light crosses zero: a
+     toggle to the state it is in writes nothing. */
+  useEffect(() => {
+    const section = scope.current;
+    const scene = section?.querySelector<HTMLElement>("[data-hero-scene]");
+    if (!section || !scene) return;
+    return followDescent(section, (progress) => {
+      const light = descentLight(progress);
+      scene.style.opacity = light < 1 ? String(light) : "";
+      scene.toggleAttribute("data-dark", light <= 0);
+    });
   }, []);
 
   /* The stage's one fade at a time (motion.ts ENTRANCE: on the compositor).
@@ -143,14 +175,18 @@ export default function HeroSection({ className, respectReducedMotion = false }:
       data-hero-fallback={fallback ? "" : undefined}
       className={cx("relative h-svh w-full overflow-clip", "select-none touch-pan-y", className)}
     >
-      <HeroStill />
-      <StageCanvas
-        reducedMotion={reduced}
-        started={revealed}
-        onReady={markReady}
-        onProgress={(fraction) => loadProgress.report(LOAD_NAME, fraction)}
-        onUnavailable={restoreStill}
-      />
+      <div data-hero-frame>
+        <div data-hero-scene>
+          <HeroStill />
+          <StageCanvas
+            reducedMotion={reduced}
+            started={revealed}
+            onReady={markReady}
+            onProgress={(fraction) => loadProgress.report(LOAD_NAME, fraction)}
+            onUnavailable={restoreStill}
+          />
+        </div>
+      </div>
       <HeroCopy headingId={HEADING_ID} respectReducedMotion={respectReducedMotion} />
     </section>
   );

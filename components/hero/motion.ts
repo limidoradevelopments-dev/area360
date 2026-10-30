@@ -37,6 +37,37 @@ export const ENTRANCE = {
   fadeSeconds: 1.8,
 } as const;
 
+/**
+ * THE DESCENT, THE SECTION'S SHARE (2026-10-30, the user: scrolling on,
+ * the camera goes down "while this smoothly fades the hero and scrolls to
+ * the next section"). The scene is pinned behind the page (hero.css: the
+ * frame) while the hero's height scrolls by: the words and the header go
+ * with the page, at its speed; the camera goes down with the scroll
+ * (stage/motion.ts DESCENT); and the scene's light goes into the ground
+ * it came up out of, the #111111 the next section stands on, over the
+ * scroll's way through the hero from `from` to `to`:
+ *
+ *   SLOW, THEN THROUGH, THEN GONE (smoothstep): the first of the scroll
+ *   keeps the light, so the camera is seen beginning to move; the scene
+ *   is gone before the hero is (`to`), and from there the engine draws
+ *   nothing (StageCanvas): a scene no one can see costs nothing.
+ *
+ * A function of the scroll, written on the scroll (HeroSection), never a
+ * tween: scrolling back brings it back, and a page restored part-way down
+ * opens as it was left.
+ */
+export const DESCENT_FADE = {
+  from: 0.04,
+  to: 0.85,
+} as const;
+
+/** The scene's light at `progress` of the way through the hero (0–1). */
+export function descentLight(progress: number): number {
+  const D = DESCENT_FADE;
+  const t = Math.min(1, Math.max(0, (progress - D.from) / (D.to - D.from)));
+  return 1 - t * t * (3 - 2 * t);
+}
+
 /** Reduced motion keeps what the visitor does and drops what the scene does:
  *  no camera arrival, and a short fade (on the entrance's curve). The same
  *  short fade takes the scene away if it is lost (its context), on a plain

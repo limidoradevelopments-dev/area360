@@ -32,8 +32,8 @@
 :root {
   --hero-copy-unit: 1rem;
 
-  /* ── The headline ── */
-  --text-hero-title: calc(var(--hero-copy-unit) * 2.125);
+  /* ── The headline (28px)── */
+  --text-hero-title: calc(var(--hero-copy-unit) * 1.875);
   /* 34px */
   --leading-hero-title: 1.13;
   /* 38.4px */
@@ -45,14 +45,13 @@
    * adds to its 1.211 em box — here takes from it. */
   --space-hero-title-foot: calc(var(--text-hero-title) * (0.287 + (var(--leading-hero-title) - 1.211) / 2));
 
-  /* ── The copy and the notes ── */
-  --text-hero-lede: calc(var(--hero-copy-unit) * 0.875);
-  /* 14px */
-  --tracking-hero-lede: -0.01em;
-  /* The user's own setting (2026-10-30, tried live in the browser): closer
-   * than the notes' 1.43. A ratio, as every leading here is, so it holds at
-   * the phone's 12px too: 18.8px at 14px, 16px at 12px. */
-  --leading-hero-lede: 1.34;
+  /* ── The copy and the notes ──
+   * The copy is the site's reading voice (tokens.css: the copy), shared
+   * with every paragraph after the hero: 14px (12 on a phone), −1%, the
+   * user's leading 1.34 — closer than the notes' 1.43. */
+  --text-hero-lede: var(--text-copy);
+  --tracking-hero-lede: var(--tracking-copy);
+  --leading-hero-lede: var(--leading-copy);
   --text-hero-note: calc(var(--hero-copy-unit) * 0.625);
   /* 10px: every supporting word (the user's sizes, 2026-10-30), as the
    * header's clock is */
@@ -68,10 +67,7 @@
    * a landscape phone, it comes down rather than climbing into the clock. */
   --space-hero-clear: calc(var(--hero-copy-unit) * 5.625);
   /* 90px */
-  --space-hero-row-least: calc(
-    var(--space-hero-clear) + 2 * var(--leading-hero-title) * var(--text-hero-title) + var(--space-hero-title-gap) -
-      var(--space-hero-title-foot)
-  );
+  --space-hero-row-least: calc(var(--space-hero-clear) + 2 * var(--leading-hero-title) * var(--text-hero-title) + var(--space-hero-title-gap) - var(--space-hero-title-foot));
 
   --color-hero-title: var(--color-on-night);
   --color-hero-text: var(--color-on-night-soft);
@@ -87,7 +83,8 @@
 }
 
 /* Phone: the user's 390 frame, its own drawing (the headline 24px, the
- * copy 12px, the byline 8px), restated as multiples of the one unit. */
+ * byline 8px), restated as multiples of the one unit. The copy's 12px is
+ * the shared voice's own step (tokens.css). */
 @media (max-width: 767.98px) {
   :root {
     --hero-copy-unit: 1rem;
@@ -97,8 +94,6 @@
     /* 31.7px */
     --space-hero-title-gap: calc(var(--hero-copy-unit) * 1.5);
     /* 24px */
-    --text-hero-lede: calc(var(--hero-copy-unit) * 0.75);
-    /* 12px */
     --text-hero-note: calc(var(--hero-copy-unit) * 0.5);
     /* 8px */
     --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.0625);

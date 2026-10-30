@@ -21,8 +21,9 @@ import { COPY_ENTRANCE, COPY_REDUCED } from "./motion";
  * takes the pointer: the scene reads the hand through it (copy.css).
  *
  * Owns the words' entrance: it waits for the curtain (StageReveal), then
- * the headline rises, the copy after it, the notes with the chrome
- * (motion.ts), each line out of its own mask, on the compositor.
+ * the headline comes down into place, the copy after it, and the notes
+ * with the chrome near the end of the opening shot (motion.ts), each line
+ * dropping into its own mask from above, on the compositor.
  */
 export interface HeroCopyProps {
   /** The headline's id: the section is labelled by it. */
@@ -65,7 +66,7 @@ export default function HeroCopy({ headingId, respectReducedMotion = false }: He
   }, [revealed]);
 
   return (
-    <div ref={scope} data-hero-copy>
+    <div ref={scope} data-hero-copy data-reveal-drop>
       <HeroTitle id={headingId} lines={HERO_TITLE} />
       <HeroLede lines={HERO_LEDE} />
       <HeroNotes />

@@ -60,7 +60,7 @@ import { approach } from "@/components/ui/easing";
 
 import { STONE } from "../stone/optics";
 import { BACKDROP, DEPTH } from "./layers";
-import { ARRIVAL, PARALLAX } from "./motion";
+import { ARRIVAL, DESCENT, PARALLAX } from "./motion";
 
 export const CAMERA = {
   eyeHeight: 1.23,
@@ -228,6 +228,8 @@ export class CameraRig {
   /* Seconds since the arrival began (motion.ts ARRIVAL); infinite: in
      place. */
   private age = Infinity;
+  /* The scroll's way through the hero, 0–1 (motion.ts DESCENT). */
+  private descent = 0;
   private readonly rotation = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   private readonly shift: [number, number, number] = [0, 0, 0];
   private readonly center: [number, number] = [0.5, 1 - CAMERA.horizon];
@@ -245,6 +247,17 @@ export class CameraRig {
   /** Still settling into place. */
   get arriving(): boolean {
     return this.age < Math.max(ARRIVAL.seconds, ARRIVAL.zoom.seconds);
+  }
+
+  /** How far the page has scrolled through the hero, 0–1: the camera goes
+   *  down with it (motion.ts DESCENT). */
+  descend(progress: number): void {
+    this.descent = Math.max(0, Math.min(1, progress));
+  }
+
+  /** On its way down: the frame shows more of the lake than at rest. */
+  get descending(): boolean {
+    return this.descent > 0;
   }
 
   /** Lean toward a point of the frame: −1…1 across, −1…1 up. */
@@ -321,6 +334,10 @@ export class CameraRig {
    * stone (its `zoom`), easing out to the resting lens. A tilt, not a shift
    * of the frame: the lens's axis meets the frame at the horizon (the risen
    * front), and zoomed about that the stone fell out of the bottom.
+   *
+   * THE DESCENT (motion.ts DESCENT), as the page scrolls past the hero:
+   * tilted down in step with the scroll and sunk toward the water, the
+   * photograph seen from where its eye stood (`plateShift`).
    */
   pose(view: readonly [number, number], sway: SwayParams): CameraFrame {
     const A = ARRIVAL;
@@ -335,10 +352,11 @@ export class CameraRig {
     const ly = (this.lastY + (this.leanY - this.lastY) * this.between) * sway.swayY;
     const up = crane * A.up;
     const dz = -crane * A.back;
+    const sink = DESCENT.down * this.descent ** DESCENT.power;
     const [px, py, pz] = CAMERA.pivot;
     const oz = PARALLAX.orbit;
     const eye = CAMERA.eyeHeight;
-    const camY = eye + ly + up;
+    const camY = eye + ly + up - sink;
     const yaw = Math.atan2(px - lx, oz - dz) - Math.atan2(px, oz);
     let pitch =
       Math.atan2(py - (eye + ly), oz) - Math.atan2(py - eye, oz) +
@@ -359,6 +377,7 @@ export class CameraRig {
       const wanted = natural + (Z.frame - natural) * close;
       pitch -= below - Math.atan(((wanted - horizon) * view[1]) / focal);
     }
+    pitch -= ((DESCENT.tilt * Math.PI) / 180) * this.descent;
     const cy = Math.cos(yaw);
     const sy = Math.sin(yaw);
     const cp = Math.cos(pitch);
@@ -375,11 +394,12 @@ export class CameraRig {
     r[6] = cp * sy;
     r[7] = sp;
     r[8] = cp * cy;
-    /* The photograph's eye: the lean past what it takes stays with the
-       camera, not with the photograph (motion.ts PARALLAX.plateMost). */
+    /* The photograph's eye: the lean past what it takes, and all of the
+       descent's sink, stay with the camera, not with the photograph
+       (motion.ts PARALLAX.plateMost, DESCENT). */
     const [mx, my] = PARALLAX.plateMost;
     this.shift[0] = lx - Math.max(-mx, Math.min(mx, lx));
-    this.shift[1] = ly - Math.max(-my, Math.min(my, ly));
+    this.shift[1] = ly - Math.max(-my, Math.min(my, ly)) - sink;
     return {
       view,
       focal,

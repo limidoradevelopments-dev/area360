@@ -1,0 +1,249 @@
+/* ─── The reality promise ───
+ *
+ * The section after the hero (the user's 1920 frame, its grid overlay and
+ * their 390 phone frame, 2026-10-30): two passages of copy on the page's
+ * black, one above the space the mark will take and one below it, every
+ * paragraph between two rows of amber dots.
+ *
+ * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
+ *
+ *   THE BLOCK. The copy stands on the hero's axis, column 7 (2 on a phone),
+ *   two columns wide: 7–8, and 2–3 on a phone (the grid overlay). It wraps
+ *   in that block, it is not authored line by line, so the dots stay on
+ *   the grid's lines at every width. A tablet gives it four columns (7–10):
+ *   two of them at 768 are ~100px, a word or two a line.
+ *
+ *   THE DOTS. Dots, 16px, a paragraph, 16px, dots (the user's rule): a
+ *   row of dots above and below every paragraph, one row shared between
+ *   two. A row marks four lines of the grid: the two margins, a pair of
+ *   dots each, and the block's two edges, one dot each, at every size.
+ *   Every pair stands inward from its line.
+ *
+ *   THE COPY. The hero's copy's voice exactly (tokens.css: the copy):
+ *   Newsreader 14px, −1%, leading 1.34, the soft white; 12px on a phone.
+ *
+ *   THE STAGE. Between the passages, the space the mark will take (not yet
+ *   drawn: the scroll's own work, to come): the box the frame draws it in,
+ *   816 × 518 at 1920, centred, 80px clear of the dots either side; on a
+ *   phone the whole width, 48px clear.
+ *
+ *   THE EDGES. The first row of dots 16px under the section's top, as both
+ *   frames place it, and the last 16px over its foot.
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --promise-unit: 1rem;
+
+  /* ── The beat ── a row of dots to the paragraph beside it, either way,
+   * and the section's edge to its first and last row. */
+  --space-promise-beat: calc(var(--promise-unit) * 1);
+  /* 16px */
+
+  /* ── The block ── the grid lines the copy stands between (lines, not
+   * columns: 7 to 9 is columns 7 and 8). Its corner dots stand on them. */
+  --grid-promise-block-start: 7;
+  --grid-promise-block-end: 9;
+
+  /* ── The copy ── the site's reading voice, as the hero's. */
+  --text-promise: var(--text-copy);
+  --leading-promise: var(--leading-copy);
+  --tracking-promise: var(--tracking-copy);
+  --color-promise-text: var(--color-copy);
+
+  /* ── The dots ──
+   * DATUMS, LIKE THE HAIRLINE: they never scale (a 2.6px dot at a 1920
+   * window is drawn soft). 2px, a pair's dots 3px apart; the accent at the
+   * drawn cross's own 80% (settings.css), the frame's amber. */
+  --size-promise-dot: 2px;
+  --space-promise-dot-pitch: 5px;
+  /* centre to centre */
+  --color-promise-dot: color-mix(in srgb, var(--color-accent) 80%, transparent);
+  /* A dot's twin, one pitch inward: to the right of a line on the left, to
+   * the left of a line on the right. A pair is a dot and its twin. */
+  --shadow-promise-twin-after: var(--space-promise-dot-pitch) 0 0 var(--color-promise-dot);
+  --shadow-promise-twin-before: calc(var(--space-promise-dot-pitch) * -1) 0 0 var(--color-promise-dot);
+  /* The block's edges: a single dot each. A pair here would be the twin
+   * above (the phone frame drew pairs; the user kept singles). */
+  --shadow-promise-corner-start: none;
+  --shadow-promise-corner-end: none;
+
+  /* ── The stage ── the mark's box (the frame's outline, 816 × 518). */
+  --size-promise-mark: calc(var(--promise-unit) * 51);
+  /* 816px wide */
+  --size-promise-mark-aspect: 816 / 518;
+  --space-promise-stage: calc(var(--promise-unit) * 5);
+  /* 80px: the dots to the mark, above and below */
+
+  --color-promise-ground: var(--color-night);
+
+  /* ── The veil ── the section's ground coming in from its top: the dark
+   * rising over the hero's scene, which stays pinned behind the page as
+   * it scrolls on and goes dark itself (hero.css, hero/motion.ts
+   * DESCENT_FADE). A SHARE OF THE SCREEN'S HEIGHT (svh), the one size here
+   * not of the unit: it is measured against the screen-tall scene it
+   * covers, which the root scaler knows nothing about. Half a screen: the
+   * dark arrives as a band rising with the section, not as its edge. */
+  --size-promise-veil: 50svh;
+}
+
+/* Tablet and small laptop: the copy takes four columns (7–10). At 768 that
+ * is ~220px, the desktop's measure at 1440; at 1279, ~390px. */
+@media (max-width: 1279.98px) {
+  :root {
+    --promise-unit: 1rem;
+    --grid-promise-block-end: 11;
+  }
+}
+
+/* Phone: the user's 390 frame. The block on columns 2–3, its edges a
+ * single dot each as on the desktop (the user, 2026-10-30: the frame's
+ * pairs there were not meant); the stage the whole width (the mark's box
+ * is wider than a phone: it takes 100%), closer to the dots. The beat
+ * stays 16px (the user's rule, every size). */
+@media (max-width: 767.98px) {
+  :root {
+    --promise-unit: 1rem;
+    --grid-promise-block-start: 2;
+    --grid-promise-block-end: 4;
+    --space-promise-stage: calc(var(--promise-unit) * 3);
+    /* 48px */
+  }
+}
+
+/* The section: the page's grid on the page's black, three rows — the
+ * passage above, the stage, the passage below. AT LEAST A SCREEN TALL
+ * (svh, never dvh: the phone's URL bar would move it): where the screen is
+ * taller than the content, the stage takes what is left, so the passages
+ * hold the top and the foot, as the frame draws them.
+ *
+ * ITS GROUND COMES IN OVER THE VEIL: clear at its top edge, whole half a
+ * screen down, on an eased ramp (a straight one shows a band where it
+ * stops). Behind the clear part is the hero's pinned frame: the same
+ * black once its scene has gone, so at rest it is one ground. */
+[data-promise] {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  grid-template-rows: auto 1fr auto;
+  column-gap: var(--spacing-gutter);
+  min-height: 100svh;
+  padding-inline: var(--spacing-margin);
+  padding-block: var(--space-promise-beat);
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    color-mix(in srgb, var(--color-promise-ground) 16%, transparent) calc(var(--size-promise-veil) * 0.25),
+    color-mix(in srgb, var(--color-promise-ground) 50%, transparent) calc(var(--size-promise-veil) * 0.5),
+    color-mix(in srgb, var(--color-promise-ground) 84%, transparent) calc(var(--size-promise-veil) * 0.75),
+    var(--color-promise-ground) var(--size-promise-veil)
+  );
+  color: var(--color-promise-text);
+}
+
+/* ONCE THE TRANSITION IS DONE, THE GROUND IS WHOLE (2026-10-30, the user:
+ * after it, "make this full our dark colour"). The hero's scene gone dark
+ * behind it (hero.css [data-hero-scene][data-dark]), the veil has nothing
+ * left to cover — and a gradient is DITHERED: drawn over flat black it
+ * reads as ±1 level of noise in rows, a cheap paint, where the frame
+ * above it is pure #111111. Over the moving, grained scene that noise is
+ * never seen; so the veil is there only while the scene is. Scrolled back
+ * up, the scene's light returns and the veil with it. */
+:root:has([data-hero-scene][data-dark]) [data-promise] {
+  background: var(--color-promise-ground);
+}
+
+/* No scripting: the hero's frame scrolls away with it (hero.css) instead
+ * of standing behind, so the section stands on its own ground. */
+@media (scripting: none) {
+  [data-promise] {
+    background: var(--color-promise-ground);
+  }
+}
+
+/* ── A passage ── the page's columns (a subgrid: one grid, not a copy of
+ * it), its rows of dots and paragraphs a beat apart. */
+[data-promise-passage] {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: var(--space-promise-beat);
+}
+
+/* ── A row of dots ── a dot tall, on the same columns. Every dot names its
+ * row, so the four share it. */
+[data-promise-rule] {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: var(--size-promise-dot);
+}
+
+[data-promise-dot] {
+  grid-row: 1;
+  width: var(--size-promise-dot);
+  height: var(--size-promise-dot);
+  border-radius: 50%;
+  background: var(--color-promise-dot);
+}
+
+/* The margins: a pair each, on the margin's line, standing inward. */
+[data-promise-dot="margin-start"] {
+  grid-column: 1;
+  justify-self: start;
+  box-shadow: var(--shadow-promise-twin-after);
+}
+
+[data-promise-dot="margin-end"] {
+  grid-column: -2;
+  justify-self: end;
+  box-shadow: var(--shadow-promise-twin-before);
+}
+
+/* The block's edges: on its first column's start and its last's end. */
+[data-promise-dot="block-start"] {
+  grid-column: var(--grid-promise-block-start) / span 1;
+  justify-self: start;
+  box-shadow: var(--shadow-promise-corner-start);
+}
+
+[data-promise-dot="block-end"] {
+  grid-column: span 1 / var(--grid-promise-block-end);
+  justify-self: end;
+  box-shadow: var(--shadow-promise-corner-end);
+}
+
+/* ── A paragraph ── in the block, in the copy's voice, wrapped as the
+ * browser wraps it: at the frame's own width the breaks are the frame's,
+ * "remains" alone on its line before the pause. */
+[data-promise-text] {
+  grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
+  font-size: var(--text-promise);
+  line-height: var(--leading-promise);
+  letter-spacing: var(--tracking-promise);
+}
+
+/* Split for its entrance (PromiseSection, ui/splitLines.ts): a line is
+ * the words the browser set on it, and must not wrap again in its own
+ * box; its mask clips only above and below, so a line a hair wider than
+ * the measure (sub-pixel rounding) keeps its last letter. */
+[data-promise-text] [data-reveal-mask] {
+  overflow: visible clip;
+}
+
+[data-promise-text] [data-reveal-line] {
+  white-space: nowrap;
+}
+
+/* ── The stage ── the whole width; the mark's box at its middle, as wide
+ * as the frame draws it or as the screen allows. */
+[data-promise-stage] {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  padding-block: var(--space-promise-stage);
+}
+
+[data-promise-mark] {
+  width: min(100%, var(--size-promise-mark));
+  aspect-ratio: var(--size-promise-mark-aspect);
+}

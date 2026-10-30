@@ -52,3 +52,14 @@ export const LINE_ENTRANCE = {
   seconds: 1.0,
   stagger: 0.1,
 } as const;
+
+/**
+ * The same reveal the other way: the line comes DOWN into its mask from
+ * above it (the user, 2026-10-30, for everything over the hero: "top to
+ * bottom"). Its pre-state is the stylesheet's (utilities.css,
+ * data-reveal-drop on the part's root).
+ */
+export const LINE_DROP = {
+  ...LINE_ENTRANCE,
+  fromYPercent: -LINE_ENTRANCE.fromYPercent,
+} as const;

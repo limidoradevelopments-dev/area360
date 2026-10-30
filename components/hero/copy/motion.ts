@@ -6,32 +6,32 @@
  * ENTRANCE): they arrive over the scene's first seen frames, which the
  * engine draws on the main thread, and a tween ticked there hitched.
  *
- * Every `at` is seconds after the curtain begins to lift (StageReveal),
- * which is when the scene starts coming up (1.8 s, slow in and out) and its
- * opening shot starts widening off the stone (4.2 s).
+ * Every `at` is seconds after the curtain begins to lift (StageReveal);
+ * the cues are the page's (ui/stageCues.ts), shared with the header and
+ * the dock so the chrome arrives as one.
  */
 
-import { LINE_ENTRANCE, REVEAL_EASE_CSS } from "@/components/ui/motion";
+import { LINE_DROP, REVEAL_EASE_CSS } from "@/components/ui/motion";
+import { STAGE_CUES } from "@/components/ui/stageCues";
 
 export const COPY_ENTRANCE = {
   ease: REVEAL_EASE_CSS,
-  /* Every line slides up out of its mask: 110%, 1 s (ui/motion.ts). */
-  line: LINE_ENTRANCE,
+  /* Every line comes DOWN into its mask from above it, 1 s (the user,
+   * 2026-10-30: "top to bottom"; ui/motion.ts LINE_DROP). */
+  line: LINE_DROP,
 
-  /* THE STONE FIRST. At 1.2 s the scene is four-fifths up and the camera
-   * still craning down: the headline rises as the place settles. Any
-   * earlier and white type stands out of a frame still near black, the
-   * first thing seen instead of the stone. */
-  title: { at: 1.2, stagger: LINE_ENTRANCE.stagger },
+  /* THE STONE FIRST, then the headline as the place settles. */
+  title: { at: STAGE_CUES.words, stagger: LINE_DROP.stagger },
 
   /* The copy follows the headline's first line, not its last (as the
    * intro's support copy does): waiting for both makes two beats of one
    * gesture. */
-  lede: { at: 1.45, stagger: 0.08 },
+  lede: { at: STAGE_CUES.words + 0.25, stagger: 0.08 },
 
-  /* The notes are the frame's chrome: they arrive with the header and the
-   * dock (header/motion.ts, 1.6 s), left to right, then down. */
-  notes: { at: 1.6, stagger: 0.08 },
+  /* The notes are the frame's chrome: they arrive with it, near the end of
+   * the opening shot, on the copy's row — after the header above them,
+   * before the dock below (ui/stageCues.ts) — left to right, then down. */
+  notes: { at: STAGE_CUES.chrome.row, stagger: 0.08 },
 } as const;
 
 /** Reduced motion: no travel, a short fade (the scene's own, hero/motion.ts

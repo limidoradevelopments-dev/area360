@@ -5,6 +5,8 @@ import type { ComponentType } from "react";
 
 import { renderQuality, type QualityChoice, type QualityLevel } from "@/components/ui/renderQuality";
 
+import { followDescent } from "../descent";
+import { DESCENT_FADE } from "../motion";
 import type { StageEngine, StageEngineOptions } from "./engine";
 
 /**
@@ -25,8 +27,16 @@ import type { StageEngine, StageEngineOptions } from "./engine";
  * until `started` (the page's curtain has begun to lift), so the opening
  * shot is never spent behind the preloader.
  *
- * Pointer events are read from the whole section, not the canvas, so text
- * laid over the scene later still lets the fog feel the hand beneath it.
+ * Pointer events are read from the whole scene, not the canvas, so text
+ * laid over it still lets the fog feel the hand beneath it.
+ *
+ * THE SCENE IS PINNED, THE SECTION SCROLLS (2026-10-30: the descent). The
+ * engine measures, and maps the hand against, the scene (hero.css
+ * [data-hero-scene]: fixed, a screen tall), which never moves; the scroll
+ * through the section takes the camera down (stage/motion.ts DESCENT), and
+ * once the scene has gone dark (hero/motion.ts DESCENT_FADE) — or the
+ * section has left the screen, or the tab is hidden — the engine draws
+ * nothing.
  */
 
 export interface StageCanvasProps {
@@ -126,7 +136,7 @@ const early: Promise<Boot | null> | null =
     ? engineModule
         .then(({ createStageEngine }) => {
           const canvas = document.querySelector<HTMLCanvasElement>("[data-hero-stage] canvas");
-          const frame = canvas?.closest("section");
+          const frame = canvas?.closest<HTMLElement>("[data-hero-scene]");
           if (!canvas || !frame) return null;
           const relay = new Relay();
           /* Reduced motion is the component's to say: told on attach. The
@@ -160,15 +170,25 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const frame = canvas?.closest("section");
-    if (!canvas || !frame) return;
+    /* The scene: pinned, a screen tall — what the engine sizes to and maps
+       the hand against. The section: what scrolls by. */
+    const frame = canvas?.closest<HTMLElement>("[data-hero-scene]");
+    const section = canvas?.closest("section");
+    if (!canvas || !frame || !section) return;
 
     let engine: StageEngine | null = null;
     let cancelled = false;
     let onScreen = true;
+    /* The scroll's way through the section, and whether the scene has gone
+       dark on it (DESCENT_FADE.to). */
+    let descent = 0;
+    let dark = false;
 
     const syncVisibility = () =>
-      engine?.setVisible(onScreen && document.visibilityState === "visible");
+      engine?.setVisible(onScreen && !dark && document.visibilityState === "visible");
+    /* Under reduced motion the camera stays where it stands; only the light
+       goes (HeroSection). */
+    const sendDescent = () => engine?.setDescent(startsReduced() ? 0 : descent);
 
     const handlers: Handlers = {
       onFirstFrame: () => ready(),
@@ -223,6 +243,7 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
       engineRef.current = engine;
       followQuality(engine);
       if (startedNow()) engine.start();
+      sendDescent();
       syncVisibility();
 
       if (process.env.NODE_ENV !== "production") {
@@ -288,12 +309,24 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
     });
     resizeObserver.observe(frame);
 
+    /* The scene is pinned and always "on screen": whether it is seen is
+       the section's (it scrolls) and the descent's (it goes dark first). */
     const intersection = new IntersectionObserver(([entry]) => {
       onScreen = entry?.isIntersecting ?? true;
       syncVisibility();
     });
-    intersection.observe(frame);
+    intersection.observe(section);
     document.addEventListener("visibilitychange", syncVisibility);
+
+    const stopDescent = followDescent(section, (progress) => {
+      descent = progress;
+      sendDescent();
+      const gone = progress >= DESCENT_FADE.to;
+      if (gone !== dark) {
+        dark = gone;
+        syncVisibility();
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -307,6 +340,7 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
       window.removeEventListener("scroll", activity);
       window.removeEventListener("keydown", activity);
       document.removeEventListener("visibilitychange", syncVisibility);
+      stopDescent();
       resizeObserver.disconnect();
       intersection.disconnect();
       window.clearTimeout(resizeTimer);
@@ -323,6 +357,8 @@ export default function StageCanvas({ reducedMotion, started, onReady, onProgres
 
   useEffect(() => {
     engineRef.current?.setReducedMotion(reducedMotion);
+    /* Calm: the camera back where it stands; the next scroll says the rest. */
+    if (reducedMotion) engineRef.current?.setDescent(0);
   }, [reducedMotion]);
 
   useEffect(() => {

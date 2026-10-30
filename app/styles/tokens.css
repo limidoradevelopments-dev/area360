@@ -53,6 +53,25 @@
    * whole white. */
   --color-on-night-soft: rgb(255 255 255 / 0.8);
 
+  /* ── The copy ──
+   * The body's reading voice: the hero's copy under its headline, and the
+   * paragraphs of every section after it (the user, 2026-10-30: the same as
+   * the hero's description, "same line height, same everything"). ONE
+   * SOURCE, so the two can never drift: Newsreader at 14px, −1%, the
+   * user's own leading (1.34, tried live in the browser; a ratio, so it
+   * holds at the phone's 12px), at the soft white. */
+  --text-copy: 0.875rem;
+  /* 14px */
+  --leading-copy: 1.34;
+  --tracking-copy: -0.01em;
+  --color-copy: var(--color-on-night-soft);
+
+  /* ── The grid ──
+   * The page's columns: twelve, four on a phone (the user's 390 frame).
+   * The margin and the gutter between them are theme.css's. A count, not a
+   * length: it never scales. */
+  --grid-columns: 12;
+
   /* ── The frame's edge ──
    * How far the page's chrome stands from the top and the bottom of the
    * screen: the header above, the dock and a phone's byline below. 30px,
@@ -93,14 +112,18 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Phone: the two SHARED tokens that step down, the grid's. The outer margin
- * narrows so a phone's text column is not lost to air, and the gutter with
- * it: the user's 390 frame is four columns, 16px margins, 16px gutters.
- * (Both live in the non-inline @theme block in theme.css, which is what
- * lets this override reach the margin and gutter utilities.) */
+/* Phone: the SHARED tokens that step down — the grid's, and the copy's
+ * size. The outer margin narrows so a phone's text column is not lost to
+ * air, and the gutter with it: the user's 390 frame is four columns, 16px
+ * margins, 16px gutters. (The margin and gutter live in the non-inline
+ * @theme block in theme.css, which is what lets this override reach their
+ * utilities.) */
 @media (max-width: 767.98px) {
   :root {
     --spacing-margin: 1rem;
     --spacing-gutter: 1rem;
+    --grid-columns: 4;
+    /* The copy at the phone frame's 12px. */
+    --text-copy: 0.75rem;
   }
 }
