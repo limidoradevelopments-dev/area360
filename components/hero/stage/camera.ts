@@ -58,6 +58,7 @@
 
 import { approach } from "@/components/ui/easing";
 
+import { DESCENT_FADE } from "../motion";
 import { STONE } from "../stone/optics";
 import { BACKDROP, DEPTH } from "./layers";
 import { ARRIVAL, DESCENT, PARALLAX } from "./motion";
@@ -228,7 +229,9 @@ export class CameraRig {
   /* Seconds since the arrival began (motion.ts ARRIVAL); infinite: in
      place. */
   private age = Infinity;
-  /* The scroll's way through the hero, 0–1 (motion.ts DESCENT). */
+  /* The scroll's way through the hero, 0–1 (motion.ts DESCENT): where the
+     page is, and where the camera has followed it to. */
+  private descentTarget = 0;
   private descent = 0;
   private readonly rotation = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   private readonly shift: [number, number, number] = [0, 0, 0];
@@ -249,15 +252,22 @@ export class CameraRig {
     return this.age < Math.max(ARRIVAL.seconds, ARRIVAL.zoom.seconds);
   }
 
-  /** How far the page has scrolled through the hero, 0–1: the camera goes
-   *  down with it (motion.ts DESCENT). */
+  /** How far the page has scrolled through the hero, 0–1: the camera
+   *  follows it down (motion.ts DESCENT, `update`). */
   descend(progress: number): void {
-    this.descent = Math.max(0, Math.min(1, progress));
+    this.descentTarget = Math.max(0, Math.min(1, progress));
   }
 
-  /** On its way down: the frame shows more of the lake than at rest. */
+  /** Where the scroll is, at once: the camera comes back from the dark
+   *  (the engine parked) where it should be, never gliding there in sight. */
+  settleDescent(): void {
+    this.descent = this.descentTarget;
+  }
+
+  /** On its way down, or following the scroll back up: not the resting
+   *  frame, and not one to judge the frame rate by. */
   get descending(): boolean {
-    return this.descent > 0;
+    return this.descent > 0 || this.descentTarget > 0;
   }
 
   /** Lean toward a point of the frame: −1…1 across, −1…1 up. */
@@ -289,6 +299,11 @@ export class CameraRig {
     /* The arrival runs on wall time, the frame capped as the spring's is:
        a stalled frame holds it rather than jumping it. */
     if (this.age < Infinity) this.age += Math.min(dt, PARALLAX.maxFrame);
+    /* The descent follows the scroll (motion.ts DESCENT.follow): exact at
+       any frame length, so it glides at whatever rate the frames come.
+       Within a hair of it, there. */
+    this.descent = approach(this.descent, this.descentTarget, DESCENT.follow, Math.min(dt, PARALLAX.maxFrame));
+    if (Math.abs(this.descent - this.descentTarget) < 1e-5) this.descent = this.descentTarget;
     if (this.resting) {
       this.accumulator = 0;
       this.lastX = this.leanX;
@@ -335,9 +350,11 @@ export class CameraRig {
    * of the frame: the lens's axis meets the frame at the horizon (the risen
    * front), and zoomed about that the stone fell out of the bottom.
    *
-   * THE DESCENT (motion.ts DESCENT), as the page scrolls past the hero:
-   * tilted down in step with the scroll and sunk toward the water, the
-   * photograph seen from where its eye stood (`plateShift`).
+   * THE DESCENT (motion.ts DESCENT), as the page scrolls past the hero: a
+   * crane down toward the water with the lens closing a little, turned
+   * all the while so the flowers on the stone stand exactly where they
+   * would without it — the stone the still point — the photograph seen
+   * from where its eye stood (`plateShift`).
    */
   pose(view: readonly [number, number], sway: SwayParams): CameraFrame {
     const A = ARRIVAL;
@@ -352,32 +369,47 @@ export class CameraRig {
     const ly = (this.lastY + (this.leanY - this.lastY) * this.between) * sway.swayY;
     const up = crane * A.up;
     const dz = -crane * A.back;
-    const sink = DESCENT.down * this.descent ** DESCENT.power;
+    /* The descent: in step with the scroll it has followed, all of it done
+       as the scene's light is gone (hero/motion.ts DESCENT_FADE.to). */
+    const down = Math.min(1, this.descent / DESCENT_FADE.to);
+    const sink = DESCENT.down * down;
     const [px, py, pz] = CAMERA.pivot;
     const oz = PARALLAX.orbit;
     const eye = CAMERA.eyeHeight;
-    const camY = eye + ly + up - sink;
-    const yaw = Math.atan2(px - lx, oz - dz) - Math.atan2(px, oz);
+    /* Where the camera would stand without the descent, and where it does. */
+    const standY = eye + ly + up;
+    const camY = standY - sink;
+    let yaw = Math.atan2(px - lx, oz - dz) - Math.atan2(px, oz);
     let pitch =
       Math.atan2(py - (eye + ly), oz) - Math.atan2(py - eye, oz) +
       Math.atan2(py - (eye + up), pz - dz) - Math.atan2(py - eye, pz);
     const rest = focalPx(view[0], view[1]);
-    const focal = rest * (1 + (Z.from - 1) * close);
+    const standFocal = rest * (1 + (Z.from - 1) * close);
+    const focal = standFocal * (1 + DESCENT.push * down);
     /* Where the lens's axis meets the frame: the horizon's share from the
        top. */
     const horizon = 1 - frameCenter(view[0], view[1], rest, this.center)[1];
+    /* The framing point: the flowers on the stone's top. */
+    const [fx, fy, fz] = A.frameOn;
+    const reach = Math.hypot(fx - lx, fz - dz);
     if (close > 0) {
-      /* The framing point (the flowers on the stone's top) placed at
-         `frame` of the height from the top, eased back to where the lens
-         puts it as it widens. */
-      const [fx, fy, fz] = A.frameOn;
-      const elevation = Math.atan2(fy - camY, Math.hypot(fx - lx, fz - dz));
+      /* Placed at `frame` of the height from the top, eased back to where
+         the lens puts it as it widens. */
+      const elevation = Math.atan2(fy - standY, reach);
       const below = pitch - elevation;
-      const natural = horizon + (Math.tan(below) * focal) / view[1];
+      const natural = horizon + (Math.tan(below) * standFocal) / view[1];
       const wanted = natural + (Z.frame - natural) * close;
-      pitch -= below - Math.atan(((wanted - horizon) * view[1]) / focal);
+      pitch -= below - Math.atan(((wanted - horizon) * view[1]) / standFocal);
     }
-    pitch -= ((DESCENT.tilt * Math.PI) / 180) * this.descent;
+    if (sink > 0) {
+      /* THE STONE HELD: the camera sunk and the lens longer, turned so the
+         flowers stand where they stood — the same distance off the lens's
+         axis on the screen (its tangent × the focal length), up and across. */
+      const below = pitch - Math.atan2(fy - standY, reach);
+      pitch = Math.atan2(fy - camY, reach) + Math.atan((Math.tan(below) * standFocal) / focal);
+      const bearing = Math.atan2(fx - lx, fz - dz);
+      yaw = bearing - Math.atan((Math.tan(bearing - yaw) * standFocal) / focal);
+    }
     const cy = Math.cos(yaw);
     const sy = Math.sin(yaw);
     const cp = Math.cos(pitch);

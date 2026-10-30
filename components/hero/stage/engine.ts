@@ -1049,6 +1049,9 @@ class Stage implements StageEngine {
   }
 
   setVisible(visible: boolean): void {
+    /* Back from the dark, or a hidden tab: the camera where the scroll is
+       now, not gliding there from where it was put away (DESCENT). */
+    if (visible && !this.visible) this.camera.settleDescent();
     this.visible = visible;
     this.syncLoop();
   }
@@ -1567,9 +1570,9 @@ class Stage implements StageEngine {
     const interval = this.every * this.vsync;
     /* NOT DURING THE ARRIVAL: its opening shot shows more of the lake, the
        costliest thing to draw (stage/motion.ts ARRIVAL.zoom), and was
-       measured in the dark already. NOR ON THE WAY DOWN (DESCENT): tilted
-       down, the frame shows more lake too, for as long as the visitor
-       scrolls past — never the frame rate of the visit. */
+       measured in the dark already. NOR ON THE WAY DOWN (DESCENT): a
+       passing view, for as long as the visitor scrolls past, going into
+       the dark — never the frame rate of the visit. */
     if (this.camera.arriving || this.camera.descending) {
       this.slowSince = -1;
       this.frameAverage = interval;
@@ -1628,7 +1631,7 @@ class Stage implements StageEngine {
     }
     const up = this.stepUp;
     if (!up) return;
-    /* On the way down the lake costs more than at rest: what it times then
+    /* On the way down the view is not the resting one: what it times then
        is not the resting frame. Dropped, and timed afresh once back. */
     if (this.camera.descending) {
       this.dropTimings();

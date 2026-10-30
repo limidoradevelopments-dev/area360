@@ -149,36 +149,63 @@ export const ARRIVAL = {
 
 /**
  * THE DESCENT (2026-10-30, the user: scrolling on from the hero, "the
- * camera angle moves down on the y axis while the hero fades and the page
- * scrolls to the next section"). The scene stays where it is while the
- * page scrolls over it (hero.css: the frame is pinned), and the scroll's
- * way through the hero's height (0–1, StageCanvas) takes the camera down:
+ * camera moves down on the y axis while the hero fades and the page
+ * scrolls to the next section"; 2026-10-31: "a stone-focused camera angle
+ * … not 100% smooth"). The scene stays where it is while the page scrolls
+ * over it (hero.css: the frame is pinned), and the scroll's way through
+ * the hero's height (0–1, StageCanvas) takes the camera down:
  *
- *   IT TILTS DOWN `tilt` degrees, IN STEP WITH THE SCROLL (linear): the
- *   world rises through the frame at a fixed share of the page's speed —
- *   at 9° about two-fifths of it (the horizon ~315 px over an 810 px
- *   scroll at 1440) — so it reads as depth behind the page, the words
- *   lifting away at the page's speed and the place more slowly behind
- *   them. Any curve here would make the scene's speed wander against the
- *   page's, which reads as slack; the scroll's own smoothing (Lenis, a
- *   finger's momentum) is the ease. A turn of the view: the photograph
- *   takes it without tearing.
+ *   A CRANE DOWN, THE STONE HELD (camera.ts pose). The camera sinks
+ *   `down` metres toward the water and turns, as it goes, so the flowers
+ *   on the stone's top (ARRIVAL.frameOn) stay exactly where they stood in
+ *   the frame: the stone is the still point, and the world settles round
+ *   it — the far shore sinks toward the stone's top, the stone rises
+ *   against it, the lake between them closes up. At 0.5 m the camera ends
+ *   ~0.14 m over the flowers, looking across the water at the stone. And
+ *   the lens closes on it by `push` (6%), about the flowers, the stone
+ *   held still across too: the visit's last look is the stone.
  *
- *   IT SINKS `down` metres toward the water, slow at first (`power`): the
- *   stone rises against the shores, nearer things faster, the depth the
- *   eye reads as the camera itself going down — mostly in the second half,
- *   as the scene goes into the dark (hero/motion.ts DESCENT_FADE). The
- *   PHOTOGRAPH'S EYE STAYS (camera.ts `plateShift`, as for the lean past
- *   what it takes): travel tears it where trees stand against the sky,
- *   and shores 40–80 m off moving a few pixels less than they should is
- *   not something an eye can tell; the stone, the water and the fog are
- *   built and move truly.
+ *   Measured at 1440×810: the flowers held to 0.01 px the whole way; the
+ *   far shore's waterline comes down ~81 px, settling just over them, the
+ *   horizon 96 px; the stone's foot 9 px lower as the lens closes.
+ *
+ *   IT REPLACED A TILT DOWN (9°, the night before): the world rose
+ *   through the frame, the stone with it — nothing held — and the frame
+ *   filled with lake, the costliest thing to draw: the GPU's frame ~25%
+ *   dearer on the way down (8.7 → 10.7–11 ms at 1440, the AMD integrated
+ *   GPU), enough to tip a device near its rung's edge into missed frames —
+ *   a shake, the user's "vibration". Held on the stone, the lake shrinks
+ *   as the shore comes down: the way down costs less than rest (8.6 →
+ *   8.3 → 8.0 ms).
+ *
+ *   IN STEP WITH THE SCROLL, DONE AS THE LIGHT GOES: linear in the scroll
+ *   (a curve would make the scene's speed wander against the page's),
+ *   the whole way down by hero/motion.ts DESCENT_FADE.to, where the scene
+ *   is gone — eased so that most of it came after the scene was half dark,
+ *   it barely read. The follow below is the ease: it gathers from rest.
+ *
+ *   FOLLOWED, NOT STEPPED (`follow`, e-foldings a second; camera.ts
+ *   update, ui/easing.ts approach, exact at any frame length). The scroll
+ *   arrives as events, a frame late or early against the engine's own
+ *   frames (a wheel through Lenis, a 120 Hz screen drawn every other
+ *   frame), and a camera set straight from them moved in uneven steps —
+ *   the other half of the shake. Followed on the engine's clock it glides,
+ *   ~0.14 s behind the scroll: the weight of a camera on a crane, too
+ *   short to read as lag. Back from the dark (the engine parked) it starts
+ *   where the scroll is, never gliding there in sight.
+ *
+ *   THE PHOTOGRAPH'S EYE STAYS (camera.ts `plateShift`, as for the lean
+ *   past what it takes): travel tears it where trees stand against the
+ *   sky, and shores 40–80 m off moving a few pixels less than they should
+ *   is not something an eye can tell; the stone, the water and the fog
+ *   are built and move truly. The turn and the lens take the photograph
+ *   without tearing.
  *
  * A function of the scroll, not a tween: the scroll is the clock, and a
  * restored scroll position is simply the camera there.
  */
 export const DESCENT = {
-  tilt: 9,
-  down: 0.3,
-  power: 2,
+  down: 0.5,
+  push: 0.06,
+  follow: 7,
 } as const;

@@ -43,8 +43,9 @@ import { descentLight, ENTRANCE, REDUCED } from "./motion";
  * THE DESCENT (2026-10-30, the user: scrolling on, the camera goes down
  * while the hero fades and the page scrolls to the next section). The
  * scene stays pinned while the section's height scrolls by: the words and
- * the header go with the page at its speed, the camera tilts and sinks
- * with the scroll (stage/motion.ts DESCENT, StageCanvas), and the scene's
+ * the header go with the page at its speed, the camera sinks toward the
+ * water with the scroll, held on the stone (stage/motion.ts DESCENT,
+ * StageCanvas), and the scene's
  * light goes into the ground the next section stands on (motion.ts
  * DESCENT_FADE), which rises over it from below (promise.css: its veil).
  * The scroll is its clock (descent.ts): scrolled back, it comes back.
