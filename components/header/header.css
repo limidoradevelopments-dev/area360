@@ -51,8 +51,8 @@
 
   /* The nav: its words, the gap to the hairline, and the hairline running
    * on a little past the last word, as the frame draws it. */
-  --space-header-nav-gap: calc(var(--header-unit) * 0.125);
-  /* 2px between the words (the frame's 6, closed up at the user's word,
+  --space-header-nav-gap: calc(var(--header-unit) * 0.063);
+  /* 1px between the words (the frame's 6, closed up at the user's word,
    * twice): a 19px pitch, the list read as one block */
   --space-header-nav-rule: calc(var(--header-unit) * 0.5);
   /* 8px: the words to the rule */
@@ -206,13 +206,11 @@
   width: 100%;
   top: calc(-100% - var(--size-header-cue));
   height: calc(200% + var(--size-header-cue));
-  background: linear-gradient(
-    to bottom,
-    var(--color-header-ink) calc(50% - var(--size-header-cue) / 2),
-    transparent calc(50% - var(--size-header-cue) / 2 + var(--size-header-cue-soft)),
-    transparent calc(50% + var(--size-header-cue) / 2 - var(--size-header-cue-soft)),
-    var(--color-header-ink) calc(50% + var(--size-header-cue) / 2)
-  );
+  background: linear-gradient(to bottom,
+      var(--color-header-ink) calc(50% - var(--size-header-cue) / 2),
+      transparent calc(50% - var(--size-header-cue) / 2 + var(--size-header-cue-soft)),
+      transparent calc(50% + var(--size-header-cue) / 2 - var(--size-header-cue-soft)),
+      var(--color-header-ink) calc(50% + var(--size-header-cue) / 2));
 }
 
 /* A word, and under the hand the whole white. A hover's tint, not a layout

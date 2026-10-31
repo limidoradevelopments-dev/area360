@@ -40,7 +40,10 @@ components/
     RevealLine.tsx    one line in its reveal mask (data-reveal-mask → -line)
     raiseLines.ts     the masked-line reveal as Web Animations, for entrances
                       over the main thread's busiest frames (end state written
-                      inline, animation let go)
+                      inline, animation let go; the travel whole device
+                      pixels: Chrome keeps a moving layer's first tiles, and a
+                      fraction of a pixel left the text off the grid, to hop
+                      onto it when let go)
     stageCues.ts      when each part arrives over the hero's opening shot (the
                       words, then the chrome down the page): one table
     splitLines.ts     a paragraph wrapped by its box split into the lines the
