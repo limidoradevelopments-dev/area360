@@ -9,15 +9,18 @@ import { useRevealOnce } from "@/components/ui/useRevealOnce";
 
 import PromisePassage from "./PromisePassage";
 import PromiseStage from "./PromiseStage";
+import PromiseStars from "./PromiseStars";
 import { PROMISE_ABOVE, PROMISE_BELOW, PROMISE_HEADING } from "./content";
-import { PROMISE_REDUCED, PROMISE_REVEAL } from "./motion";
+import { PROMISE_REDUCED, PROMISE_REVEAL, PROMISE_STARS_REVEAL } from "./motion";
+import { lightStars } from "./starLight";
 
 /**
  * ─── PromiseSection ───
  *
- * The reality promise: after the hero, on the same black, a passage above
- * the space the mark will take and a passage below it, every paragraph
- * between rows of amber dots on the page's grid (promise.css).
+ * The reality promise: after the hero, on the same black, a passage, the
+ * stars (the user's four, each with its light), a passage, and the stage the mark
+ * will take; every paragraph between rows of amber dots on the page's
+ * grid (promise.css).
  *
  * IT RISES OVER THE HERO'S SCENE (the descent, hero/HeroSection): the
  * scene stays pinned behind the page and goes dark as the hero scrolls
@@ -31,10 +34,12 @@ import { PROMISE_REDUCED, PROMISE_REVEAL } from "./motion";
  * compositor (ui/raiseLines.ts). Landed, the paragraphs are given back
  * their own text, wrapping with their block again.
  *
- * STILL TO COME: the scroll's own work — the passage above breaking
- * letter by letter, its letters assembling the mark's outline on the
- * stage, then the passage below breaking and gone. Its hooks are in
- * place (data-promise-passage, -text, -stage, -mark).
+ * THE STARS, ONCE: as the cluster comes into view, each star comes out in
+ * turn, from a point to its size with its light, and lives on
+ * (starLight.ts) — parked while it is off the screen.
+ *
+ * STILL TO COME: the scroll's own work. Its hooks are in place
+ * (data-promise-passage, -text, -stars, -stage, -mark).
  *
  * NO VISIBLE HEADING: the frame has none. The section is labelled by a
  * heading for a reader of the page only.
@@ -43,7 +48,8 @@ export interface PromiseSectionProps {
   className?: string;
   /**
    * Off by default: the motion plays for everyone. When on and the visitor
-   * prefers reduced motion, the lines lose their fall and only fade in.
+   * prefers reduced motion, the lines lose their fall and only fade in, and
+ * the stars fade in and stay still (no flares, no twinkle).
    */
   respectReducedMotion?: boolean;
 }
@@ -54,6 +60,7 @@ const HEADING_ID = "promise-heading";
 export default function PromiseSection({ className, respectReducedMotion = false }: PromiseSectionProps) {
   const [above, aboveSeen] = useRevealOnce<HTMLDivElement>(PROMISE_REVEAL.threshold);
   const [below, belowSeen] = useRevealOnce<HTMLDivElement>(PROMISE_REVEAL.threshold);
+  const [stars, starsSeen] = useRevealOnce<HTMLDivElement>(PROMISE_STARS_REVEAL.threshold);
 
   /* Read once, when an entrance plays: a preference that flips later must
      not replay it. */
@@ -69,6 +76,12 @@ export default function PromiseSection({ className, respectReducedMotion = false
   }, [above, aboveSeen]);
 
   useEffect(() => {
+    if (starsSeen && stars.current) {
+      return lightStars(stars.current, { calm: calmAtEntrance.current ? PROMISE_REDUCED : null });
+    }
+  }, [stars, starsSeen]);
+
+  useEffect(() => {
     if (belowSeen && below.current) return dropPassage(below.current, calmAtEntrance.current);
   }, [below, belowSeen]);
 
@@ -78,8 +91,9 @@ export default function PromiseSection({ className, respectReducedMotion = false
         {PROMISE_HEADING}
       </h2>
       <PromisePassage ref={above} place="above" paragraphs={PROMISE_ABOVE} />
-      <PromiseStage />
+      <PromiseStars ref={stars} />
       <PromisePassage ref={below} place="below" paragraphs={PROMISE_BELOW} />
+      <PromiseStage />
     </section>
   );
 }

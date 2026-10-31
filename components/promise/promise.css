@@ -22,13 +22,20 @@
  *   THE COPY. The hero's copy's voice exactly (tokens.css: the copy):
  *   Newsreader 14px, −1%, leading 1.34, the soft white; 12px on a phone.
  *
- *   THE STAGE. Between the passages, the space the mark will take (not yet
- *   drawn: the scroll's own work, to come): the box the frame draws it in,
- *   816 × 518 at 1920, centred, 80px clear of the dots either side; on a
- *   phone the whole width, 48px clear.
+ *   THE STARS (2026-11-01, the user's frame). Between the passages, four
+ *   stars — the user's one four-pointed star (37 × 55) at its own size,
+ *   and again at 0.3 (upper right), 0.125 (below) and 0.156 (left) —
+ *   placed as the frame places them, read off it to ~1px, the cluster
+ *   (55 × 55) centred on the block. Each glows. 128px from the dots above
+ *   to the cluster and from the cluster to the dots below (the user's).
+ *
+ *   THE STAGE. After the passage below (the user's order, 2026-10-31), the
+ *   space the mark will take (not yet drawn: the scroll's own work, to
+ *   come): the box the frame draws it in, 816 × 518 at 1920, centred, 80px
+ *   clear of the dots above it; on a phone the whole width, 48px clear.
  *
  *   THE EDGES. The first row of dots 16px under the section's top, as both
- *   frames place it, and the last 16px over its foot.
+ *   frames place it.
  *
  * One unit. Every token below is its artboard px / 16. */
 :root {
@@ -66,6 +73,15 @@
    * above (the phone frame drew pairs; the user kept singles). */
   --shadow-promise-corner-start: none;
   --shadow-promise-corner-end: none;
+
+  /* ── The stars ── between the passages. */
+  --space-promise-stars-pad: calc(var(--promise-unit) * 8);
+  /* 128px: the dots above to the cluster, the cluster to the dots below */
+  /* One pixel of the frame: the cluster is laid out in it (55 × 55, each
+   * star's place and size), so it scales as the rest of the frame does. */
+  --size-promise-stars-px: calc(var(--promise-unit) * 0.0625);
+  /* The art's grey: the user's SVG, #D9D9D9. */
+  --color-promise-star: #d9d9d9;
 
   /* ── The stage ── the mark's box (the frame's outline, 816 × 518). */
   --size-promise-mark: calc(var(--promise-unit) * 51);
@@ -110,11 +126,10 @@
   }
 }
 
-/* The section: the page's grid on the page's black, three rows — the
- * passage above, the stage, the passage below. AT LEAST A SCREEN TALL
- * (svh, never dvh: the phone's URL bar would move it): where the screen is
- * taller than the content, the stage takes what is left, so the passages
- * hold the top and the foot, as the frame draws them.
+/* The section: the page's grid on the page's black, four rows — the
+ * passage above, the stars, the passage below, the stage. AT LEAST A
+ * SCREEN TALL (svh, never dvh: the phone's URL bar would move it): where
+ * the screen is taller than the content, the stage takes what is left.
  *
  * ITS GROUND COMES IN OVER THE VEIL: clear at its top edge, whole half a
  * screen down, on an eased ramp (a straight one shows a band where it
@@ -124,7 +139,7 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr;
   column-gap: var(--spacing-gutter);
   min-height: 100svh;
   padding-inline: var(--spacing-margin);
@@ -232,6 +247,257 @@
 
 [data-promise-text] [data-reveal-line] {
   white-space: nowrap;
+}
+
+/* ── The stars ── in the copy's block; the cluster centred on it, the
+ * user's 128px above and below. */
+[data-promise-stars] {
+  grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
+  display: grid;
+  justify-items: center;
+  padding-block: var(--space-promise-stars-pad);
+}
+
+/* The bloom's shared filter: defined, never drawn. */
+[data-promise-stars-defs] {
+  position: absolute;
+  overflow: hidden;
+}
+
+[data-promise-stars-cluster] {
+  position: relative;
+  width: calc(var(--size-promise-stars-px) * 55);
+  height: calc(var(--size-promise-stars-px) * 55);
+}
+
+/* ── A star ── the user's 37 × 55 drawing at its own scale, its box's top
+ * left at (x, y) of the cluster, in the frame's px; it comes out about its
+ * crossing, (18.5, 19) of the drawing. Unseen until it comes out.
+ * `--promise-star-px` is one px of the star's own drawing, so its light is
+ * laid out in it and scales with it. */
+[data-promise-star] {
+  --promise-star-x: 17.6;
+  --promise-star-y: 0;
+  --promise-star-scale: 1;
+  --promise-star-px: calc(var(--size-promise-stars-px) * var(--promise-star-scale));
+  /* The halo's reach from the crossing, in the star's own px: the specks'
+   * reach further for their size, or their glow is a pixel. */
+  --promise-star-halo: 40;
+  position: absolute;
+  left: calc(var(--size-promise-stars-px) * var(--promise-star-x));
+  top: calc(var(--size-promise-stars-px) * var(--promise-star-y));
+  width: calc(var(--promise-star-px) * 37);
+  height: calc(var(--promise-star-px) * 55);
+  transform-origin: calc(var(--promise-star-px) * 18.5) calc(var(--promise-star-px) * 19);
+  opacity: 0;
+}
+
+/* Read off the frame: the small star's crossing 15px up and right of the
+ * great one's (made smaller than the frame's 0.375 at the user's word,
+ * 2026-11-01, its crossing kept), the low speck's 26px down and left, the
+ * left one's 35px left and a little down. */
+[data-promise-star="small"] {
+  --promise-star-x: 42.5;
+  --promise-star-y: 4.5;
+  --promise-star-scale: 0.3;
+  --promise-star-halo: 46;
+}
+
+[data-promise-star="speck-low"] {
+  --promise-star-x: 23.8;
+  --promise-star-y: 40.2;
+  --promise-star-scale: 0.125;
+  --promise-star-halo: 72;
+}
+
+[data-promise-star="speck-left"] {
+  --promise-star-x: 0.2;
+  --promise-star-y: 26.3;
+  --promise-star-scale: 0.156;
+  --promise-star-halo: 64;
+}
+
+/* A part of the light centred on the crossing, `--promise-star-reach` of
+ * the star's px out each way. */
+[data-promise-star-veil],
+[data-promise-star-halo],
+[data-promise-star-glint] {
+  position: absolute;
+  left: calc(var(--promise-star-px) * (18.5 - var(--promise-star-reach)));
+  top: calc(var(--promise-star-px) * (19 - var(--promise-star-reach)));
+  width: calc(var(--promise-star-px) * var(--promise-star-reach) * 2);
+  height: calc(var(--promise-star-px) * var(--promise-star-reach) * 2);
+}
+
+/* THE GLARE, NOT A GAUSSIAN. The eye's glare round a bright point has a
+ * long tail falling as a power law (Spencer et al. 1995); a Gaussian reads
+ * as an airbrushed sticker. Both the veil's and the halo's stops are
+ * (1 + r/0.15)^−2, eased to nothing at the edge by (1 − r²)².
+ *
+ * THE VEIL: wide (96 of the great star's px, ~2.6 of its widths) and faint
+ * (11% of white at the crossing): the crown's first light, lighter. It
+ * breathes, on its own clock (motion.ts). */
+[data-promise-star-veil] {
+  --promise-star-reach: 96;
+}
+
+[data-promise-star-veil-drift] {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 0.11),
+    rgb(255 255 255 / 0.062) 5%,
+    rgb(255 255 255 / 0.039) 10%,
+    rgb(255 255 255 / 0.026) 15%,
+    rgb(255 255 255 / 0.016) 22%,
+    rgb(255 255 255 / 0.0101) 30%,
+    rgb(255 255 255 / 0.0058) 40%,
+    rgb(255 255 255 / 0.0029) 52%,
+    rgb(255 255 255 / 0.0012) 66%,
+    transparent 82%
+  );
+}
+
+/* THE HALO: close, 16% of white at the crossing (the crown's jewel's, the
+ * user's "a bit lighter"), still. */
+[data-promise-star-halo] {
+  --promise-star-reach: var(--promise-star-halo);
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 0.16),
+    rgb(255 255 255 / 0.09) 5%,
+    rgb(255 255 255 / 0.056) 10%,
+    rgb(255 255 255 / 0.038) 15%,
+    rgb(255 255 255 / 0.024) 22%,
+    rgb(255 255 255 / 0.015) 30%,
+    rgb(255 255 255 / 0.0084) 40%,
+    rgb(255 255 255 / 0.0043) 52%,
+    rgb(255 255 255 / 0.0018) 66%,
+    transparent 82%
+  );
+}
+
+/* The star itself (a speck twinkles as a whole). */
+[data-promise-star-body] {
+  position: absolute;
+  inset: 0;
+}
+
+/* THE BLOOM, under the art: its rays scattered (PromiseStars' filter), at
+ * half strength, still — the steady light of the rays; the glint above is
+ * what scintillates. Its box the filter's, past the art by 11 of the
+ * star's px. */
+[data-promise-star-bloom] {
+  position: absolute;
+  left: calc(var(--promise-star-px) * -11);
+  top: calc(var(--promise-star-px) * -11);
+  width: calc(var(--promise-star-px) * 59);
+  height: calc(var(--promise-star-px) * 77);
+  fill: rgb(255 255 255);
+  opacity: 0.5;
+}
+
+/* The art, as the user drew it. */
+[data-promise-star-art] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--color-promise-star);
+}
+
+/* THE CORE, over the art: the crossing burnt out to white, 9 of the star's
+ * px across, steady. */
+[data-promise-star-core] {
+  position: absolute;
+  left: calc(var(--promise-star-px) * 14);
+  top: calc(var(--promise-star-px) * 14.5);
+  width: calc(var(--promise-star-px) * 9);
+  height: calc(var(--promise-star-px) * 9);
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 0.85),
+    rgb(255 255 255 / 0.5) 15%,
+    rgb(255 255 255 / 0.2) 35%,
+    rgb(255 255 255 / 0.06) 60%,
+    rgb(255 255 255 / 0.013) 80%,
+    transparent
+  );
+}
+
+/* THE GLINT: the crown's jewel's star laid over the crossing — a long
+ * streak across (a lens's streak: past the art's arms, 38 of the star's px
+ * each way), a short one up (past the art's top tip), a flash at the heart.
+ * At rest faint and short (motion.ts states the same in its keyframes). */
+[data-promise-star-glint] {
+  --promise-star-reach: 40;
+}
+
+[data-promise-star-flare] {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  transform: scale(0.8);
+}
+
+[data-promise-star-ray],
+[data-promise-star-spark] {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+/* A streak falls off along its length as (1 + r/0.25)^−1.5, eased out by
+ * (1 − r²)²; across its width it is the same curve, squeezed. A LONG TAIL
+ * ON PURPOSE: the drawn arms reach ~half its length, and the streak shows
+ * only past them — so at a flash its tips run ~12% white beyond the arms,
+ * and at rest (shorter, fainter) under 2%. */
+[data-promise-star-ray] {
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 0.8),
+    rgb(255 255 255 / 0.64) 4%,
+    rgb(255 255 255 / 0.47) 10%,
+    rgb(255 255 255 / 0.31) 20%,
+    rgb(255 255 255 / 0.166) 35%,
+    rgb(255 255 255 / 0.087) 50%,
+    rgb(255 255 255 / 0.039) 65%,
+    rgb(255 255 255 / 0.012) 80%,
+    transparent
+  );
+}
+
+[data-promise-star-ray="across"] {
+  width: calc(var(--promise-star-px) * 76);
+  height: calc(var(--promise-star-px) * 2.4);
+}
+
+[data-promise-star-ray="up"] {
+  width: calc(var(--promise-star-px) * 2.4);
+  height: calc(var(--promise-star-px) * 50);
+}
+
+[data-promise-star-spark] {
+  width: calc(var(--promise-star-px) * 12);
+  height: calc(var(--promise-star-px) * 12);
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 0.9),
+    rgb(255 255 255 / 0.56) 15%,
+    rgb(255 255 255 / 0.23) 35%,
+    rgb(255 255 255 / 0.065) 60%,
+    rgb(255 255 255 / 0.014) 80%,
+    transparent
+  );
+}
+
+/* No scripting: nothing will bring them out, so they stand lit and
+ * still. */
+@media (scripting: none) {
+  [data-promise-star] {
+    opacity: 1;
+  }
 }
 
 /* ── The stage ── the whole width; the mark's box at its middle, as wide

@@ -1,9 +1,9 @@
 /**
  * ─── Promise · content ───
  *
- * The reality promise (the user's frames, 2026-10-30): two passages, one
- * above the mark and one below it. Each paragraph is wrapped by its block
- * (promise.css), not authored line by line.
+ * The reality promise (the user's frames, 2026-10-30 to 11-01): a passage,
+ * the stars (ornament: no copy), a passage. Each paragraph is wrapped by
+ * its block (promise.css), not authored line by line.
  *
  * The passage below is ONE SENTENCE BROKEN ACROSS A ROW OF DOTS: "the
  * universal truth remains" stops without a stop, and "people need to feel
