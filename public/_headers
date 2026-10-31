@@ -1,0 +1,20 @@
+# Cache rules for the static export (`out/`). Read by Netlify and
+# Cloudflare Pages from the root of what is published; any other host
+# needs the same two rules in its own config (vercel.json `headers`, an
+# nginx `location`, S3/CloudFront metadata). next.config.ts cannot set
+# them: `headers()` is not applied to an `output: "export"` build.
+#
+# Only content-addressed files are immutable: a changed file is a new URL.
+#   /hero/*         every URL carries ?v=<content version>, written by the
+#                   scripts that make the images (backdrop.json,
+#                   still.json, mist.json). Never change an image here
+#                   without re-running its script.
+#   /_next/static/* Next's hashed chunks, stylesheets and fonts.
+# Everything else (the HTML, /settings/, the favicon) keeps the host's
+# default, so a deploy is seen on the next visit.
+
+/hero/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

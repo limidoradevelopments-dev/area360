@@ -71,4 +71,10 @@ export const SCROLL_CUE = {
  */
 export const CLOCK = {
   lateMs: 15,
+  /* How far off the screen the clock starts ticking again (an
+     IntersectionObserver rootMargin): a quarter of the screen above and
+     below, so a scroll back up has written the time before the box is
+     seen. Any less and a fast flick could draw one frame of a stale
+     time; the cost of more is ticks no one sees. */
+  wakeMargin: "25% 0px",
 } as const;

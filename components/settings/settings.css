@@ -171,11 +171,14 @@
 
 /* The way to the night before a reload (motion.ts RELOAD): over the whole
  * page, the curtain's own #111111, so the reload's curtain takes over from
- * it without a seam. Out of the tree's hit-testing until it is used. */
+ * it without a seam. Out of the tree's hit-testing always, and out of the
+ * visibility tree until a choice shows it (Dock): a full-screen fixed layer
+ * at opacity 0 is still a layer the compositor keeps for the whole visit. */
 [data-settings-veil] {
   position: fixed;
   inset: 0;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   background-color: var(--color-settings-ground);
 }

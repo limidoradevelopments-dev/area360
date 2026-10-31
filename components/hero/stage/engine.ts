@@ -47,6 +47,7 @@ import { STILLNESS } from "../weather/motion";
 import { RainPass } from "../weather/rain";
 import { CAMERA, CAMERA_UNIFORMS, CameraRig, focalPx, frameCenter, setCameraUniforms, type CameraFrame, type SwayParams } from "./camera";
 import {
+  abandonPrograms,
   bindTexture,
   createProgram,
   createTarget,
@@ -374,6 +375,8 @@ export function createStageEngine(options: StageEngineOptions): StageEngine | nu
     return new Stage(gl, options);
   } catch (error) {
     console.warn(error);
+    /* Whatever programs it had started, not left in the canvas's context. */
+    abandonPrograms(gl);
     return null;
   }
 }
@@ -732,20 +735,31 @@ class Stage implements StageEngine {
    */
   private async load(): Promise<void> {
     const alive = () => !this.disposed && !this.lost;
+    const shores = buildPlates(this.gl, alive, this.fetches.signal, (f) => this.progress(0, f));
     let plates: Plates | null;
     try {
-      [plates] = await Promise.all([
-        buildPlates(this.gl, alive, this.fetches.signal, (f) => this.progress(0, f)),
-        programsLinked(this.gl, alive, (f) => this.progress(1, f)),
-      ]);
+      [plates] = await Promise.all([shores, programsLinked(this.gl, alive, (f) => this.progress(1, f))]);
     } catch (error) {
-      if (alive()) {
-        console.warn(error);
-        this.options.onLost();
-      }
+      /* A shader that would not build: the shores may still be on their
+         way, and are let go when they land (nothing else holds them). */
+      void shores.then(
+        (late) => {
+          if (late && !this.gl.isContextLost()) deletePlates(this.gl, late);
+        },
+        () => {},
+      );
+      this.fail(error);
       return;
     }
-    if (!plates) return;
+    /* THE SHORES NEVER CAME (a failed download or decode, 2026-10-31, the
+       load audit): no stage, rather than a lake with no shore — and SAID.
+       It returned in silence, and the page's load store waited on a stage
+       that would never be ready: the curtain counted to its ceiling and
+       stood there for the rest of the visit. */
+    if (!plates) {
+      this.fail(null);
+      return;
+    }
     /* Started before the page hydrated: the frame is measured (the canvas
        sized) only once it has. */
     await this.attached;
@@ -768,6 +782,21 @@ class Stage implements StageEngine {
     this.stepBloom(0);
     this.render();
     this.syncLoop();
+  }
+
+  /**
+   * The stage cannot run after all: the page is told once (onLost — the
+   * still stands in, the curtain lets go), and everything it built is let
+   * go now, not when the component unmounts: the still stands for the rest
+   * of the visit, and the programs, the air's targets and the flowers'
+   * buffers would stand behind it. Gone already (disposed, its context
+   * lost), there is no one to tell and nothing to free.
+   */
+  private fail(error: unknown): void {
+    if (this.disposed || this.lost) return;
+    if (error) console.warn(error);
+    this.options.onLost();
+    this.dispose();
   }
 
   /** Part `part` of the way to the first frame is `fraction` done: the

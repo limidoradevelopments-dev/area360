@@ -170,16 +170,47 @@ export async function programsLinked(
     while (!done() && performance.now() < giveUp) await new Promise((resolve) => setTimeout(resolve, LINK_POLL_MS));
   }
   onProgress?.(1);
-  if (!alive()) return;
+  /* EVERY SHADER LET GO, ON EVERY WAY OUT (2026-10-31, the load audit).
+     Deleting a program does not delete the shaders attached to it: they
+     were deleted only once a program had linked, so a stage torn down
+     mid-compile (React's development double mount, every load) or one
+     whose shader failed left every vertex and fragment shader of the set
+     in the context — which lives on with the canvas, and which the next
+     stage on it reuses. Deleted now, a shader goes with its program. */
+  const release = () => {
+    if (gl.isContextLost()) return;
+    for (const { vs, fs } of list) {
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+    }
+  };
+  if (!alive()) return release();
   for (const { program, names, vs, fs } of list) {
     if (!gl.getProgramParameter(program.handle, gl.LINK_STATUS) && !gl.isContextLost()) {
       const log = gl.getShaderInfoLog(fs) || gl.getShaderInfoLog(vs) || gl.getProgramInfoLog(program.handle);
+      release();
       throw new Error(`stage: shader failed\n${log}`);
     }
-    /* Shaders are owned by the program once linked. */
+    for (const name of names) program.uniforms[name] = gl.getUniformLocation(program.handle, name);
+  }
+  /* Shaders are owned by the program once linked. */
+  release();
+}
+
+/**
+ * Every program started on `gl` and not yet handed to programsLinked,
+ * deleted with its shaders: a stage that failed while it was being built
+ * (createStageEngine) leaves none of them in the context it shares with
+ * whatever comes next on that canvas.
+ */
+export function abandonPrograms(gl: WebGL2RenderingContext): void {
+  const list = pending.get(gl) ?? [];
+  pending.delete(gl);
+  if (gl.isContextLost()) return;
+  for (const { program, vs, fs } of list) {
     gl.deleteShader(vs);
     gl.deleteShader(fs);
-    for (const name of names) program.uniforms[name] = gl.getUniformLocation(program.handle, name);
+    gl.deleteProgram(program.handle);
   }
 }
 

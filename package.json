@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "backdrop": "python scripts/hero-plates/backdrop.py",
+    "mist": "python scripts/hero-plates/mist.py",
     "still": "python scripts/hero-plates/still.py"
   },
   "dependencies": {

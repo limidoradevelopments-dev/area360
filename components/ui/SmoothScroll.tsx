@@ -24,8 +24,11 @@ export interface SmoothScrollProps {
  * Configured specifically to provide subtle momentum smoothing without
  * "hijacking" the user's scroll:
  *
- * - `lerp: 0.1` (or gentle duration): Smooths jagged mouse wheel notches without
- *   introducing heavy input latency or a floaty/dragging feeling.
+ * - `duration: 0.9`: each wheel notch eases to its target over 0.9 s on
+ *   Lenis's default curve, smoothing jagged notches without a floaty drag.
+ *   DURATION OR LERP, NEVER BOTH: Lenis 1.3 uses a duration whenever one
+ *   is set and never reads `lerp` then (a `lerp: 0.2` sat here, dead).
+ *   Switch to a lerp by removing `duration`.
  * - `wheelMultiplier: 1`: Preserves authentic 1:1 scroll distance.
  * - `syncTouch: false`: Strictly leaves mobile & trackpad touch gestures native.
  *   Touch hardware already has 120Hz momentum; intercepting touch creates the
@@ -40,7 +43,6 @@ export default function SmoothScroll({
   respectReducedMotion = true,
 }: SmoothScrollProps) {
   const defaultOptions: LenisOptions = {
-    lerp: 0.2,
     duration: 0.9,
     smoothWheel: true,
     wheelMultiplier: 1,

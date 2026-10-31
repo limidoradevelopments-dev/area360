@@ -37,23 +37,42 @@ export default function HeaderClock() {
     const el = face.current;
     if (!el) return;
     let timer = 0;
+    let near = true;
     const tick = () => {
       const now = Date.now();
       el.textContent = TIME.format(now);
       timer = window.setTimeout(tick, 1000 - (now % 1000) + CLOCK.lateMs);
     };
-    /* A tab put aside throttles its timers: back in view, it is put right
-       at once rather than on its next late tick. */
-    const wake = () => {
-      if (document.visibilityState !== "visible") return;
-      window.clearTimeout(timer);
-      tick();
+    /* PARKED WHILE UNSEEN (2026-10-31, the load audit; as the scroll cue
+       beside it): the header scrolls away with the hero, and a write a
+       second to a box no one sees still restyles it, and wakes the CPU,
+       for the rest of the visit. No timer while the box is off the screen
+       or the tab put aside; back, it is put right at once — the margin
+       starts it before the box is seen, so no stale time is ever drawn. */
+    const sync = () => {
+      const seen = near && document.visibilityState === "visible";
+      if (seen && !timer) tick();
+      else if (!seen && timer) {
+        window.clearTimeout(timer);
+        timer = 0;
+      }
     };
-    tick();
-    document.addEventListener("visibilitychange", wake);
+    /* The box, not the time: the time sits in a reveal mask, clipped out
+       of sight until the entrance drops it in. */
+    const sight = new IntersectionObserver(
+      ([entry]) => {
+        near = entry?.isIntersecting ?? true;
+        sync();
+      },
+      { rootMargin: CLOCK.wakeMargin },
+    );
+    sight.observe(el.closest("[data-header-clock]") ?? el);
+    sync();
+    document.addEventListener("visibilitychange", sync);
     return () => {
       window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", wake);
+      sight.disconnect();
+      document.removeEventListener("visibilitychange", sync);
     };
   }, []);
 
