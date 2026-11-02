@@ -22,6 +22,10 @@ export const MARK_VIEW = { width: 749, height: 560 } as const;
 /** The mark's mirror line: halfway between each pair's inner edges. */
 export const MARK_AXIS = 373.6;
 
+/** The moth's body, down the axis: between the forewings' roots (227)
+ *  and the hindwings' tops (297). The bloom opens from it. */
+export const MARK_BODY = 262;
+
 /* The drawing's own paths (the user's SVG: its paths 1 and 3), and the
    antenna's centre line (its path 4's two sides, averaged). */
 const SOURCES = {

@@ -265,6 +265,25 @@ export const CALLIGRAM = {
  *
  *   THE LIGHT. Landed, the scales catch the light once: a sheen across the
  *   mark from its body outward, as the page scrolls on through the pin.
+ *
+ *   THE BLOOM (2026-11-02, the user: going on to the works, the letters
+ *   "break again and fall down and disappear" — "like a bloom, or
+ *   something falling after a blast, but no visual blast"; the page
+ *   scrolling on as it always does). After a breath, the moth lets its
+ *   letters go from its body outward, all within a moment, and they OPEN
+ *   AS ONE WIDENING SHELL — the moth's own shape, growing, loosening — as
+ *   a firework's stars leave their shell: some toward the eye (larger,
+ *   soft), some away (smaller, dimmer); the air stops them almost at once
+ *   (stars are stopped within a second); then they hang, sway and drift
+ *   down at a steady pace like embers, or a dandelion's seeds under their
+ *   pappus (Cummins et al., "A separated vortex ring underlies the flight
+ *   of the dandelion", Nature 2018: a slow, steady fall), their light
+ *   burning out with a last uneven flicker. Each catches a little light as
+ *   it lets go: light, never a flash. The mark's engraving, empty, goes on
+ *   up with the page, and the letters, left in the air, are gone before
+ *   they reach the works below. While the page moves, each is smeared
+ *   along its own way, as a film frame's shutter smears a moving light.
+ *   Scrolled back, they gather again onto the moth.
  */
 export const ASSEMBLY = {
   /* A line breaks as its top crosses 22% of the screen from the top: "as
@@ -285,17 +304,69 @@ export const ASSEMBLY = {
   loosen: 0.1,
   fall: 0.5,
   settle: 0.45,
-  /* THE PIN: the mark held at the screen's middle for 1.3 screens of
-   * scroll (promise.css --size-promise-pin), and when, as shares of it,
-   * each part lands — its first letter to its last — and the sheen
-   * crosses. The passages overlap: the hindwings begin as the forewings
-   * finish. */
+  /* THE PIN: the mark held at the screen's middle for 1.5 screens of
+   * scroll (promise.css --size-promise-pin), and then let go to move on
+   * with the page as every section does; and when, in screens of scroll
+   * after the mark is held, each part lands — its first letter to its
+   * last — and the sheen crosses. The passages overlap: the hindwings
+   * begin as the forewings finish. */
   land: {
-    fore: [0, 0.32],
-    hind: [0.28, 0.56],
-    antenna: [0.52, 0.74],
+    fore: [0, 0.42],
+    hind: [0.36, 0.73],
+    antenna: [0.68, 0.96],
   },
-  sheen: [0.76, 0.96],
+  sheen: [0.99, 1.25],
+  /* THE BLOOM, in screens of scroll after the mark is held:
+   *
+   *   WAVE — the letters let go from the body outward, by their distance
+   *   from it, over [1.3, 1.42] (a breath after the sheen; one movement,
+   *   not a sequence), give or take each one's own 0.02; all of it while
+   *   the mark is still held (let go at 1.5), so every letter leaves a
+   *   still mark and the engraving goes on up empty.
+   *
+   *   OPEN — out from the body by half its distance from it, plus 4.5% of
+   *   the screen's height (so the letters at the body move too), and up to
+   *   a third of that across, each its own way: the shape widening and
+   *   loosening at once. Its depth its own, from away (−1) to toward (1).
+   *   THE AIR STOPS IT: the opening settled to 63% in 0.05 of a screen of
+   *   scroll (a burst; slower, it read as a scaling), the drift reaching
+   *   its pace in 0.12.
+   *
+   *   DRIFT — down at 0.8 px a px of scroll on the screen, each its own
+   *   0.7–1.3 of it: left in the air as the page goes on up, so it is seen
+   *   to fall past the engraving going up (at 0.55 it seemed to hang where
+   *   it was), and against the page it sinks at ~1.8, meeting the next
+   *   section's edge within a third to two thirds of a screen.
+   *
+   *   LIGHT — halving every 0.3 of a screen (embers; at 0.18 they were out
+   *   before they had fallen), catching 0.4 toward white as it lets go,
+   *   gone by 0.95 (its last fifth faded out), and
+   *   faded over the last 22% of the screen above the air layer's foot —
+   *   the works' top edge, where the air layer ends (over 8% the letters
+   *   seemed to pile into a level line there, then vanish).
+   *
+   *   SHUTTER — a moving letter is smeared by its speed on the screen over
+   *   1/50 s, a film frame's exposure, at most 8× its height. */
+  bloom: {
+    wave: [1.3, 1.42],
+    jitter: 0.02,
+    open: 0.5,
+    push: 0.045,
+    across: 0.33,
+    opening: 0.05,
+    settling: 0.12,
+    drift: 0.8,
+    halfLife: 0.3,
+    catch: 0.4,
+    life: 0.95,
+    edge: 0.22,
+    shutter: 1 / 50,
+  },
+  /* THE SCROLL'S SPEED, for the streak: followed at 12 a second (approach,
+   * ui/easing.ts), so a wheel's notches read as one motion; drawn on until
+   * it is under 5px a second, then the streaks are gone and the loop
+   * parks. */
+  speed: { follow: 12, rest: 5 },
   /* THE CLOUD: each letter's place in the air is its place on the mark
    * spread 55% further from the mark's middle, scattered by up to 22% of
    * the mark's width — wide enough that no moth shows in it. */

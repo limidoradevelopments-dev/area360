@@ -32,8 +32,10 @@
  *   THE STAGE. After the passage below (the user's order, 2026-10-31), the
  *   mark engraved in the black (their stage drawing, 2026-11-02: 749 × 560
  *   at 1920), centred, 80px clear of the dots above it (48 on a phone, the
- *   whole width there) — then held at the screen's middle while the
- *   passages' letters land on it (THE AIR, below; assembly.ts).
+ *   whole width there), between two rows of dots that mark its four
+ *   corners at the grid's outer edges — then held at the screen's middle
+ *   while the passages' letters land on it, and fall from it as the next
+ *   section rises over it (THE AIR, below; assembly.ts).
  *
  *   THE EDGES. The first row of dots 16px under the section's top, as both
  *   frames place it.
@@ -101,10 +103,16 @@
     var(--size-promise-mark-tallest) * 749 / 560
   );
   --size-promise-mark-height: calc(var(--size-promise-mark-width) * 560 / 749);
-  /* HOW LONG IT IS HELD: 1.3 screens of scroll (motion.ts ASSEMBLY.land:
-   * the forewings, the hindwings, the antennae and the sheen in turn). A
-   * share of the screen's height, so the pace is every screen's. */
-  --size-promise-pin: 130svh;
+  /* What is held: the mark between its two rows of corner dots, each a
+   * beat from it (the passages' rule). */
+  --size-promise-held: calc(var(--size-promise-mark-height) + (var(--space-promise-beat) + var(--size-promise-dot)) * 2);
+  /* HOW LONG IT IS HELD: 1.5 screens of scroll (motion.ts ASSEMBLY: the
+   * forewings, the hindwings, the antennae, the sheen, a breath, and the
+   * bloom's letting go); then it goes on up with the page, as every
+   * section does, the next following it (the user, 2026-11-02: no section
+   * laid over another here). A share of the screen's height, so the pace
+   * is every screen's. */
+  --size-promise-pin: 150svh;
 
   --color-promise-ground: var(--color-night);
 
@@ -565,29 +573,44 @@
   }
 }
 
-/* ── The stage ── the whole width; the mark centred in it, 80px under the
- * dots, then HELD AT THE SCREEN'S MIDDLE (sticky) for the pin's room while
- * its letters land (assembly.ts).
+/* ── The stage ── the page's columns; 80px under the passage's last dots,
+ * a row of dots marking its two top corners at the grid's outer edges, a
+ * beat, the mark centred, a beat, a row marking its two bottom corners
+ * (the user, 2026-11-02: the passages' corners, round the stage). The
+ * three HELD TOGETHER AT THE SCREEN'S MIDDLE (sticky) for the pin's room
+ * while the letters land and fall (assembly.ts).
  *
  * LET GO WITH THE AIR, AT THE SAME SCROLL. The air layer (a screen tall,
  * held at the top) goes on up when the section's last row ends a screen
- * down; the mark (held with its middle at the screen's) when the stage's
- * content ends at its foot — so the stage's content stops short of the
- * section's end by the screen's half less the mark's: its bottom padding.
- * Apart by a pixel, the landed letters would slide off the engraving. */
+ * down; the held block (held with its middle at the screen's) when the
+ * stage's content ends at its foot — so the stage's content stops short
+ * of the section's end by the screen's half less the block's: its bottom
+ * padding. Apart by a pixel, the landed letters would slide off the
+ * engraving. By then the letters have let go of it (the bloom): the
+ * engraving goes on up empty, and they fall in the air layer, gone by its
+ * foot — the section's end, where the next begins. */
 [data-promise-stage] {
   grid-row: 4;
   grid-column: 1 / -1;
   display: grid;
-  justify-items: center;
+  grid-template-columns: subgrid;
   align-content: start;
   padding-top: var(--space-promise-stage);
-  padding-bottom: calc(50svh - var(--size-promise-mark-height) / 2);
+  padding-bottom: calc(50svh - var(--size-promise-held) / 2);
+}
+
+[data-promise-held] {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: var(--space-promise-beat);
+  position: sticky;
+  top: calc(50svh - var(--size-promise-held) / 2);
 }
 
 [data-promise-mark] {
-  position: sticky;
-  top: calc(50svh - var(--size-promise-mark-height) / 2);
+  grid-column: 1 / -1;
+  justify-self: center;
   width: var(--size-promise-mark-width);
   aspect-ratio: var(--size-promise-mark-aspect);
 }
@@ -600,6 +623,7 @@
 }
 
 [data-promise-pin] {
+  grid-column: 1 / -1;
   height: var(--size-promise-pin);
 }
 

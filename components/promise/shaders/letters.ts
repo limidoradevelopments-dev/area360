@@ -17,6 +17,15 @@
  *   its place on the mark, coming into focus, a reflected letter turning
  *   over as it comes.
  *   LANDED: on the mark; the sheen passes over it.
+ *   THE BLOOM (aBloom, as the page goes on to the works): from the moth's
+ *   body outward, each letter lets go — the whole moth opening as one
+ *   widening shell, as a firework's stars do (some toward the eye, larger
+ *   and soft; some away, smaller), stopped almost at once by the air; then
+ *   hanging, swaying, drifting down at a steady pace like an ember or a
+ *   dandelion's seed, its light burning out with a last uneven flicker,
+ *   and gone before it reaches the next section. While the page moves,
+ *   each is smeared along its own way, as a shutter smears a moving
+ *   light. Gone, it is not drawn.
  *
  * Everything that moves with the clock is scaled by `air` — how far into
  * the air a letter is, 0 on its line and 0 landed — so a letter is exactly
@@ -36,6 +45,7 @@ layout(location = 1) in vec4 aSlot;  // its centre on the mark (mark px), its tu
 layout(location = 2) in vec4 aUv;    // its cell in the atlas
 layout(location = 3) in vec4 aCell;  // the cell's size and the letter's centre in it, CSS px
 layout(location = 4) in vec4 aAir;   // its place in the cloud (from its slot, px), nearness, which paragraph
+layout(location = 5) in vec4 aBloom; // when it lets go (px of scroll), how far it opens (px, x and y), its depth (-1 away, 1 toward)
 
 uniform float uScroll;  // the section's scroll: px the screen's top is past the section's
 uniform float uLayer;   // where the air layer's top is, section px
@@ -49,6 +59,7 @@ uniform float uScreen;  // the screen's height, px
 uniform vec3 uSheen;    // where the sheen is (0 at the body, 1 at the wing's tip), its band, its lift
 uniform vec2 uMarkHalf; // the mark's axis (mark px) and half its width
 uniform float uCalm;    // reduced motion: letters fade off their lines and onto the mark
+uniform float uSpeed;   // the scroll's speed, px a second, smoothed: a falling letter's streak
 
 // The motion's constants (motion.ts ASSEMBLY), in a block of their own.
 uniform vec4 uNear;     // grow, dim, -, -
@@ -56,8 +67,14 @@ uniform vec4 uSwing;    // swing least, swing most, tilt, rise
 uniform vec4 uFlap;     // a swing every (screens), seconds least, seconds most, -
 uniform vec4 uTurn;     // turn, tip, yaw, swoop
 uniform vec3 uGlint;    // at, sharpness, strength
+uniform vec4 uOpen;     // the opening's and the drift's settling (px of scroll), its drift (px a px of scroll), its life (px of scroll)
+uniform vec4 uEmber;    // its light's half-life (px of scroll), the catch of light at letting go, the shutter (s), the fade at the layer's foot (px)
+uniform float uPinEnd;  // the scroll at which the mark is let go to move on with the page
 
 out vec2 vUv;
+out vec4 vCell;     // its cell in the atlas: a smeared read stays inside it
+out vec2 vSmear;    // its streak, in the atlas's uv
+out float vStreak;  // its streak's length on the screen, px
 out float vFocus;   // 0 sharp, 1 at its softest
 out float vLight;   // how much of white it is drawn with
 out float vGlint;
@@ -76,6 +93,16 @@ float smootherstep01(float x) {
   return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
 }
 
+// THE BLOOM'S PATH on the screen, from where it let go, since px of
+// scroll on: the opening (aBloom.yz) settling as the air stops it, the
+// drift down reaching its pace, and the sway that grows as it sinks.
+vec2 bloomAt(float since, float sinkPace, float swayPhase, float swing) {
+  float open = 1.0 - exp(-since / uOpen.x);
+  float settled = 1.0 - exp(-since / uOpen.y);
+  float drift = since - uOpen.y * settled;
+  return aBloom.yz * open + vec2(swing * 0.8 * sin(swayPhase) * settled, sinkPace * drift);
+}
+
 void main() {
   // The quad's corner from the vertex's index: two triangles.
   int corner = gl_VertexID % 6;
@@ -89,7 +116,8 @@ void main() {
   float t = uScroll - leave;
   int paragraph = int(aAir.w + 0.5);
   bool held = uHeld[paragraph] > 0.5;
-  if (t <= 0.0 || held) {
+  float since = uScroll - aBloom.x;
+  if (t <= 0.0 || held || since >= uOpen.w) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     vUv = vec2(0.0);
     vFocus = 0.0;
@@ -201,15 +229,84 @@ void main() {
     glint = 0.0;
   }
 
-  // The corner, about the letter's centre: flipped, sized, turned.
-  vec2 local = (q * aCell.xy - aCell.zw) * face * size;
+  // THE BLOOM. A firework's stars leave their shell together and keep
+  // its shape a moment, opening; the air stops them within a second, and
+  // they droop and drift down at a steady pace (linear drag: a speed that
+  // dies away exponentially, a fall that reaches its terminal pace), as an
+  // ember does, or a dandelion's seed under its pappus. So: its opening
+  // the shell's (aBloom.yz, out from the body), settled by uOpen.x; its
+  // drift down reaching uOpen.z a px of scroll over uOpen.y, each its own
+  // 0.7-1.3 of it; a gentle sway as it sinks (on the scroll and the clock:
+  // a still page keeps it drifting); a little turn. Worked out on the
+  // screen, from where its place was when it let go, and carried into the
+  // air layer, which has gone on up with the page since the mark was let
+  // go.
+  float landed = step(0.999, settle);
+  float catching = exp(-pow(since / (0.18 * uOpen.x), 2.0)) * uEmber.y * landed;
+  float streak = 0.0;
+  vec2 streakWay = vec2(0.0, 1.0);
+  float fading = 1.0;
+  float depthBlur = 0.0;
+  if (since > 0.0) {
+    if (uCalm > 0.5) {
+      fading = 1.0 - smoothstep(0.0, 0.4 * uOpen.w, since);
+    } else {
+      vec2 origin = uMark + aSlot.xy - vec2(0.0, max(0.0, aBloom.x - uPinEnd));
+      float sinkPace = uOpen.z * (0.7 + 0.6 * r3);
+      float swayPhase = since * perPx * 0.6 + uTime * perSecond * 0.5 + r2 * TAU;
+      vec2 here = origin + bloomAt(since, sinkPace, swayPhase, swing);
+      // Its way and speed on the screen, for the shutter: the path a px of
+      // scroll further on, times the scroll's speed.
+      vec2 ahead = origin + bloomAt(since + 1.0, sinkPace, swayPhase + perPx * 0.6, swing);
+      vec2 velocity = (ahead - here) * uSpeed;
+      float speed = length(velocity);
+      float height = max(aCell.y * size * 0.45, 1.0);
+      streak = min(speed * uEmber.z, height * 8.0);
+      if (speed > 1e-3) streakWay = velocity / speed;
+      position = here + vec2(0.0, max(0.0, uScroll - uPinEnd));
+      float open = 1.0 - exp(-since / uOpen.x);
+      angle += (r1 - 0.5) * 1.4 * open + 0.25 * sin(swayPhase) * open;
+      // ITS DEPTH: the shell opening in three dimensions, some letters
+      // toward the eye (larger, soft, their light spread), some away
+      // (smaller, soft, dimmer with the distance).
+      float depth = aBloom.w * open;
+      size *= 1.0 + 0.5 * depth;
+      depthBlur = abs(depth) * 0.85;
+      // ITS LIGHT BURNS OUT: halving every half-life; as it dies, an
+      // uneven flicker (two sines a golden ratio apart, never a pulse);
+      // and gone where the air layer ends: the next section's edge.
+      float burning = exp2(-since / uEmber.x);
+      float flicker = 1.0 - (1.0 - burning) * 0.35 * (0.5 + 0.5 * sin(uTime * 9.0 + r4 * TAU) * sin(uTime * 9.0 * PHI + r1 * TAU));
+      float edge = 1.0 - smoothstep(uView.y - uEmber.w, uView.y, position.y);
+      float end = 1.0 - smoothstep(0.8 * uOpen.w, uOpen.w, since);
+      fading = burning * flicker * edge * end / (1.0 + 0.45 * max(depth, 0.0)) * (1.0 - 0.4 * max(-depth, 0.0));
+    }
+  }
+
+  // The streak in the letter's own drawing: its way on the screen turned
+  // back by its turn, undone of its size and face; its quad grown by half
+  // the streak each way, so the smear has room (reads outside the cell are
+  // dropped in the fragment stage).
   float c = cos(angle);
   float s = sin(angle);
+  vec2 sized = face * size;
+  vec2 wayInLetter = vec2(c * streakWay.x + s * streakWay.y, -s * streakWay.x + c * streakWay.y);
+  vec2 smear = wayInLetter * streak / (sign(sized) * max(abs(sized), vec2(0.2)));
+  vec2 inCell = q * aCell.xy + (q * 2.0 - 1.0) * abs(smear) * 0.5;
+
+  // The corner, about the letter's centre: flipped, sized, turned.
+  vec2 local = (inCell - aCell.zw) * sized;
   vec2 world = position + vec2(c * local.x - s * local.y, s * local.x + c * local.y);
 
   gl_Position = vec4(world.x / uView.x * 2.0 - 1.0, 1.0 - world.y / uView.y * 2.0, 0.0, 1.0);
-  vUv = mix(aUv.xy, aUv.zw, q);
-  vFocus = nearness * nearing;
+  vec2 uvPerPx = (aUv.zw - aUv.xy) / aCell.xy;
+  vUv = aUv.xy + inCell * uvPerPx;
+  vCell = aUv;
+  vSmear = smear * uvPerPx;
+  vStreak = streak;
+  // Out of focus as it recedes; and a little soft while it streaks, so the
+  // exposure's samples run together.
+  vFocus = max(max(nearness * nearing, depthBlur), streak > 1.0 ? 0.5 : 0.0);
 
   // ITS LIGHT: the copy's 80%, spread as it comes nearer, and less of it
   // reaching the eye as it turns edge-on (a flake seen by its edge is a
@@ -219,9 +316,12 @@ void main() {
   if (uCalm > 0.5) light = 0.8 * (settle > 0.0 ? settle : 1.0 - fall);
   float outward = abs(aSlot.x - uMarkHalf.x) / uMarkHalf.y;
   float band = exp(-pow((outward - uSheen.x) / uSheen.y, 2.0));
-  light += uSheen.z * band * settle * step(0.999, settle);
-  vLight = light;
-  vGlint = glint;
+  light += uSheen.z * band * landed;
+  // Blooming, going out (its light spread along its streak by the smear);
+  // and the light it catches as it lets go.
+  light *= fading;
+  vLight = light + catching;
+  vGlint = glint + catching * 0.6 * fading;
 }
 `;
 
@@ -231,16 +331,47 @@ precision highp float;
 uniform sampler2D uAtlas;
 
 in vec2 vUv;
+in vec4 vCell;
+in vec2 vSmear;
+in float vStreak;
 in float vFocus;
 in float vLight;
 in float vGlint;
 
 out vec4 outColor;
 
+// SMEAR SAMPLES: a streak read every 2 screen px along it (nine fixed
+// samples left a 60px streak a ladder of copies), at most 32; only a
+// falling letter while the page moves is ever smeared, and a letter that
+// is not reads once.
+const int SMEAR_MOST = 32;
+
+// The atlas at a point, nothing outside the letter's own cell (its
+// neighbours there).
+vec3 readCell(vec2 uv, vec2 dx, vec2 dy) {
+  vec2 inside = step(vCell.xy, uv) * step(uv, vCell.zw);
+  return textureGrad(uAtlas, uv, dx, dy).rgb * inside.x * inside.y;
+}
+
 void main() {
   // Its level by its size on the screen (a landed letter is drawn from a
   // finer copy than the screen's), named, never left to texture().
-  vec3 copies = textureGrad(uAtlas, vUv, dFdx(vUv), dFdy(vUv)).rgb;
+  vec2 dx = dFdx(vUv);
+  vec2 dy = dFdy(vUv);
+  vec3 copies;
+  if (vStreak < 1.0) {
+    copies = readCell(vUv, dx, dy);
+  } else {
+    // THE EXPOSURE: the letter averaged along its streak.
+    int count = int(clamp(ceil(vStreak / 2.0), 2.0, float(SMEAR_MOST)));
+    copies = vec3(0.0);
+    for (int k = 0; k < SMEAR_MOST; k += 1) {
+      if (k >= count) break;
+      float along = float(k) / float(count - 1) - 0.5;
+      copies += readCell(vUv + vSmear * along, dx, dy);
+    }
+    copies /= float(count);
+  }
   // Out of focus as a mix of the atlas's three copies: sharp to a little
   // soft over the first half, to its softest over the second.
   float a = vFocus < 0.5

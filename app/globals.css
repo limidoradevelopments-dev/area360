@@ -32,6 +32,7 @@
 @import "../components/hero/hero.css";
 @import "../components/hero/copy/copy.css";
 @import "../components/promise/promise.css";
+@import "../components/works/works.css";
 @import "../components/intro/intro.css";
 /* Over every section, in the page's corner. */
 @import "../components/settings/settings.css";

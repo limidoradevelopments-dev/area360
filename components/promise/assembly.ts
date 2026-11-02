@@ -31,7 +31,9 @@
 import { layCalligram, type CalligramIn, type PassageIn, type Slot } from "./calligram";
 import { buildAtlas, type GlyphAtlas } from "./glyphAtlas";
 import { linesOf, measureLetters, splitLetters, type LetterBox, type PassageLetters } from "./letters";
-import { MARK_AXIS, MARK_VIEW, markLines, roomAlong, type MarkPart } from "./markLines";
+import { MARK_AXIS, MARK_BODY, MARK_VIEW, markLines, roomAlong, type MarkPart } from "./markLines";
+import { approach } from "@/components/ui/easing";
+
 import { ASSEMBLY, CALLIGRAM } from "./motion";
 import { LETTERS_FRAG, LETTERS_VERT } from "./shaders/letters";
 
@@ -70,8 +72,9 @@ const RUNS = {
   ],
 } as const;
 
-/* Floats a letter: aRest, aSlot, aUv, aCell, aAir. */
-const STRIDE = 20;
+/* Floats a letter: aRest, aSlot, aUv, aCell, aAir, aBloom. */
+const STRIDE = 24;
+const ATTRIBUTES = STRIDE / 4;
 
 /** Starts it; returns what stops it (an unmount): everything let go, the
  *  paragraphs given their own text back. */
@@ -138,6 +141,7 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
     }
     const e = engine;
     const scroll = window.scrollY - e.sectionTop;
+    followSpeed(scroll, now);
     entering();
     updateSpans(e, scroll);
     showAir(goneCount > 0);
@@ -145,15 +149,31 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
       lastScroll = scroll;
       return;
     }
-    if (scroll !== lastScroll || airCount > 0 || e.fresh) {
+    const moving = Math.abs(speed) > ASSEMBLY.speed.rest;
+    if (scroll !== lastScroll || airCount > 0 || moving || e.fresh) {
       e.fresh = false;
       lastScroll = scroll;
       render(e, scroll, now / 1000, held);
     }
     /* A letter in the air flutters on the clock: drawn every frame while
-       any is (and the section is on the screen); none, and the loop parks
-       until the next scroll. */
-    if (airCount > 0) request();
+       any is (and the section is on the screen); and while the scroll's
+       speed dies away, the falling letters' streaks with it. Neither, and
+       the loop parks until the next scroll. */
+    if (airCount > 0 || moving) request();
+  }
+
+  /* THE SCROLL'S SPEED, px a second, followed (motion.ts ASSEMBLY.speed).
+     After a pause (the loop parked, the tab away) it starts again from
+     still: a jump made unseen is not a speed. */
+  let speed = 0;
+  let speedAt = Number.NaN;
+  let speedScroll = 0;
+  function followSpeed(scroll: number, now: number) {
+    const dt = (now - speedAt) / 1000;
+    if (!(dt > 0) || dt > 0.1) speed = 0;
+    else speed = approach(speed, (scroll - speedScroll) / dt, ASSEMBLY.speed.follow, dt);
+    speedAt = now;
+    speedScroll = scroll;
   }
 
   /** Every letter's span shown or let go by the scroll; counts how many
@@ -166,7 +186,9 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
         const away = scroll > passage.leave[k] && !held[passage.paragraphIndex[k]];
         if (away) {
           gone += 1;
-          if (scroll < passage.land[k]) inAir += 1;
+          /* In the air between its line and the mark, and again in its
+             bloom: both flutter on the clock. */
+          if (scroll < passage.land[k] || (scroll > passage.bloom[k] && scroll < passage.bloom[k] + e.life)) inAir += 1;
         }
         if (away !== passage.gone[k]) {
           passage.gone[k] = away;
@@ -206,10 +228,15 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
     g.uniform3f(u.uSpan, ASSEMBLY.fall * e.height, ASSEMBLY.settle * e.height, ASSEMBLY.loosen * e.height);
     g.uniform1f(u.uScreen, e.height);
     const [from, to] = ASSEMBLY.sheen;
-    const sheenAt = (scroll - (e.pinStart + e.pinLength * from)) / (e.pinLength * (to - from));
+    const sheenAt = (scroll - (e.pinStart + e.height * from)) / (e.height * (to - from));
     g.uniform3f(u.uSheen, -0.3 + Math.min(Math.max(sheenAt, 0), 1) * 1.6, ASSEMBLY.sheenBand, sheenAt > 0 && sheenAt < 1 ? ASSEMBLY.sheenLift : 0);
     g.uniform2f(u.uMarkHalf, MARK_AXIS * e.markScale, (MARK_VIEW.width / 2) * e.markScale);
     g.uniform1f(u.uCalm, options.calm ? 1 : 0);
+    g.uniform1f(u.uSpeed, Math.abs(speed) > ASSEMBLY.speed.rest ? speed : 0);
+    const bloom = ASSEMBLY.bloom;
+    g.uniform4f(u.uOpen, bloom.opening * e.height, bloom.settling * e.height, bloom.drift, e.life);
+    g.uniform4f(u.uEmber, bloom.halfLife * e.height, bloom.catch, bloom.shutter, bloom.edge * e.height);
+    g.uniform1f(u.uPinEnd, e.pinStart + e.pinLength);
     const m = ASSEMBLY;
     g.uniform4f(u.uNear, m.near.grow, m.near.dim, 0, 0);
     g.uniform4f(u.uSwing, m.flutter.swing[0], m.flutter.swing[1], m.flutter.tilt, m.flutter.rise);
@@ -299,7 +326,7 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
     g.bindVertexArray(vao);
     g.bindBuffer(g.ARRAY_BUFFER, buffer);
     g.bufferData(g.ARRAY_BUFFER, e.data, g.STATIC_DRAW);
-    for (let k = 0; k < 5; k += 1) {
+    for (let k = 0; k < ATTRIBUTES; k += 1) {
       g.enableVertexAttribArray(k);
       g.vertexAttribPointer(k, 4, g.FLOAT, false, STRIDE * 4, k * 16);
       g.vertexAttribDivisor(k, 1);
@@ -416,14 +443,18 @@ interface Measured {
 
 function measure(parts: AssemblyParts, letters: { above: PassageLetters; below: PassageLetters }): Measured | null {
   const { section, air, mark, pin } = parts;
+  /* The mark is held in its block (the mark between its rows of dots),
+     which is what is sticky; the block is in the stage. */
+  const held = mark.parentElement;
+  const stage = held?.parentElement;
+  if (!held || !stage) return null;
   const first = letters.above.paragraphs[0];
   if (!first) return null;
   const type = getComputedStyle(first);
   const sectionRect = section.getBoundingClientRect();
   const airRect = air.getBoundingClientRect();
   const markRect = mark.getBoundingClientRect();
-  const stage = mark.parentElement;
-  if (!stage) return null;
+  const heldTop = Number.parseFloat(getComputedStyle(held).top) || 0;
   const sectionStyle = getComputedStyle(section);
   const padTop = Number.parseFloat(sectionStyle.paddingTop) || 0;
   const padBottom = Number.parseFloat(sectionStyle.paddingBottom) || 0;
@@ -445,9 +476,9 @@ function measure(parts: AssemblyParts, letters: { above: PassageLetters; below: 
     layerFrom,
     layerTo: section.offsetHeight - padBottom - height,
     markLeft: markRect.left - airRect.left,
-    markTop: Number.parseFloat(getComputedStyle(mark).top) || 0,
+    markTop: heldTop + (markRect.top - held.getBoundingClientRect().top),
     markWidth: markRect.width,
-    pinStart: stage.offsetTop + (Number.parseFloat(getComputedStyle(stage).paddingTop) || 0) - (Number.parseFloat(getComputedStyle(mark).top) || 0),
+    pinStart: stage.offsetTop + (Number.parseFloat(getComputedStyle(stage).paddingTop) || 0) - heldTop,
     pinLength: pin.offsetHeight,
   };
 }
@@ -460,6 +491,8 @@ interface PassageState {
    *  section's scroll. */
   readonly leave: Float64Array;
   readonly land: Float64Array;
+  /** When each lets go of the mark again (the bloom), px of scroll. */
+  readonly bloom: Float64Array;
   /** Each letter's paragraph, counted through both passages. */
   readonly paragraphIndex: readonly number[];
   /** Whether each is gone from its line now (its span transparent). */
@@ -480,6 +513,8 @@ interface Engine {
   readonly markScale: number;
   readonly pinStart: number;
   readonly pinLength: number;
+  /** How long a letter lives in its bloom, px of scroll. */
+  readonly life: number;
   /** The first letter to leave and the last to land, px of scroll. */
   readonly firstLeave: number;
   readonly lastLand: number;
@@ -513,6 +548,16 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
     room: rooms,
   });
 
+  /* THE BODY, the bloom's middle: on the axis, between the forewings'
+     roots and the hindwings' tops; and the farthest any letter lies from
+     it, so the wave takes the same time on every screen. */
+  const bodyX = MARK_AXIS * markScale;
+  const bodyY = MARK_BODY * markScale;
+  let farthest = 1;
+  for (const slots of [slotsAbove, slotsBelow]) {
+    for (const slot of slots) if (slot) farthest = Math.max(farthest, Math.hypot(slot.x - bodyX, slot.y - bodyY));
+  }
+
   const count = m.letters.above.spans.length + m.letters.below.spans.length;
   const data = new Float32Array(count * STRIDE);
   const screen = m.height;
@@ -539,6 +584,7 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
     });
     const leave = new Float64Array(boxes.length);
     const land = new Float64Array(boxes.length);
+    const bloom = new Float64Array(boxes.length);
     boxes.forEach((box, k) => {
       const char = passage.chars[k];
       const glyph = atlas.glyphs.get(char);
@@ -549,7 +595,7 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
       const leaves = tops[line[k]] - ASSEMBLY.breakLine * screen + across * ASSEMBLY.ripple * screen;
       const [r0, r1] = ASSEMBLY.land[runs[slot.run].part];
       const lands = Math.max(
-        m.pinStart + m.pinLength * (r0 + (r1 - r0) * slot.along),
+        m.pinStart + screen * (r0 + (r1 - r0) * slot.along),
         leaves + (ASSEMBLY.loosen + ASSEMBLY.fall * 0.5 + ASSEMBLY.settle) * screen,
       );
       leave[k] = leaves;
@@ -591,12 +637,34 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
       data[o + 17] = cloudY;
       data[o + 18] = nearness;
       data[o + 19] = paragraphBase + passage.paragraph[k];
+      /* aBloom: when it lets go again — from the body outward, by its
+         distance from it, give or take its own jitter, never before it has
+         landed — how far it opens (out from the body by a share of that
+         distance and a push of its own, and across by its own share), and
+         its depth in the opening shell, from away (-1) to toward (1). */
+      const b = ASSEMBLY.bloom;
+      const dx = slot.x - bodyX;
+      const dy = slot.y - bodyY;
+      const reach = Math.hypot(dx, dy);
+      const [w0, w1] = b.wave;
+      const jitter = (seeded(index * 5 + 3) * 2 - 1) * b.jitter;
+      const releases = Math.max(m.pinStart + screen * (w0 + (w1 - w0) * (reach / farthest) + jitter), lands + 0.05 * screen);
+      const outX = reach > 1e-3 ? dx / reach : 0;
+      const outY = reach > 1e-3 ? dy / reach : 1;
+      const push = b.open * reach + b.push * screen;
+      const sideways = (seeded(index * 7 + 5) * 2 - 1) * b.across * push;
+      bloom[k] = releases;
+      data[o + 20] = releases;
+      data[o + 21] = outX * push - outY * sideways;
+      data[o + 22] = outY * push + outX * sideways;
+      data[o + 23] = seeded(index * 11 + 9) * 2 - 1;
       index += 1;
     });
     passages.push({
       letters: passage,
       leave,
       land,
+      bloom,
       paragraphIndex: passage.paragraph.map((p) => paragraphBase + p),
       gone: new Array(boxes.length).fill(false),
     });
@@ -617,6 +685,7 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
     markScale,
     pinStart: m.pinStart,
     pinLength: m.pinLength,
+    life: ASSEMBLY.bloom.life * m.height,
     firstLeave,
     lastLand,
     fresh: true,
@@ -650,6 +719,10 @@ const UNIFORMS = [
   "uFlap",
   "uTurn",
   "uGlint",
+  "uSpeed",
+  "uOpen",
+  "uEmber",
+  "uPinEnd",
   "uAtlas",
 ] as const;
 

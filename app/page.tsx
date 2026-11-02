@@ -3,6 +3,7 @@ import { HeroSection } from "@/components/hero";
 import { Preloader } from "@/components/preloader";
 import { PromiseSection } from "@/components/promise";
 import { SettingsDock } from "@/components/settings";
+import { WorksSection } from "@/components/works";
 import StageRevealProvider from "@/components/ui/StageReveal";
 
 /**
@@ -14,7 +15,7 @@ import StageRevealProvider from "@/components/ui/StageReveal";
  * begins to lift, not behind it. The site's header lies over the top of the
  * hero's frame; the settings dock floats over all of it, in the page's
  * corner, once the scene it sets is live. After the hero, on its black, the
- * reality promise.
+ * reality promise; then the works.
  *
  * `main` clips horizontally with `overflow-x: clip`, NEVER `overflow-x: hidden`:
  * hidden computes overflow-y to auto, which makes main a scroll container and
@@ -28,6 +29,7 @@ export default function Home() {
       <main className="relative flex-1 w-full overflow-x-clip">
         <HeroSection />
         <PromiseSection />
+        <WorksSection />
       </main>
       <SettingsDock />
     </StageRevealProvider>

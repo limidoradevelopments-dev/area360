@@ -1,0 +1,44 @@
+/* ─── The works ───
+ *
+ * The section after the reality promise (2026-11-02): opened as a space,
+ * its work still to come (the user's frame: a title over four cards). The
+ * page's grid on the page's black, in the page's own flow: the promise's
+ * stage goes on up and this follows it, nothing laid over anything (the
+ * user, 2026-11-02). The moth's last letters fade out above its top edge
+ * (promise/assembly.ts, the bloom).
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --works-unit: 1rem;
+
+  --color-works-ground: var(--color-night);
+
+  /* ── The space ── a screen, for the works to come: A SHARE OF THE
+   * SCREEN'S HEIGHT (svh), as every section here is at least a screen
+   * tall; the root scaler knows nothing of the screen's height. */
+  --size-works-least: 100svh;
+}
+
+/* Tablet and small laptop. */
+@media (max-width: 1279.98px) {
+  :root {
+    --works-unit: 1rem;
+  }
+}
+
+/* Phone. */
+@media (max-width: 767.98px) {
+  :root {
+    --works-unit: 1rem;
+  }
+}
+
+[data-works] {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  column-gap: var(--spacing-gutter);
+  min-height: var(--size-works-least);
+  padding-inline: var(--spacing-margin);
+  background: var(--color-works-ground);
+}
