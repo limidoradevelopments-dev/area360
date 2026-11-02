@@ -4,14 +4,16 @@ import { useEffect, useRef } from "react";
 
 import { raiseLines, type LineCue } from "@/components/ui/raiseLines";
 import { splitLines, type SplitLines } from "@/components/ui/splitLines";
+import { useStageReveal } from "@/components/ui/StageReveal";
 import { usePrefersReducedMotion } from "@/components/ui/usePrefersReducedMotion";
 import { useRevealOnce } from "@/components/ui/useRevealOnce";
 
+import PromiseAir from "./PromiseAir";
 import PromisePassage from "./PromisePassage";
 import PromiseStage from "./PromiseStage";
 import PromiseStars from "./PromiseStars";
 import { PROMISE_ABOVE, PROMISE_BELOW, PROMISE_HEADING } from "./content";
-import { PROMISE_REDUCED, PROMISE_REVEAL, PROMISE_STARS_REVEAL } from "./motion";
+import { ASSEMBLY, PROMISE_REDUCED, PROMISE_REVEAL, PROMISE_STARS_REVEAL } from "./motion";
 import { lightStars } from "./starLight";
 
 /**
@@ -38,8 +40,15 @@ import { lightStars } from "./starLight";
  * turn, from a point to its size with its light, and lives on
  * (starLight.ts) — parked while it is off the screen.
  *
- * STILL TO COME: the scroll's own work. Its hooks are in place
- * (data-promise-passage, -text, -stars, -stage, -mark).
+ * THE ASSEMBLY (2026-11-02, the user): as each passage reaches the top of
+ * the screen its letters break away, come down through the air and write
+ * the mark — the user's moth, its outlines lettered with the passages, as
+ * their frame draws it — while the mark is held at the screen's middle
+ * (assembly.ts, motion.ts ASSEMBLY). Scrolled back, they go back up.
+ * ITS OWN CHUNK: the engine (a canvas, the calligram, the letters'
+ * atlas) is asked for once the curtain has lifted and the visitor first
+ * scrolls — or a few seconds after, if they do not — never on the first
+ * screen's path.
  *
  * NO VISIBLE HEADING: the frame has none. The section is labelled by a
  * heading for a reader of the page only.
@@ -48,8 +57,9 @@ export interface PromiseSectionProps {
   className?: string;
   /**
    * Off by default: the motion plays for everyone. When on and the visitor
-   * prefers reduced motion, the lines lose their fall and only fade in, and
- * the stars fade in and stay still (no flares, no twinkle).
+   * prefers reduced motion, the lines lose their fall and only fade in,
+   * the stars fade in and stay still (no flares, no twinkle), and the
+   * letters do not fly: each fades off its line and onto the mark.
    */
   respectReducedMotion?: boolean;
 }
@@ -61,6 +71,8 @@ export default function PromiseSection({ className, respectReducedMotion = false
   const [above, aboveSeen] = useRevealOnce<HTMLDivElement>(PROMISE_REVEAL.threshold);
   const [below, belowSeen] = useRevealOnce<HTMLDivElement>(PROMISE_REVEAL.threshold);
   const [stars, starsSeen] = useRevealOnce<HTMLDivElement>(PROMISE_STARS_REVEAL.threshold);
+  const section = useRef<HTMLElement>(null);
+  const { revealed } = useStageReveal();
 
   /* Read once, when an entrance plays: a preference that flips later must
      not replay it. */
@@ -85,8 +97,51 @@ export default function PromiseSection({ className, respectReducedMotion = false
     if (belowSeen && below.current) return dropPassage(below.current, calmAtEntrance.current);
   }, [below, belowSeen]);
 
+  /* The assembly, once the curtain has lifted: asked for on the first
+     scroll (a page opened part-way down asks at once), or once the hero's
+     opening shot is over if no one scrolls. */
+  useEffect(() => {
+    const root = section.current;
+    if (!revealed || !root || !above.current || !below.current) return;
+    const parts = {
+      section: root,
+      above: above.current,
+      below: below.current,
+      air: root.querySelector<HTMLElement>("[data-promise-air]"),
+      canvas: root.querySelector<HTMLCanvasElement>("[data-promise-canvas]"),
+      mark: root.querySelector<HTMLElement>("[data-promise-mark]"),
+      pin: root.querySelector<HTMLElement>("[data-promise-pin]"),
+    };
+    const { air, canvas, mark, pin } = parts;
+    if (!air || !canvas || !mark || !pin) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    let asked = false;
+    let timer = 0;
+    const begin = () => {
+      if (asked) return;
+      asked = true;
+      window.removeEventListener("scroll", begin);
+      window.clearTimeout(timer);
+      import("./assembly").then(({ startAssembly }) => {
+        if (cancelled) return;
+        stop = startAssembly({ ...parts, air, canvas, mark, pin }, { calm: calmAtEntrance.current });
+      });
+    };
+    window.addEventListener("scroll", begin, { passive: true });
+    timer = window.setTimeout(begin, ASSEMBLY.loadAfter * 1000);
+    if (window.scrollY > 0) begin();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("scroll", begin);
+      window.clearTimeout(timer);
+      stop?.();
+    };
+  }, [revealed, above, below]);
+
   return (
-    <section aria-labelledby={HEADING_ID} data-promise data-reveal-drop className={className}>
+    <section ref={section} aria-labelledby={HEADING_ID} data-promise data-reveal-drop className={className}>
+      <PromiseAir />
       <h2 id={HEADING_ID} className="sr-only">
         {PROMISE_HEADING}
       </h2>
@@ -117,6 +172,14 @@ function dropPassage(passage: HTMLElement, calm: boolean): () => void {
      they would break in the wrong places once the face arrived. */
   document.fonts.ready.then(() => {
     if (stopped) return;
+    /* ITS LETTERS ALREADY LEAVING (a page opened part-way down, a fast
+       scroll): its lines would carry them again. It is simply there. */
+    if (passage.querySelector("[data-promise-letter][data-gone]")) {
+      for (const paragraph of passage.querySelectorAll<HTMLElement>("[data-promise-text]")) {
+        paragraph.setAttribute("data-reveal-lines", "done");
+      }
+      return;
+    }
     for (const paragraph of passage.querySelectorAll<HTMLElement>("[data-promise-text]")) {
       splits.push(splitLines(paragraph));
     }

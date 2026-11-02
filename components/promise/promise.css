@@ -30,9 +30,10 @@
  *   to the cluster and from the cluster to the dots below (the user's).
  *
  *   THE STAGE. After the passage below (the user's order, 2026-10-31), the
- *   space the mark will take (not yet drawn: the scroll's own work, to
- *   come): the box the frame draws it in, 816 × 518 at 1920, centred, 80px
- *   clear of the dots above it; on a phone the whole width, 48px clear.
+ *   mark engraved in the black (their stage drawing, 2026-11-02: 749 × 560
+ *   at 1920), centred, 80px clear of the dots above it (48 on a phone, the
+ *   whole width there) — then held at the screen's middle while the
+ *   passages' letters land on it (THE AIR, below; assembly.ts).
  *
  *   THE EDGES. The first row of dots 16px under the section's top, as both
  *   frames place it.
@@ -83,12 +84,27 @@
   /* The art's grey: the user's SVG, #D9D9D9. */
   --color-promise-star: #d9d9d9;
 
-  /* ── The stage ── the mark's box (the frame's outline, 816 × 518). */
-  --size-promise-mark: calc(var(--promise-unit) * 51);
-  /* 816px wide */
-  --size-promise-mark-aspect: 816 / 518;
+  /* ── The stage ── the mark, as the user's stage drawing (749 × 560). */
+  --size-promise-mark: calc(var(--promise-unit) * 46.8125);
+  /* 749px wide */
+  --size-promise-mark-aspect: 749 / 560;
   --space-promise-stage: calc(var(--promise-unit) * 5);
-  /* 80px: the dots to the mark, above and below */
+  /* 80px: the dots to the mark */
+  /* THE MARK IS HELD AT THE SCREEN'S MIDDLE while its letters land, so it
+   * must fit the screen's height: never taller than 72% of it (svh, a size
+   * that answers to the screen's height, which the root scaler knows
+   * nothing of), never wider than the page's margins allow. */
+  --size-promise-mark-tallest: 72svh;
+  --size-promise-mark-width: min(
+    var(--size-promise-mark),
+    100vw - var(--spacing-margin) * 2,
+    var(--size-promise-mark-tallest) * 749 / 560
+  );
+  --size-promise-mark-height: calc(var(--size-promise-mark-width) * 560 / 749);
+  /* HOW LONG IT IS HELD: 1.3 screens of scroll (motion.ts ASSEMBLY.land:
+   * the forewings, the hindwings, the antennae and the sheen in turn). A
+   * share of the screen's height, so the pace is every screen's. */
+  --size-promise-pin: 130svh;
 
   --color-promise-ground: var(--color-night);
 
@@ -139,6 +155,7 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  /* Placed, not flowed: the air layer spans them all (below). */
   grid-template-rows: auto auto auto 1fr;
   column-gap: var(--spacing-gutter);
   min-height: 100svh;
@@ -175,6 +192,36 @@
   }
 }
 
+/* ── THE AIR ── the layer the letters fall through (PromiseAir,
+ * assembly.ts): a screen tall, HELD AT THE SCREEN'S TOP FOR THE WHOLE
+ * SECTION — sticky over every row, its normal place a screen above the
+ * section's top (the negative margin), so it is over the screen from the
+ * moment the section comes up into it, before any line can break — and
+ * LET GO WITH THE MARK, at the same scroll (the stage, below): a letter
+ * landed on the mark is drawn where the mark is held, and the two then go
+ * on up together on the compositor. The page's whole width (out over the
+ * margins), over the copy, never taking the pointer. Unseen until a
+ * letter has left its line. */
+[data-promise-air] {
+  grid-row: 1 / -1;
+  grid-column: 1 / -1;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 100svh;
+  margin-top: -100svh;
+  margin-inline: calc(var(--spacing-margin) * -1);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+[data-promise-canvas] {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* ── A passage ── the page's columns (a subgrid: one grid, not a copy of
  * it), its rows of dots and paragraphs a beat apart. */
 [data-promise-passage] {
@@ -182,6 +229,14 @@
   display: grid;
   grid-template-columns: subgrid;
   row-gap: var(--space-promise-beat);
+}
+
+[data-promise-passage="above"] {
+  grid-row: 1;
+}
+
+[data-promise-passage="below"] {
+  grid-row: 3;
 }
 
 /* ── A row of dots ── a dot tall, on the same columns. Every dot names its
@@ -235,6 +290,15 @@
   font-size: var(--text-promise);
   line-height: var(--leading-promise);
   letter-spacing: var(--tracking-promise);
+  /* NO LIGATURES: every letter leaves its line on its own (assembly.ts),
+   * and an fi drawn as one glyph could not. */
+  font-variant-ligatures: no-common-ligatures;
+}
+
+/* A letter that has left its line (letters.ts): the canvas draws it now.
+ * Transparent, not hidden: the copy is still read, found and copied. */
+[data-promise-letter][data-gone] {
+  color: transparent;
 }
 
 /* Split for its entrance (PromiseSection, ui/splitLines.ts): a line is
@@ -252,6 +316,7 @@
 /* ── The stars ── in the copy's block; the cluster centred on it, the
  * user's 128px above and below. */
 [data-promise-stars] {
+  grid-row: 2;
   grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
   display: grid;
   justify-items: center;
@@ -500,16 +565,52 @@
   }
 }
 
-/* ── The stage ── the whole width; the mark's box at its middle, as wide
- * as the frame draws it or as the screen allows. */
+/* ── The stage ── the whole width; the mark centred in it, 80px under the
+ * dots, then HELD AT THE SCREEN'S MIDDLE (sticky) for the pin's room while
+ * its letters land (assembly.ts).
+ *
+ * LET GO WITH THE AIR, AT THE SAME SCROLL. The air layer (a screen tall,
+ * held at the top) goes on up when the section's last row ends a screen
+ * down; the mark (held with its middle at the screen's) when the stage's
+ * content ends at its foot — so the stage's content stops short of the
+ * section's end by the screen's half less the mark's: its bottom padding.
+ * Apart by a pixel, the landed letters would slide off the engraving. */
 [data-promise-stage] {
+  grid-row: 4;
   grid-column: 1 / -1;
   display: grid;
-  place-items: center;
-  padding-block: var(--space-promise-stage);
+  justify-items: center;
+  align-content: start;
+  padding-top: var(--space-promise-stage);
+  padding-bottom: calc(50svh - var(--size-promise-mark-height) / 2);
 }
 
 [data-promise-mark] {
-  width: min(100%, var(--size-promise-mark));
+  position: sticky;
+  top: calc(50svh - var(--size-promise-mark-height) / 2);
+  width: var(--size-promise-mark-width);
   aspect-ratio: var(--size-promise-mark-aspect);
+}
+
+/* The engraving, as the user drew it (public/promise/mark.svg). */
+[data-promise-mark-art] {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+[data-promise-pin] {
+  height: var(--size-promise-pin);
+}
+
+/* NOTHING TO HOLD IT FOR: no scripting, or no WebGL2 (assembly.ts) — the
+ * passages stay, the engraving stands, and the page goes straight on. */
+[data-promise][data-promise-assembly="none"] [data-promise-pin] {
+  height: 0;
+}
+
+@media (scripting: none) {
+  [data-promise-pin] {
+    height: 0;
+  }
 }

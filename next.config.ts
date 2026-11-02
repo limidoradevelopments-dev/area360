@@ -11,16 +11,16 @@ const nextConfig: NextConfig = {
 
   /**
    * THE SHADERS SHIPPED WITHOUT THEIR COMMENTS (scripts/glsl-loader.cjs):
-   * about a fifth of the hero engine's script. Production builds only —
-   * in development a shader's compile log should point at the source as
-   * written.
+   * about a fifth of the hero engine's script; the promise's letters' too.
+   * Production builds only — in development a shader's compile log should
+   * point at the source as written.
    */
   turbopack:
     process.env.NODE_ENV === "production"
       ? {
           rules: {
             "*.ts": {
-              condition: { path: /components\/hero\/.*shaders\// },
+              condition: { path: /components\/(hero|promise)\/.*shaders\// },
               loaders: ["./scripts/glsl-loader.cjs"],
               as: "*.ts",
             },
