@@ -104,10 +104,8 @@ export const STONE = {
    * WEATHERED, AS THE SHORE'S ROCKS ARE. What makes a stone belong to a
    * lake is the lake written on it, the same as on the pale granite at the
    * photograph's left shore:
-   *   `edge`     its arrises rounded by frost and water (radius, m), in
-   *              its outline as in its light: no sawn edge survives a few
-   *              winters; the corner turns, and catches the fog's light as
-   *              it turns — what gives a block its weight and its scale
+   *   `edge`     the radius its arrises are rounded to (m), in its
+   *              outline as in its light; 0, the sharp block
    *   `lichen`   crustose lichen on what stays dry — pale grey rosettes
    *              (`size` m, `cover` of the top; the faces half as much,
    *              thinning toward the water) and a few dark ones; `pale`,
@@ -115,7 +113,12 @@ export const STONE = {
    *   `runs`     dark streaks where rain runs off the top and down the
    *              faces, strongest under the edge
    */
-  edge: 0.04,
+  /* SHARP since 2026-11-05 (the user: both stones' edges and joints sharp;
+   * it was 0.04, rounded by frost and water). At 0 the block is met by one
+   * exact ray–box test and the rounded march is not compiled
+   * (shaders/stone.ts hitStoneRound); the cloth and the flowers lie on the
+   * sharp block too (bloom/shape.ts), and the 404's stone is this one. */
+  edge: 0,
   /* `dark` 0.5 → 0.65 (2026-10-29): the dark rosettes read as black
    * blotches beside the flecks; a dark lichen is a shade under the stone. */
   lichen: { size: 0.09, cover: 0.34, pale: 1.7, dark: 0.65 },

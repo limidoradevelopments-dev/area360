@@ -2,8 +2,9 @@
  * ─── 404 · the ruin, as shapes ───
  *
  * THE HERO'S STONE, BROKEN (2026-11-05, the user: "the ruined version of
- * exactly our hero section stone"): its plan, its height, its rounded
- * arrises and its place are the hero's own (hero/stone/optics.ts STONE),
+ * exactly our hero section stone"): its plan, its height, its arrises
+ * (sharp since 2026-11-05, the user's word, as the hero's are) and its
+ * place are the hero's own (hero/stone/optics.ts STONE),
  * shaded by the hero's own granite (shaders/set.ts: hero shadeStone). What
  * this adds is the damage, in the world's metres:
  *
@@ -17,7 +18,12 @@
  *               carried onto the stone through the camera at rest)
  *   THE CHUNKS  what broke off and stayed: a slab on the fracture, a block
  *               tipping off the right edge, bits — none in the water (the
- *               user, 2026-11-05: no pieces floating on it)
+ *               user, 2026-11-05: no pieces floating on it); sharp-edged,
+ *               their faces rough as the break's
+ *
+ * EVERY JOINT SHARP (2026-11-05, the user): the fracture and the bites meet
+ * the faces at a hard maximum, never blended, and the chunks are boxes with
+ * no radius on their edges.
  *
  * The flowers and the cloth are not here: they are the hero's own mesh
  * (flowers.ts). Emitted as rows of a texture for the set's distance field
@@ -150,17 +156,15 @@ interface Chunk {
   half: V3;
   /** Its turn (degrees): about the up axis, then across, then along. */
   turn: V3;
-  /** Its edges' radius (m). */
-  round: number;
 }
 
 /* What broke off and stayed on the stone, lying on the fracture. */
 const CHUNKS: Chunk[] = [
-  { at: [0.49, fractureAt(0.49) + 0.05, 9.98], half: [0.085, 0.026, 0.07], turn: [24, 8, -22], round: 0.006 },
-  { at: [0.575, fractureAt(0.575) + 0.07, 10.12], half: [0.062, 0.058, 0.066], turn: [-16, 9, -40], round: 0.008 },
-  { at: [0.455, fractureAt(0.455) + 0.016, 10.16], half: [0.022, 0.015, 0.019], turn: [50, 10, -40], round: 0.004 },
-  { at: [0.53, fractureAt(0.53) + 0.014, 10.3], half: [0.019, 0.014, 0.017], turn: [-20, 0, -42], round: 0.004 },
-  { at: [0.51, fractureAt(0.51) + 0.012, 10.14], half: [0.017, 0.012, 0.015], turn: [10, 0, -35], round: 0.003 },
+  { at: [0.49, fractureAt(0.49) + 0.05, 9.98], half: [0.085, 0.026, 0.07], turn: [24, 8, -22] },
+  { at: [0.575, fractureAt(0.575) + 0.07, 10.12], half: [0.062, 0.058, 0.066], turn: [-16, 9, -40] },
+  { at: [0.455, fractureAt(0.455) + 0.016, 10.16], half: [0.022, 0.015, 0.019], turn: [50, 10, -40] },
+  { at: [0.53, fractureAt(0.53) + 0.014, 10.3], half: [0.019, 0.014, 0.017], turn: [-20, 0, -42] },
+  { at: [0.51, fractureAt(0.51) + 0.012, 10.14], half: [0.017, 0.012, 0.015], turn: [10, 0, -35] },
 ];
 
 /* ── Emitted ────────────────────────────────────────────────────────── */
@@ -230,13 +234,13 @@ function emit(): { data: Float32Array; rows: number; glsl: string } {
     return at;
   };
   /* A box: its bounding sphere FIRST (one read tells a step it is far),
-     then the rows of its turn, then its half-size and radius. */
-  const box = (at: V3, half: V3, turn: V3, w: number) => {
+     then the rows of its turn, then its half-size. */
+  const box = (at: V3, half: V3, turn: V3) => {
     const m = rotation(turn);
-    return [[at[0], at[1], at[2], length(half)], [m[0], m[1], m[2], 0], [m[3], m[4], m[5], 0], [m[6], m[7], m[8], 0], [half[0], half[1], half[2], w]];
+    return [[at[0], at[1], at[2], length(half)], [m[0], m[1], m[2], 0], [m[3], m[4], m[5], 0], [m[6], m[7], m[8], 0], [half[0], half[1], half[2], 0]];
   };
-  const chunkAt = table(CHUNKS.flatMap((c) => box(c.at, c.half, c.turn, c.round)));
-  const biteAt = table(BITES.flatMap((b) => box(b.at, b.half, b.turn, 0)));
+  const chunkAt = table(CHUNKS.flatMap((c) => box(c.at, c.half, c.turn)));
+  const biteAt = table(BITES.flatMap((b) => box(b.at, b.half, b.turn)));
   const crackAt = table(
     CRACKS.flatMap(({ points, width }) =>
       points.slice(0, -1).flatMap((a, k) => {

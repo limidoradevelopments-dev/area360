@@ -213,6 +213,12 @@ export const BLOOM = {
    *                (share of its half-width), and at its ends (m)
    *   `pleat`      m: how high the soft creases along it stand (flat, it
    *                printed as one even white, a card)
+   *   `drape`      m: how far either side of an arris it peels off the
+   *                faces to bridge it, lifting a quarter of that over the
+   *                arris (shape.ts drapeDistance: the stone's arrises are
+   *                sharp; 4 cm, 1 cm over the edge, ~7 of a tail's samples
+   *                round the turn — at 1.6 cm the strip's inner margin still
+   *                left a dark notch at the fold)
    */
   cloth: {
     at: KNOT,
@@ -222,6 +228,7 @@ export const BLOOM = {
     knot: { height: 0.022, length: 0.04 },
     fray: [0.14, 0.014] as const,
     pleat: 0.0016,
+    drape: 0.04,
     tails: [
       {
         /* The long one: from the knot toward the camera across the top, over

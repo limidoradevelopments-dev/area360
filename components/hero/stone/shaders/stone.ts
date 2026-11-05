@@ -5,9 +5,10 @@
  * parallax, its waterline, its reflection and its foot under the water are
  * exact 3D for free. Its plan (stone/optics.ts STONE), scaled by its
  * half-diagonals and turned 45°, is a square, and the block an ordinary box.
- * The map is affine, so a ray's parameter is the same in both. Seen from the
- * camera its edges are ROUNDED, in its outline as in its light: from the
- * sharp box's entry the ray is marched onto the rounded box inside it.
+ * The map is affine, so a ray's parameter is the same in both. Its edges are
+ * SHARP since 2026-11-05 (the user's word; stone/optics.ts STONE.edge 0):
+ * the box's own entry is the hit. Given a radius, the ray is marched from
+ * that entry onto the rounded box inside it.
  *
  * WEATHERED LAKE GRANITE, shaded as a cube turned 45°: the grain at its true
  * scale, lit by the fog's dome, rough and unevenly so, chipped along its
@@ -24,6 +25,37 @@
  */
 
 import { STONE_NOISE_SIZE } from "../noise";
+import { STONE } from "../optics";
+
+/* The rounded march (hitStoneRound), compiled only when the arrises are
+   rounded at all (STONE.edge > 0). Sharp, the box's entry is the hit and
+   its face's normal the normal: nothing to march. */
+const ROUND_MARCH = STONE.edge > 0
+  ? /* glsl */ `
+  /* A miss, or a ray from inside it (hitStone): nothing to round. */
+  if (t <= 1e-3) return t;
+  /* In plan units the box is the same size every way, so its rounding is
+     round: the height is scaled to them. */
+  float k = 1.0 / uStonePlan.z;
+  vec3 o = toStone(origin);
+  vec3 d = dirToStone(ray);
+  o.y *= k;
+  d.y *= k;
+  vec3 b = vec3(STONE_HALF_SIDE, 0.5 * (uStoneSpan.y - uStoneSpan.x) * k, STONE_HALF_SIDE);
+  float r = uStoneWeather.x * k;
+  float len = length(d);
+  float s = 1.0;
+  for (int i = 0; i < 8; i++) {
+    s = stoneRounded(o + d * t, b, r);
+    if (s < 1e-4) break;
+    t += s / len;
+  }
+  if (s > 1e-3) return -1.0;
+  vec3 p = o + d * t;
+  vec3 q = max(abs(p) - b + r, 0.0);
+  normal = dot(q, q) > 1e-12 ? sign(p) * normalize(q) : normal;
+  local = vec3(p.x, p.y / k, p.z);`
+  : "";
 
 /* E[smoothstep(0.15, 0.8, n) · cluster] over the lattice's value noise
    (measured, 2·10⁶ samples, the cluster read at an eighth of the fleck's
@@ -109,35 +141,13 @@ float stoneRounded(vec3 p, vec3 b, float r) {
   return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
 }
 
-/* Where a ray meets the ROUNDED block: t, or −1. From the sharp box's entry
-   it is marched onto the rounded box inside it; a ray that only grazes a
-   rounded-off edge never arrives, and misses. \`normal\` is the rounded
-   surface's, in the block's frame. */
+/* Where a ray meets the block AS THE CAMERA SEES IT: t, or −1. Sharp
+   (STONE.edge 0), the box's own entry. Rounded, it is marched from that
+   entry onto the rounded box inside it; a ray that only grazes a rounded-off
+   edge never arrives, and misses; \`normal\` is then the rounded surface's,
+   in the block's frame. */
 float hitStoneRound(vec3 origin, vec3 ray, out vec3 local, out vec3 normal) {
-  float t = hitStone(origin, ray, local, normal);
-  /* A miss, or a ray from inside it (hitStone): nothing to round. */
-  if (t <= 1e-3) return t;
-  /* In plan units the box is the same size every way, so its rounding is
-     round: the height is scaled to them. */
-  float k = 1.0 / uStonePlan.z;
-  vec3 o = toStone(origin);
-  vec3 d = dirToStone(ray);
-  o.y *= k;
-  d.y *= k;
-  vec3 b = vec3(STONE_HALF_SIDE, 0.5 * (uStoneSpan.y - uStoneSpan.x) * k, STONE_HALF_SIDE);
-  float r = uStoneWeather.x * k;
-  float len = length(d);
-  float s = 1.0;
-  for (int i = 0; i < 8; i++) {
-    s = stoneRounded(o + d * t, b, r);
-    if (s < 1e-4) break;
-    t += s / len;
-  }
-  if (s > 1e-3) return -1.0;
-  vec3 p = o + d * t;
-  vec3 q = max(abs(p) - b + r, 0.0);
-  normal = dot(q, q) > 1e-12 ? sign(p) * normalize(q) : normal;
-  local = vec3(p.x, p.y / k, p.z);
+  float t = hitStone(origin, ray, local, normal);${ROUND_MARCH}
   return t;
 }
 

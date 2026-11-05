@@ -3,8 +3,8 @@
  *
  * One distance field, sphere-traced over the rect where the set stands,
  * into a picture the composite lays over the water: THE HERO'S STONE — its
- * rounded block, by the hero's own functions (hero/stone/shaders/stone.ts:
- * toStone, stoneRounded), SHADED BY THE HERO'S OWN shadeStone with the
+ * block, by the hero's own functions (hero/stone/shaders/stone.ts: toStone,
+ * stoneRounded at the hero's radius, 0 since 2026-11-05: sharp), SHADED BY THE HERO'S OWN shadeStone with the
  * hero's own values (its granite, flecks, lichen, chips and pits, rain's
  * runs, the lake's stain band, its relief, its meniscus) — cut by the
  * fracture and the bites, with what broke off lying on it (ruin.ts). The
@@ -96,8 +96,8 @@ const int M_STONE = 0;
 const int M_FRACTURE = 1;
 const int M_CHUNK = 2;
 
-/* The hero's rounded block (hero/stone/shaders/stone.ts hitStoneRound: the
-   same box, the same radius), as a distance: in its own frame the block is
+/* The hero's block (hero/stone/shaders/stone.ts hitStoneRound: the same
+   box, the same radius — none: its arrises are sharp), as a distance: in its own frame the block is
    the same size every way, its height scaled to its plan's units; that
    frame stretches the world by at most 1/across, so a distance there,
    times across, is never more than the true one. */
@@ -109,7 +109,7 @@ float stoneDistance(vec3 p) {
   return stoneRounded(q, b, uStoneWeather.x * k) * uStonePlan.z;
 }
 
-/* A world normal → the block's rounded frame (its plan's units, its height
+/* A world normal → the block's frame (its plan's units, its height
    scaled), as hitStoneRound gives it: normals go by the inverse transpose. */
 vec3 normalToStone(vec3 n) {
   vec2 s = n.xz * uStonePlan.zw;
@@ -165,9 +165,10 @@ float map(vec3 p, out int matter) {
       vec3 r0 = row(CHUNK + i * 5 + 1).xyz;
       vec3 r1 = row(CHUNK + i * 5 + 2).xyz;
       vec3 r2 = row(CHUNK + i * 5 + 3).xyz;
-      vec4 h = row(CHUNK + i * 5 + 4);
-      vec3 a = abs(vec3(dot(r0, q), dot(r1, q), dot(r2, q))) - h.xyz + h.w;
-      float c = length(max(a, 0.0)) + min(max(a.x, max(a.y, a.z)), 0.0) - h.w;
+      vec3 h = row(CHUNK + i * 5 + 4).xyz;
+      /* A box with sharp edges (ruin.ts: every joint sharp). */
+      vec3 a = abs(vec3(dot(r0, q), dot(r1, q), dot(r2, q))) - h;
+      float c = length(max(a, 0.0)) + min(max(a.x, max(a.y, a.z)), 0.0);
       /* Broken granite, not cut: its faces rough. */
       c += 0.26 * rough + 0.004 * grit;
       if (c < d) {

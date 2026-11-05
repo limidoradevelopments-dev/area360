@@ -145,8 +145,8 @@ export function grow(seed: number): Genome {
 /* ── The stone's surface, for what lies on it ────────────────────────── */
 
 /* The stone as stone/shaders/stone.ts STONE_SHAPE_GLSL has it: its plan
-   mapped to a square, its height scaled to the plan's units, a box with
-   rounded arrises. */
+   mapped to a square, its height scaled to the plan's units, a box with its
+   arrises rounded to STONE.edge (0 since 2026-11-05: sharp). */
 const STONE_MID = 0.5 * (STONE.top - STONE.depth);
 const STONE_K = 1 / STONE.plan.across;
 const STONE_HALF = Math.SQRT1_2;
@@ -173,20 +173,47 @@ function stoneDistance(q: Vec3): number {
   const z = Math.abs(q[2]) - STONE_B[2] + STONE_R;
   return Math.hypot(Math.max(x, 0), Math.max(y, 0), Math.max(z, 0)) + Math.min(Math.max(x, y, z), 0) - STONE_R;
 }
-function planGradient(q: Vec3): Vec3 {
+/**
+ * WHAT THE CLOTH LIES ON: the block with its arrises BRIDGED (2026-11-05,
+ * with the arrises made sharp, STONE.edge 0). Laid on the sharp block
+ * itself, the long tail turned the front-right arris between two of its
+ * samples (~11 mm apart): the corner stood through the chord between them,
+ * a dark notch in the strip, and its flat side flipped from the top's to
+ * the face's in one sample. A strip of cotton over a sharp edge does not
+ * fold to nothing either: it touches the edge and peels off the faces
+ * beside it. So within `BLOOM.cloth.drape` of an arris the surface it lies
+ * on lifts off the faces, smoothly (a quadratic in how much nearer the one
+ * face is than the other), up to a quarter of that over the arris itself;
+ * past it, the block's own faces. Only the cloth's tails: a stem or a ray
+ * passes an edge straight or bends onto it (keepOff, the block as drawn).
+ */
+const DRAPE = BLOOM.cloth.drape * PLAN_PER_METRE;
+function drapeDistance(q: Vec3): number {
+  if (DRAPE <= 0) return stoneDistance(q);
+  const x = Math.abs(q[0]) - STONE_B[0];
+  const y = Math.abs(q[1]) - STONE_B[1];
+  const z = Math.abs(q[2]) - STONE_B[2];
+  const nearest = Math.max(x, y, z);
+  const next = x + y + z - nearest - Math.min(x, y, z);
+  const h = Math.max(DRAPE - (nearest - next), 0) / DRAPE;
+  return stoneDistance(q) - (h * h * DRAPE) / 4;
+}
+
+function planGradient(q: Vec3, field: (q: Vec3) => number = stoneDistance): Vec3 {
   const e = 1e-4;
   return normalize([
-    stoneDistance([q[0] + e, q[1], q[2]]) - stoneDistance([q[0] - e, q[1], q[2]]),
-    stoneDistance([q[0], q[1] + e, q[2]]) - stoneDistance([q[0], q[1] - e, q[2]]),
-    stoneDistance([q[0], q[1], q[2] + e]) - stoneDistance([q[0], q[1], q[2] - e]),
+    field([q[0] + e, q[1], q[2]]) - field([q[0] - e, q[1], q[2]]),
+    field([q[0], q[1] + e, q[2]]) - field([q[0], q[1] - e, q[2]]),
+    field([q[0], q[1], q[2] + e]) - field([q[0], q[1], q[2] - e]),
   ]);
 }
 
-/** The stone's outward normal nearest a world point (the gradient of its
- *  distance: the plan's stretch does not turn a level set's normal). */
-function stoneNormal(p: readonly number[]): Vec3 {
+/** The outward normal of what the cloth lies on, nearest a world point
+ *  (the gradient of its distance: the plan's stretch does not turn a level
+ *  set's normal). */
+function drapeNormal(p: readonly number[]): Vec3 {
   const e = 1e-4;
-  const at = (x: number, y: number, z: number) => stoneDistance(toPlan([x, y, z]));
+  const at = (x: number, y: number, z: number) => drapeDistance(toPlan([x, y, z]));
   return normalize([
     at(p[0] + e, p[1], p[2]) - at(p[0] - e, p[1], p[2]),
     at(p[0], p[1] + e, p[2]) - at(p[0], p[1] - e, p[2]),
@@ -210,17 +237,17 @@ function stoneGap(p: readonly number[]): [number, Vec3] {
 }
 
 /**
- * A point laid onto the stone's rounded surface, `clearance` metres off it:
- * over the top, round the arris, down the face — wherever it is nearest.
- * What lies along the stone (the cloth's tails) is drawn roughly and laid
- * on with this.
+ * A point laid onto what the cloth lies on (drapeDistance), `clearance`
+ * metres off it: over the top, over the arris, down the face — wherever it
+ * is nearest. What lies along the stone (the cloth's tails) is drawn
+ * roughly and laid on with this.
  */
 function onStone(p: readonly number[], clearance: number): Vec3 {
   const q = toPlan(p);
   const want = clearance * PLAN_PER_METRE;
   for (let i = 0; i < 6; i += 1) {
-    const d = stoneDistance(q);
-    const g = planGradient(q);
+    const d = drapeDistance(q);
+    const g = planGradient(q, drapeDistance);
     q[0] += g[0] * (want - d);
     q[1] += g[1] * (want - d);
     q[2] += g[2] * (want - d);
@@ -1176,7 +1203,7 @@ export class Pose {
          of it was already nearer). */
       const follow = weight[i] * (1 - peel[i]);
       if (follow > 0) {
-        const m = stoneNormal(points[i]);
+        const m = drapeNormal(points[i]);
         const sign = dot(f, m) >= 0 ? 1 : -1;
         f = normalize([lerp(f[0], m[0] * sign, follow), lerp(f[1], m[1] * sign, follow), lerp(f[2], m[2] * sign, follow)]);
       }
