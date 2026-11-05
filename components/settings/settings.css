@@ -29,11 +29,15 @@
   /* 12px: the panel to the button */
   --space-settings-wave: calc(var(--settings-unit) * 0.375);
   /* 6px: the sound's wave to the settings button */
+  /* How far above its place the dock waits to drop in: its pre-entrance
+   * state (motion.ts DOCK_MOTION.enterLiftRem tweens from the same distance). */
+  --space-settings-lift: calc(var(--settings-unit) * -0.75);
+  /* −12px */
 
-  --text-settings: calc(var(--settings-unit) * 0.75);
-  /* 12px: every word in it but Auto's note */
-  --text-settings-note: calc(var(--settings-unit) * 0.625);
-  /* 10px: Auto's note ("High Quality"), the user's frame */
+  /* The site's voices (tokens.css): every word in it the UI (12px), but
+   * Auto's note ("High Quality") the supporting words (10px). */
+  --text-settings: var(--text-ui);
+  --text-settings-note: var(--text-support);
   /* Auto and its note sit close, one line on the next (15px); the levels
    * each take a fuller line (16.5px), 6px apart: the frame's pitches. */
   --leading-settings-pair: 1.25;
@@ -129,7 +133,7 @@
 /* PRE-ENTRANCE STATE IN CSS (AGENTS.md): GSAP tweens from these. */
 [data-settings-launcher] {
   opacity: 0;
-  transform: translateY(-0.75rem);
+  transform: translateY(var(--space-settings-lift));
   gap: var(--space-settings-wave);
 }
 
@@ -165,8 +169,8 @@
 }
 
 [data-settings-sound]:focus-visible {
-  outline: var(--size-rule) solid var(--color-settings-muted);
-  outline-offset: 2px;
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
 }
 
 /* The way to the night before a reload (motion.ts RELOAD): over the whole
@@ -213,8 +217,8 @@
 
 [data-settings-button]:focus-visible,
 [data-settings-option]:has(input:focus-visible) {
-  outline: var(--size-rule) solid var(--color-settings-muted);
-  outline-offset: 2px;
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
 }
 
 [data-settings-glyph] {

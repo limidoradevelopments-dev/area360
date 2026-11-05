@@ -68,7 +68,7 @@
    * preloader leaves (HeroSection, motion.ts ENTRANCE) — no seam between
    * them; the scene's own darkest is ~16. Black until then; the frame's own
    * light band by band before 2026-10-20. */
-  --color-hero-ground: #111111;
+  --color-hero-ground: var(--color-night);
 
   /* Registered below as <length>, so getComputedStyle hands the engine a
    * resolved px value rather than an unevaluated calc(). */

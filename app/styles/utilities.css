@@ -17,7 +17,7 @@
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
-  background-size: 256px 256px;
+  background-size: var(--size-noise-tile) var(--size-noise-tile);
 }
 
 /* Glass: stark white at low opacity, heavy blur, 1px light inner edge. */
@@ -36,8 +36,8 @@
 [data-reveal-mask] {
   display: block;
   overflow: hidden;
-  padding-bottom: 0.08em;
-  margin-bottom: -0.08em;
+  padding-bottom: var(--space-reveal-descender);
+  margin-bottom: calc(var(--space-reveal-descender) * -1);
 }
 
 /* PRE-ENTRANCE STATE LIVES IN CSS, not in a gsap.set on mount. A set on mount
@@ -46,13 +46,13 @@
  * values with an explicit fromTo. */
 [data-reveal-line] {
   display: block;
-  transform: translateY(110%);
+  transform: translateY(var(--size-reveal-line-from));
 }
 
 /* A part whose lines DROP into their masks from above (ui/motion.ts
  * LINE_DROP) waits above them instead. */
 [data-reveal-drop] [data-reveal-line] {
-  transform: translateY(-110%);
+  transform: translateY(calc(var(--size-reveal-line-from) * -1));
 }
 
 [data-reveal-fade] {
@@ -69,8 +69,8 @@
 
 [data-reveal-card] {
   opacity: 0;
-  transform: translateY(1.5rem) scale(0.98);
-  filter: blur(8px);
+  transform: translateY(var(--space-reveal-card-from)) scale(var(--size-reveal-card-from));
+  filter: blur(var(--blur-reveal-card-from));
 }
 
 /* Without scripting nothing will ever run the entrance, so nothing may be

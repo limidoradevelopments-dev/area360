@@ -19,7 +19,8 @@ export const DOCK_MOTION = {
    * chrome, down the page; the dock is its foot, last (ui/stageCues.ts).
    * It comes DOWN into place, as every line over the hero does (the user,
    * 2026-10-30: "top to bottom"): the lift is negative, from above; its
-   * pre-state is settings.css's. */
+   * pre-state is settings.css's (--space-settings-lift, the same distance:
+   * the tween starts where the stylesheet holds it). */
   enterDelay: STAGE_CUES.chrome.foot,
   enterSeconds: 0.9,
   enterLiftRem: -0.75,

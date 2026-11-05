@@ -467,7 +467,7 @@
   top: calc(var(--promise-star-px) * -11);
   width: calc(var(--promise-star-px) * 59);
   height: calc(var(--promise-star-px) * 77);
-  fill: rgb(255 255 255);
+  fill: var(--color-on-night);
   opacity: 0.5;
 }
 

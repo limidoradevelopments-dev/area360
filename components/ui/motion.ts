@@ -36,7 +36,10 @@ export const PRESS_DURATION_MS = 180;
 /**
  * Card entrance: float up slightly, scale 0.98 → 1, blur drops away. The
  * blur is cheap on a card-sized layer and expensive on a full-viewport one —
- * never apply this to a section-sized element.
+ * never apply this to a section-sized element. Its pre-state is the
+ * stylesheet's (tokens.css --space-reveal-card-from, --size-reveal-card-from,
+ * --blur-reveal-card-from): the same values, so the tween starts where the
+ * server's first paint holds the card.
  */
 export const CARD_ENTRANCE = {
   fromY: "1.5rem",
@@ -46,7 +49,9 @@ export const CARD_ENTRANCE = {
   stagger: 0.1,
 } as const;
 
-/** Masked line reveal: the line slides up out of its own overflow boundary. */
+/** Masked line reveal: the line slides up out of its own overflow boundary.
+ *  Its pre-state is the stylesheet's (tokens.css --size-reveal-line-from:
+ *  the same share). */
 export const LINE_ENTRANCE = {
   fromYPercent: 110,
   seconds: 1.0,

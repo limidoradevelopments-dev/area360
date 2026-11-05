@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "backdrop": "python scripts/hero-plates/backdrop.py",
     "mist": "python scripts/hero-plates/mist.py",
-    "still": "python scripts/hero-plates/still.py"
+    "still": "python scripts/hero-plates/still.py",
+    "lost-plate": "node scripts/lost/plate.mjs",
+    "lost-still": "node scripts/lost/still.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

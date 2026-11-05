@@ -14,7 +14,7 @@
 :root {
   --preloader-unit: 1rem;
 
-  --color-preloader-ground: #111111;
+  --color-preloader-ground: var(--color-night);
   --color-preloader-ink: #585858;
   /* The axis: the ink at 83% in its middle third, thinning to 15% at its
    * ends (the frame's line, read down its length). */
@@ -54,7 +54,7 @@
   /* 19px */
   --space-preloader-count: calc(var(--preloader-unit) * 1.18);
   /* 19px */
-  --tracking-preloader-count: -0.06em;
+  --tracking-preloader-count: var(--tracking-display);
 
   /* ── The words ──
    * A word's box is 1.25 of its size, its baseline 0.94 down it (Cormorant
@@ -70,7 +70,7 @@
   /* -51px */
   --text-preloader-a: calc(var(--preloader-unit) * 2);
   /* 32px */
-  --tracking-preloader-a: -0.06em;
+  --tracking-preloader-a: var(--tracking-display);
 
   /* Meaningful, italic, small. */
   --space-preloader-b-x: calc(var(--preloader-unit) * 5.548);
@@ -79,7 +79,7 @@
   /* -21px */
   --text-preloader-b: calc(var(--preloader-unit) * 1.1875);
   /* 19px */
-  --tracking-preloader-b: -0.06em;
+  --tracking-preloader-b: var(--tracking-display);
 
   /* Designing. */
   --space-preloader-c-x: calc(var(--preloader-unit) * 0.95);
@@ -88,7 +88,7 @@
   /* 7px */
   --text-preloader-c: calc(var(--preloader-unit) * 2);
   /* 32px */
-  --tracking-preloader-c: -0.06em;
+  --tracking-preloader-c: var(--tracking-display);
 
   /* Meaningful, italic, faint. */
   --space-preloader-d-x: calc(var(--preloader-unit) * 0.565);
@@ -97,7 +97,7 @@
   /* 35px */
   --text-preloader-d: calc(var(--preloader-unit) * 1.5);
   /* 24px */
-  --tracking-preloader-d: -0.06em;
+  --tracking-preloader-d: var(--tracking-display);
 
   /* Perfection, against the axis. */
   --space-preloader-e-x: calc(var(--preloader-unit) * 0.103);

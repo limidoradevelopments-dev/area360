@@ -35,11 +35,11 @@
   /* Where the mark sits against the top line the clock and nav share. */
   --space-header-mark-y: 0px;
 
-  --text-header: calc(var(--header-unit) * 0.625);
-  /* 10px: the clock and its zone, supporting words */
-  --text-header-nav: calc(var(--header-unit) * 0.75);
-  /* 12px: the nav, the one thing here to press */
-  --leading-header: 1.43;
+  /* The site's voices (tokens.css): the clock and its zone the supporting
+   * words (10px), the nav the UI (12px: the one thing here to press). */
+  --text-header: var(--text-support);
+  --text-header-nav: var(--text-ui);
+  --leading-header: var(--leading-support);
 
   /* The clock: the time in its box, the zone under it. The box holds the
    * proportion the frame drew round its 12px time (65px wide), brought down
@@ -241,8 +241,8 @@
 
 [data-header-mark]:focus-visible,
 [data-header-link]:focus-visible {
-  outline: var(--size-rule) solid var(--color-on-night-muted);
-  outline-offset: 2px;
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
 }
 
 /* Phone: four columns; the clock on the second, the nav on the last. */

@@ -8,6 +8,8 @@
  * these are consumed through var() in inline styles and arbitrary values,
  * which the class scanner cannot see.
  *
+ * NOTHING THAT IS SHARED IS WRITTEN TWICE: a value two features use lives
+ * here once and both read it (AGENTS.md, "Reusable values"). *
  * THE ONE-UNIT RULE (for feature stylesheets). Each component gets ONE unit
  * and derives every measurement from it with calc(). Authoring convention:
  * the multiplier is the Figma pixel value divided by 16, so at full scale the
@@ -66,6 +68,40 @@
   --tracking-copy: -0.01em;
   --color-copy: var(--color-on-night-soft);
 
+  /* ── The site's other voices ──
+   * EVERY SIZE OF TYPE THE SITE SPEAKS IN IS ONE OF THESE (2026-11-05, the
+   * user: "every reusable thing needs to reuse"): a feature names its own
+   * token for a part (--text-<feature>-<part>) and points it at a voice
+   * here; it never writes the size again. A size of its own is only for
+   * type no other part shares (the preloader's words, the intro's display).
+   *
+   * THE TITLE: the hero's headline, and every section's heading after it
+   * (the 404's) — Cormorant semibold italic at 30px (24 on a phone), the
+   * user's leading, at the frames' display tracking. */
+  --text-title: 1.875rem;
+  /* 30px */
+  --leading-title: 1.13;
+  --tracking-display: -0.06em;
+  /* about −6%: the user's frames, for all display type */
+  --tracking-title: var(--tracking-display);
+  /* THE UI: the words that are controls — the nav, the dock's choices. */
+  --text-ui: 0.75rem;
+  /* 12px */
+  /* THE SUPPORT: every supporting word (the user's size, 2026-10-30) — the
+   * clock and its zone, the hero's notes, the dock's measure, the 404's
+   * strip — at the frames' leading for small Newsreader (17px at 12). */
+  --text-support: 0.625rem;
+  /* 10px */
+  --leading-support: 1.43;
+
+  /* ── Cormorant Garamond's metrics (em) ──
+   * Its ascent and descent, and the box they make: what a headline's first
+   * baseline and its last one's reach are worked out from (the hero's and
+   * the 404's), never written into a formula again. */
+  --font-cormorant-ascent: 0.924;
+  --font-cormorant-descent: 0.287;
+  --font-cormorant-box: 1.211;
+
   /* ── The grid ──
    * The page's columns: twelve, four on a phone (the user's 390 frame).
    * The margin and the gutter between them are theme.css's. A count, not a
@@ -102,14 +138,36 @@
   --blur-glass: 1.5rem;
 
   /* ── Technical label (the badge voice) ──
-   * Small uppercase Cormorant at wide tracking. 10px is the floor; never set
-   * technical type below it. */
-  --text-label: 0.625rem;
-  /* 10px */
+   * Small uppercase Cormorant at wide tracking, at the supporting size: 10px
+   * is the floor; never set technical type below it. */
+  --text-label: var(--text-support);
   --tracking-label: 0.22em;
+
+  /* ── Focus ──
+   * Every focusable thing on the night shows the same ring: a hairline of
+   * the muted white, a beat off the thing. A datum, like the rule: it never
+   * scales. */
+  --size-focus-offset: 2px;
+  --color-focus: var(--color-on-night-muted);
 
   /* ── Shared curve ── */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── The reveals' pre-entrance states (utilities.css) ──
+   * Where a line waits outside its mask (a share of its own height: the
+   * lines' entrance travels from it, ui/motion.ts LINE_ENTRANCE.fromYPercent
+   * and LINE_DROP), the room the mask gives its descenders, and where a card
+   * waits (ui/motion.ts CARD_ENTRANCE: the tween starts from the same). The
+   * stylesheet holds them so the server's first paint already has them. */
+  --size-reveal-line-from: 110%;
+  --space-reveal-descender: 0.08em;
+  --space-reveal-card-from: 1.5rem;
+  --size-reveal-card-from: 0.98;
+  --blur-reveal-card-from: 8px;
+
+  /* ── The paper's grain (utilities.css bg-noise): one tile of its SVG
+   * noise, drawn at its own size. ── */
+  --size-noise-tile: 256px;
 }
 
 /* Phone: the SHARED tokens that step down — the grid's, and the copy's
@@ -123,7 +181,10 @@
     --spacing-margin: 1rem;
     --spacing-gutter: 1rem;
     --grid-columns: 4;
-    /* The copy at the phone frame's 12px. */
+    /* The copy at the phone frame's 12px; the title at its 24px, on its
+     * leading (31.7px). */
     --text-copy: 0.75rem;
+    --text-title: 1.5rem;
+    --leading-title: 1.32;
   }
 }

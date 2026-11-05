@@ -1,0 +1,324 @@
+/* ─── 404 ───
+ *
+ * The user's frames (2026-11-05: 1920 desktop, 390 phone), in THE SITE'S
+ * OWN VOICES (the user: "our existing hero title font size and body text
+ * for the back to home, and 404 the supportive text size … variables for
+ * everything"):
+ *
+ *   THE HEADLINE   the site's title voice, the hero's headline's (tokens.css:
+ *                  its size, leading, tracking; the hero's white), at the bottom left on
+ *                  the margin (top left on a phone), its lines as each
+ *                  frame breaks them (LostTitle)
+ *   THE LINK       the site's reading voice (tokens.css: the copy), a
+ *                  hairline arrow before it sized from it, its middle on
+ *                  the frame's edge line; on a phone under the headline
+ *   THE STRIP      "404 Error" in the site's supporting voice (tokens.css:
+ *                  10px, the floor for technical type too), in two
+ *                  columns at the two edges of
+ *                  column 7 (a block at the right margin on a phone),
+ *                  white at a quarter, falling
+ *
+ * Only what the frames add is this page's own: the gaps between those,
+ * the strip's pitch and width, and the dead flowers' colours. THE GROUND
+ * is the site's black: the scene comes up out of it. NEVER TAKES THE
+ * POINTER but for the link: the scene reads the hand through the words. */
+:root {
+  --lost-unit: 1rem;
+
+  /* ── The headline: the site's title voice ── */
+  --text-lost-title: var(--text-title);
+  --leading-lost-title: var(--leading-title);
+  --tracking-lost-title: var(--tracking-title);
+  --color-lost-title: var(--color-hero-title);
+  /* From its last baseline to the link's middle: the frame's. */
+  --space-lost-title-gap: calc(var(--lost-unit) * 2.4375);
+  /* 39px */
+  /* How far the headline's line box reaches below its last baseline:
+   * Cormorant Garamond's descent, plus half of what the leading adds to
+   * its box (tokens.css: its metrics; as the hero's headline, copy.css). */
+  --space-lost-title-foot: calc(var(--text-lost-title) * (var(--font-cormorant-descent) + (var(--leading-lost-title) - var(--font-cormorant-box)) / 2));
+
+  /* ── The link: the site's reading voice ── */
+  --text-lost-link: var(--text-copy);
+  --leading-lost-link: var(--leading-copy);
+  --tracking-lost-link: var(--tracking-copy);
+  --color-lost-link: var(--color-copy);
+  --size-lost-link-line: calc(var(--text-lost-link) * var(--leading-lost-link));
+  /* The arrow's box from the words it leads: Lucide's arrow is 20 of its
+   * 24 across, so a box 1.2 of the text draws an arrow its size; the gap
+   * three quarters of it (the frame's 14px and 10.5px at 14px). */
+  --size-lost-arrow: calc(var(--text-lost-link) * 1.2);
+  --space-lost-arrow-gap: calc(var(--text-lost-link) * 0.75);
+
+  /* ── The strip: the supporting words ── */
+  --text-lost-strip: var(--text-support);
+  /* Its pitch from its own size: the frame's 37px at 10px. */
+  --leading-lost-strip: calc(var(--text-lost-strip) * 3.7);
+  /* On a phone the frame's block, at the right margin (column 7 itself
+   * sizes it on a wider screen: below). */
+  --size-lost-strip: calc(var(--lost-unit) * 8.375);
+  /* 134px */
+  /* The frame's words over its fog: ~+30 levels at their strokes' cores. */
+  --color-lost-strip: color-mix(in srgb, var(--color-on-night) 26%, transparent);
+
+  /* ── What died: the hero's flowers' colours dried (scene/engine.ts reads
+   * them as the hero reads its own; the print is monochrome, so they print
+   * as their greys) ── */
+  --color-lost-petal: #A39785;
+  --color-lost-disc: #4A4032;
+  --color-lost-stem: #5C5A48;
+
+  --color-lost-ground: var(--color-night);
+}
+
+/* Tablet and small laptop: the same (the voices step down themselves). */
+@media (max-width: 1279.98px) {
+  :root {
+    --lost-unit: 1rem;
+  }
+}
+
+/* Phone: the user's 390 frame — the headline at the top: its first
+ * baseline's depth, and the last one's to the link's middle. */
+@media (max-width: 767.98px) {
+  :root {
+    --lost-unit: 1rem;
+    --space-lost-title-top: calc(var(--lost-unit) * 2.25);
+    /* 36px */
+    --space-lost-title-gap: calc(var(--lost-unit) * 2.0625);
+    /* 33px */
+  }
+}
+
+/* Over the 404, the whole page is its black: an overscroll shows ground,
+ * never the site's paper. */
+:root:has([data-lost]) {
+  background: var(--color-lost-ground);
+}
+
+[data-lost] {
+  position: relative;
+  height: 100svh;
+  overflow: clip;
+  isolation: isolate;
+  background: var(--color-lost-ground);
+}
+
+/* ── The scene ── */
+[data-lost-stage] {
+  position: absolute;
+  inset: 0;
+}
+
+[data-lost-canvas] {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Up out of the black once its first frame exists (RuinStage). */
+  opacity: 0;
+}
+
+[data-lost-canvas][data-lit] {
+  opacity: 1;
+}
+
+/* The still: only where there is no scene, and fetched only then (lazy,
+ * undisplayed). Placed as the hero's camera frames it, about its horizon:
+ * the wide one's and the phone crop's, set on the picture from the camera
+ * itself (LostStill: hero/stage/camera.ts CAMERA), never restated here. */
+[data-lost-still] {
+  display: none;
+}
+
+[data-lost-still] img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% var(--size-lost-still-wide);
+}
+
+@media (max-aspect-ratio: 4/5) {
+  [data-lost-still] img {
+    object-position: 50% var(--size-lost-still-upright);
+  }
+}
+
+[data-lost][data-lost-scene="still"] [data-lost-still] {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+[data-lost][data-lost-scene="still"] [data-lost-canvas] {
+  display: none;
+}
+
+@media (scripting: none) {
+  [data-lost-still] {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  [data-lost-canvas] {
+    display: none;
+  }
+
+  [data-lost-strip] {
+    opacity: 1 !important;
+  }
+}
+
+/* ── The words: the page's grid over the scene ── */
+[data-lost-words] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: 100%;
+  column-gap: var(--spacing-gutter);
+  padding-inline: var(--spacing-margin);
+  pointer-events: none;
+}
+
+/* The strip: from column 7's edge, the frame's column wide, top to
+ * bottom; its window clips, its run falls (NotFoundSection). Waits unseen
+ * until the words come. */
+[data-lost-strip] {
+  grid-column: 7 / span 1;
+  grid-row: 1;
+  min-width: max-content;
+  overflow: clip;
+  opacity: 0;
+}
+
+[data-lost][data-lost-arrived] [data-lost-strip] {
+  opacity: 1;
+}
+
+[data-lost-strip-run] {
+  display: flex;
+  justify-content: space-between;
+  /* The run's second copy fills the window until it falls. */
+  transform: translateY(-50%);
+  will-change: transform;
+}
+
+[data-lost-strip-column] {
+  white-space: pre;
+  color: var(--color-lost-strip);
+  font-size: var(--text-lost-strip);
+  line-height: var(--leading-lost-strip);
+}
+
+/* Between its two columns, never less than a word's space. */
+[data-lost-strip-run] {
+  column-gap: var(--leading-lost-strip);
+}
+
+/* The headline and its link: at the foot of the first six columns, the
+ * link's middle on the frame's edge line. */
+[data-lost-head] {
+  grid-column: 1 / span 6;
+  grid-row: 1;
+  align-self: end;
+  padding-bottom: calc(var(--space-edge-y) - var(--size-lost-link-line) / 2);
+}
+
+[data-lost-title] {
+  margin: 0 0 calc(var(--space-lost-title-gap) - var(--space-lost-title-foot) - var(--size-lost-link-line) / 2);
+  color: var(--color-lost-title);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: var(--text-lost-title);
+  line-height: var(--leading-lost-title);
+  letter-spacing: var(--tracking-lost-title);
+}
+
+[data-lost-lines] {
+  display: block;
+}
+
+[data-lost-lines="narrow"] {
+  display: none;
+}
+
+/* A flex box, not an inline one: on its parent's line an inline box sat on
+ * a baseline with the line's own descent under it, 9px above the edge. */
+[data-lost-link] {
+  display: flex;
+  width: max-content;
+  color: var(--color-lost-link);
+  font-size: var(--text-lost-link);
+  line-height: var(--leading-lost-link);
+  letter-spacing: var(--tracking-lost-link);
+  pointer-events: auto;
+  transition: color 0.18s var(--ease-out-soft);
+}
+
+[data-lost-link] [data-reveal-line] {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lost-arrow-gap);
+}
+
+[data-lost-arrow] {
+  width: var(--size-lost-arrow);
+  height: var(--size-lost-arrow);
+  flex: none;
+  /* Lucide draws its arrow from 2 of 24 in: the line starts on the margin. */
+  margin-left: calc(var(--size-lost-arrow) * -2 / 24);
+  transition: transform 0.32s var(--ease-out-soft);
+}
+
+/* The way home leans the way it points. */
+[data-lost-link]:hover,
+[data-lost-link]:focus-visible {
+  color: var(--color-lost-title);
+}
+
+[data-lost-link]:hover [data-lost-arrow],
+[data-lost-link]:focus-visible [data-lost-arrow] {
+  transform: translateX(calc(var(--size-lost-arrow) * -0.25));
+}
+
+[data-lost-link]:focus-visible {
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
+}
+
+/* Phone: the user's 390 frame — four columns; the headline and its link
+ * at the top left, the strip at the right margin. */
+@media (max-width: 767.98px) {
+  [data-lost-words] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  [data-lost-strip] {
+    grid-column: 1 / -1;
+    justify-self: end;
+    width: var(--size-lost-strip);
+  }
+
+  [data-lost-head] {
+    grid-column: 1 / span 3;
+    align-self: start;
+    /* The first baseline at the frame's depth: the line box's top is the
+     * baseline less Cormorant's ascent and half of what the leading adds
+     * to its box (tokens.css: its metrics). */
+    padding-top: calc(var(--space-lost-title-top) - var(--text-lost-title) * (var(--font-cormorant-ascent) + (var(--leading-lost-title) - var(--font-cormorant-box)) / 2));
+    padding-bottom: 0;
+  }
+
+  [data-lost-lines="wide"] {
+    display: none;
+  }
+
+  [data-lost-lines="narrow"] {
+    display: block;
+  }
+}
