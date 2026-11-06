@@ -356,6 +356,8 @@ function describe(gl: WebGL2RenderingContext, internalFormat: GLenum) {
       return { format: gl.RGBA, type: gl.HALF_FLOAT };
     case gl.R16F:
       return { format: gl.RED, type: gl.HALF_FLOAT };
+    case gl.RG16F:
+      return { format: gl.RG, type: gl.HALF_FLOAT };
     case gl.RGBA32UI:
       return { format: gl.RGBA_INTEGER, type: gl.UNSIGNED_INT };
     case gl.R8:

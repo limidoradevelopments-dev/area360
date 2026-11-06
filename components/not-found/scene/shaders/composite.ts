@@ -35,7 +35,7 @@ export const COMPOSITE_UNIFORMS = [
   "uFrame", "uPlate", "uPlateSpan", "uSet", "uSetRect", "uSetScale", "uSetTexels", "uMirrorImage", "uMirrorRect",
   "uMirrorScale", "uMirrorTexels", "uGrainSeed", "uGrain", "uCssPerPx", "uTone", "uFogLight", "uWaterBase", "uRings",
   "uWaterBody", "uWaterR0", "uWaves", "uWaterTime", "uWaterGain", "uWaterSmear", "uCatsPaws", "uWind",
-  "uWaterClarity", "uSubjectWaver", "uMinElevation", "uLaps", "uLapFade",
+  "uWaterClarity", "uSubjectWaver", "uMinElevation", "uLaps", "uReturns", "uLapFade",
   "uStonePlan", "uStoneSpan", "uStoneAlbedo", "uStoneLight", "uLightSide", "uStoneFoot", "uStoneSheen",
   "uStoneGrain", "uStoneFine", "uStoneWeather", "uStoneLichen", "uStoneWear", "uStoneWater", "uStoneUnder",
   "uStoneMeniscus", "uSubjectDepth", "uStoneNoise",

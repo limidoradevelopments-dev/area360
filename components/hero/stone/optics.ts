@@ -43,10 +43,26 @@ export const STONE = {
    * light overhead, so the face away from the open lake gets a little more
    * of it than the design gave — the two faces nearer each other, the top
    * still the brightest. Printed on the afternoon paper: top ~120, faces
-   * ~47 and ~37.
+   * ~47 and ~37. Since 2026-11-06 the shaded face in the fog's light
+   * (below) and the air's glow over the stone (stage/optics.ts FILM.wrap):
+   * at 1440 the faces ~49 and ~47, the top ~127 against the fog's ~125.
    */
-  /* the user's own values, 2026-10-20 (tuner). */
-  light: { top: 0.83, sideAway: 0.185, sideToward: 0.555 },
+  /* `top`, `sideToward`: the user's own values, 2026-10-20 (tuner).
+   * THE SHADED FACE IN FOG'S LIGHT (2026-11-06, the user: the forest and
+   * lake are lit softly by the fog, the stone has dark faces — "it doesn't
+   * feel like the same atmospheric light is affecting both"). Inside a fog
+   * the light comes from nearly every way at once; what a face misses is
+   * only what it looks at that is darker than the fog. Integrated over the
+   * dome (a fog sky brighter overhead, as an overcast's is — under the
+   * CIE's overcast a wall takes ≤ 40% of what a roof does — the lake
+   * mirroring it by Fresnel, the banks as the photograph prints them, a
+   * fifth of the fog and less), the two faces take 0.36–0.42 of the top,
+   * the shaded one ~0.9 of the other: the near bank it looks at stands in
+   * sixty metres of fog itself. At 0.185 it took a third of the lit face's
+   * light, the fall of a lit day. Raised to 0.27, half of the lit face's —
+   * not the 0.9 fog gives, which lit both faces alike and the corner, the
+   * design's cube, went out (tried, 2026-11-06). */
+  light: { top: 0.83, sideAway: 0.27, sideToward: 0.555 },
   /** The light's side, as a direction on the water (x, z): the open lake
    *  and its sky lie to the left; the design lights the left face. */
   lightSide: [-1, 0] as const,
@@ -59,8 +75,13 @@ export const STONE = {
    * design's faces fall so: the lit one to 0.81 of its top, the shaded one
    * to 0.69.
    */
-  /* `away`, `toward`: the user's own values, 2026-10-20 (tuner). */
-  foot: { height: 0.54, away: 0.35, toward: 0.67 },
+  /* `toward`: the user's own value, 2026-10-20 (tuner). `away` 0.35 →
+   * 0.45 (2026-11-06, with `light.sideAway`): the right bank's reflections
+   * it looks onto are as fogged as the bank (sixty metres of it), not
+   * black; at 0.35 its foot printed as dark as the trees across the lake
+   * (~19 at 1440). Now its lower half ~32 (was ~28); the soaked band at
+   * the waterline stays as dark as the wet stone it is. */
+  foot: { height: 0.54, away: 0.45, toward: 0.67 },
   /**
    * SHEEN. Granite is a dielectric (reflectance 4% head-on), but weathered
    * it is rough — its feldspar etched, its surface crusted — and its

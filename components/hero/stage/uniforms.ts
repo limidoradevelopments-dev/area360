@@ -14,7 +14,8 @@
 import { MIST_MOTION } from "../atmosphere/motion";
 import { AERIAL, EXTINCTION, MIST, MIST_SEEN, OVER_PHOTO, SHEETS, SOFT_BLACK } from "../atmosphere/optics";
 import { STONE } from "../stone/optics";
-import { GRAVITY, LAPS, TENSION, WATER_MOTION, WAVES } from "../water/motion";
+import { GRAVITY, LAPS, RETURNS, TENSION, UNDULATION_HEIGHT, WATER_MOTION, WAVES } from "../water/motion";
+import type { HandRipples } from "../water/touch";
 import { WATER, WATER_R0, WATER_UNDER } from "../water/optics";
 import { CAMERA, treesShown, type CameraFrame } from "./camera";
 import type { StageParams } from "./engine";
@@ -40,6 +41,15 @@ export interface SetFrame {
   wisps: WebGLTexture | null;
   /** The stone's noise lattice (stone/noise.ts). */
   stoneNoise: WebGLTexture;
+  /** The hand's touches on the water (water/touch.ts); none where a page
+   *  does not take them (the 404). */
+  ripples?: HandRipples;
+  /** Their slope at the scene's pixels this frame (water/ripples.ts), or
+   *  null when none lives. */
+  handSlope?: WebGLTexture | null;
+  /** Where it was drawn this frame (uv: x0, y0, x1, y1): only there is it
+   *  this frame's. */
+  handArea?: Float32Array;
   plates: Plates;
   /** The fog sheets this frame (atmosphere/): density, and light. */
   density: WebGLTexture;
@@ -77,11 +87,18 @@ export const UNITS = {
   stoneNormals: 13,
   /** The stone's noise lattice (stone/noise.ts). */
   stoneNoise: 14,
+  /** The film's narrow blur for the air over the stone (engine.ts
+   *  drawFilm). The last of the sixteen WebGL2 promises every page. */
+  wrapGlow: 15,
+  /** The hand's ripples, for the lake's programs (water/ripples.ts): the
+   *  same unit, which the film pass never shares a draw with. */
+  handSlope: 15,
 } as const;
 
 /* The waves and the lapping, packed once; only their phases change. */
 const WAVE_DATA = new Float32Array(WAVES.flat());
 const LAP_DATA = new Float32Array(LAPS.flat());
+const RETURN_DATA = new Float32Array(RETURNS.flat());
 
 /* Each wave's angular speed (rad/s), by the dispersion relation of real
    water (water/motion.ts), ω² = g·k + (σ/ρ)·k³: once, here. Every pass that
@@ -90,6 +107,7 @@ const TAU = 2 * Math.PI;
 const dispersion = (k: number) => Math.sqrt(GRAVITY * k + TENSION * k * k * k);
 const WAVE_OMEGA = WAVES.map(([kx, kz]) => dispersion(Math.hypot(kx, kz)));
 const LAP_OMEGA = LAPS.map(([k]) => dispersion(k));
+const RETURN_OMEGA = RETURNS.map(([kx, kz]) => dispersion(Math.hypot(kx, kz)));
 let phasesAt = Number.NaN;
 
 /**
@@ -104,6 +122,7 @@ function phasesNow(time: number): void {
   phasesAt = time;
   for (let i = 0; i < WAVES.length; i += 1) WAVE_DATA[i * 4 + 3] = (WAVES[i][3] - WAVE_OMEGA[i] * time) % TAU;
   for (let i = 0; i < LAPS.length; i += 1) LAP_DATA[i * 3 + 2] = (LAPS[i][2] - LAP_OMEGA[i] * time) % TAU;
+  for (let i = 0; i < RETURNS.length; i += 1) RETURN_DATA[i * 4 + 3] = (RETURNS[i][3] - RETURN_OMEGA[i] * time) % TAU;
 }
 
 /* ── atmosphere/shaders/fog.ts ────────────────────────────────────────── */
@@ -184,7 +203,8 @@ export function setMistUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: SetF
 
 export const WATER_UNIFORMS = [
   "uWaterBody", "uWaterR0", "uWaves", "uWaterTime", "uWaterGain", "uCatsPaws", "uWind", "uWaterClarity",
-  "uSubjectWaver", "uMinElevation", "uLaps", "uLapFade", "uWaterSmear",
+  "uSubjectWaver", "uMinElevation", "uLaps", "uReturns", "uLapFade", "uWaterSmear",
+  "uHandSlope", "uHandArea",
 ] as const;
 
 export function setWaterUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: SetFrame): void {
@@ -208,7 +228,17 @@ export function setWaterUniforms(gl: WebGL2RenderingContext, u: Uniforms, f: Set
   gl.uniform1f(u.uSubjectWaver, p.waver);
   gl.uniform1f(u.uMinElevation, WATER.minElevation);
   gl.uniform3fv(u.uLaps, LAP_DATA);
-  gl.uniform2f(u.uLapFade, WATER_MOTION.lapping.reach, p.lapping);
+  gl.uniform4fv(u.uReturns, RETURN_DATA);
+  /* The undulation sets the wavelets' rhythm only while it moves at all. */
+  const lap = WATER_MOTION.lapping;
+  gl.uniform4f(u.uLapFade, lap.reach, p.lapping, lap.returns.lee, p.undulation > 0 ? lap.returns.swell * UNDULATION_HEIGHT : 0);
+  /* The hand's ripples, where their pass drew them (water/ripples.ts). */
+  if (f.handSlope && f.handArea) {
+    gl.uniform4fv(u.uHandArea, f.handArea);
+    if (u.uHandSlope) bindTexture(gl, u.uHandSlope, UNITS.handSlope, f.handSlope);
+  } else {
+    gl.uniform4f(u.uHandArea, 0, 0, 0, 0);
+  }
 }
 
 /* ── stone/shaders/stone.ts ───────────────────────────────────────────── */

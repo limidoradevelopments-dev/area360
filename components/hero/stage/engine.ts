@@ -39,9 +39,11 @@ import { STONE } from "../stone/optics";
 import { createStoneNoise } from "../stone/noise";
 import { SLOT_UNIFORMS, StonePass } from "../stone/stone";
 import { LakePass } from "../water/lake";
+import { RipplePass } from "../water/ripples";
 import { OpenWaterPass } from "../water/open";
-import { WATER_MOTION } from "../water/motion";
+import { HAND_RIPPLES, WATER_MOTION } from "../water/motion";
 import { WATER } from "../water/optics";
+import { crossesPlan, HandRipples } from "../water/touch";
 import { StillnessClock } from "../weather/clock";
 import { STILLNESS } from "../weather/motion";
 import { RainPass } from "../weather/rain";
@@ -122,6 +124,9 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   diffusion: number;
   /** Bright air spilling over the photograph's dark edges (FILM.halation). */
   halation: number;
+  /** The same over the stone and its reflection, as a gain (1 = designed:
+   *  FILM.wrap). */
+  stoneWrap: number;
   /** Fog thickened in front of the near bank's darkest trees (SOFT_BLACK.amount). */
   softBlack: number;
   /** The photograph's own haze taken back, optical depth (CLARITY.amount). */
@@ -153,6 +158,9 @@ export interface StageParams extends AirParams, HandGains, FogLook, SwayParams {
   waver: number;
   /** The lake lapping at the stone, as a gain (1 = designed: water/motion.ts lapping). */
   lapping: number;
+  /** The hand's ripples on the water, as a gain (1 = designed:
+   *  water/motion.ts HAND_RIPPLES). */
+  touch: number;
   /** The long exposure (water/motion.ts exposure): how much of the
    *  undulation and ripples it averages (0 = the lake of before), and the
    *  smear it leaves, 1 = their own slope. */
@@ -230,6 +238,7 @@ export function defaultParams(): StageParams {
     regrade: 0.92,
     diffusion: FILM.diffusion.amount,
     halation: FILM.halation,
+    stoneWrap: 1,
     softBlack: SOFT_BLACK.amount,
     clarity: CLARITY.amount,
     spread: FILM.diffusion.spread,
@@ -254,6 +263,7 @@ export function defaultParams(): StageParams {
     ripples: WATER_MOTION.ripples.gain,
     waver: WATER.waver,
     lapping: 0.95,
+    touch: 1,
     longExposure: WATER_MOTION.exposure.averaged,
     smear: WATER_MOTION.exposure.smear,
     paws: WATER_MOTION.catsPaws.coverage,
@@ -499,7 +509,15 @@ class Stage implements StageEngine {
   private readonly atmosphere: Atmosphere;
   private readonly bloom: BloomPass;
   private readonly stone: StonePass;
+  /* Where the stone can show, for the film's air over it (drawFilm). */
+  private readonly stoneBox = new Float32Array(4);
+  /* The hand's touches on the water (water/touch.ts), and the camera they
+     are found through: the last frame's. */
+  private readonly ripples = new HandRipples();
+  private seenCamera: CameraFrame | null = null;
   private readonly lake: LakePass;
+  /* The hand's ripples on the water, their own pass (water/ripples.ts). */
+  private readonly hand: RipplePass;
   private readonly water: OpenWaterPass;
   private readonly rain: RainPass;
   /* The steam's patches, drifting through the low mist (atmosphere/wisps.ts):
@@ -660,6 +678,7 @@ class Stage implements StageEngine {
     ]);
     this.water = new OpenWaterPass(gl, vao);
     this.lake = new LakePass(gl, vao);
+    this.hand = new RipplePass(gl, vao);
     this.stone = new StonePass(gl, vao);
     this.atmosphere = new Atmosphere(gl, vao);
     this.bloom = new BloomPass(gl, vao, this.params.bloomSeed);
@@ -668,6 +687,7 @@ class Stage implements StageEngine {
     this.stoneNoise = createStoneNoise(gl);
     this.film = createProgram(gl, FILM_FRAG, [
       ...CAMERA_UNIFORMS, "uFlowerPrint", "uFlowerTone", "uFlowerBox", "uClothPrint", "uClothBox", "uFlowerAir",
+      "uStoneWrap", "uWrapGlow", "uStoneBox", "uStonePlan", "uStoneSpan",
       "uScene", "uGlow", "uDiffusion", "uHalation", "uUpscale", "uPlate", "uBackdropDepth", "uPlateGeo", "uPlateAxis",
       "uBackdropNearest", "uExposure", "uPrint", "uKnee", "uUnprint", "uFoot", "uVignette", "uPaper", "uRegrade", "uGrain",
       "uBloomFine", "uBloomCoarse", "uBloomFineRect", "uBloomCoarseRect", "uSceneSize", "uBloomHalo", "uBloomHaloRect", "uBloomHaloSize",
@@ -1134,6 +1154,7 @@ class Stage implements StageEngine {
     this.bloom.dispose();
     this.stone.dispose();
     this.lake.dispose();
+    this.hand.dispose();
     this.water.dispose();
     this.rain.dispose();
     if (this.wisps) gl.deleteTexture(this.wisps);
@@ -1184,6 +1205,7 @@ class Stage implements StageEngine {
     this.bloom.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h, this.cssW, this.cssH, w, h, this.tier < RENDER.tiers.length - 1);
     this.stone.resize();
     this.lake.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
+    this.hand.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
     this.water.resize(this.sceneTarget?.width ?? w, this.sceneTarget?.height ?? h);
 
     const volumeW = Math.max(1, Math.round(Math.min(this.cssW * VOLUME.scale, VOLUME.maxWidth) * tier.volumeScale));
@@ -1383,6 +1405,7 @@ class Stage implements StageEngine {
   private render(): void {
     if (!this.plates || this.lost) return;
     const camera = this.camera.pose([this.cssW, this.cssH], this.params);
+    this.seenCamera = camera;
     this.atmosphere.render(camera, this.params, this.reduced);
     this.drawSet(camera);
     /* The diffusion redrawn every `glowEvery` frames (RENDER.tiers), and
@@ -1413,6 +1436,7 @@ class Stage implements StageEngine {
       mistTime: 0,
       wisps: this.wisps,
       stoneNoise: this.stoneNoise,
+      ripples: this.ripples,
       plates,
       density,
       light,
@@ -1420,6 +1444,8 @@ class Stage implements StageEngine {
       width: 1,
       height: 1,
     });
+    /* The hand's touches on the water, aged to this frame. */
+    this.ripples.frame(this.waterTime);
     f.camera = camera;
     f.colors = this.colors;
     f.waterTime = this.waterTime;
@@ -1442,6 +1468,10 @@ class Stage implements StageEngine {
     this.drawBloom(camera);
     const f = this.frameOfSet(camera);
     if (!f) return;
+    /* The hand's ripples first: the stone's mirror, the lake and the open
+       water all read them (water/ripples.ts). */
+    f.handSlope = this.hand.render(f);
+    f.handArea = this.hand.area;
     this.stone.render(f);
     this.lake.render(f);
     const p = this.params;
@@ -1564,6 +1594,15 @@ class Stage implements StageEngine {
     bindTexture(gl, u.uGlow, 1, glow.tex);
     gl.uniform1f(u.uDiffusion, p.diffusion);
     gl.uniform1f(u.uHalation, p.halation);
+    /* The stone in the same air: its block, to know where it shows. */
+    const wrap = FILM.wrap;
+    gl.uniform4f(u.uStoneWrap, wrap.fringe * p.stoneWrap, wrap.veil * p.stoneWrap, wrap.grow, wrap.growInLake);
+    gl.uniform4f(u.uStonePlan, STONE.center[0], STONE.center[1], STONE.plan.across, STONE.plan.along);
+    gl.uniform2f(u.uStoneSpan, -STONE.depth, STONE.top);
+    gl.uniform4fv(u.uStoneBox, this.stone.extent(scene.width, scene.height, this.stoneBox));
+    /* The fringe's narrow blur: the diffusion's quarter level (drawGlow). */
+    const narrow = this.glowDown[Math.min(1, this.glowDown.length - 1)];
+    bindTexture(gl, u.uWrapGlow, UNITS.wrapGlow, narrow.tex);
     gl.uniform1f(u.uUpscale, this.upscale);
     setPlateUniforms(gl, u, camera, plates);
     gl.uniform1f(u.uExposure, p.exposure);
@@ -1710,6 +1749,46 @@ class Stage implements StageEngine {
       this.camera.lean((at[0] / this.cssW) * 2 - 1, 1 - (at[1] / this.cssH) * 2);
     }
     this.atmosphere.pointerMove(at?.[0] ?? null, at?.[1] ?? null, pointerType);
+    /* THE HAND ON THE WATER (water/motion.ts HAND_RIPPLES): mouse and pen
+       only, never under reduced motion. */
+    if (at && pointerType !== "touch" && !this.reduced) this.touchWater(at[0], at[1]);
+    else this.ripples.lift();
+  }
+
+  /**
+   * Where the pointer's ray (frame CSS px) meets the lake, a touch — unless
+   * the ray rises, reaches past HAND_RIPPLES.farthest, or meets the stone
+   * first (the stretch of it under the stone's top passes through its
+   * plan). Through the camera of the last frame drawn: the one the visitor
+   * is looking through.
+   */
+  private touchWater(x: number, y: number): void {
+    const c = this.seenCamera;
+    if (!c) return;
+    const r = c.rotation;
+    const cx = (x / this.cssW - c.center[0]) * c.view[0];
+    const cy = (1 - y / this.cssH - c.center[1]) * c.view[1];
+    const dx = r[0] * cx + r[3] * cy + r[6] * c.focal;
+    const dy = r[1] * cx + r[4] * cy + r[7] * c.focal;
+    const dz = r[2] * cx + r[5] * cy + r[8] * c.focal;
+    const [ox, oy, oz] = c.position;
+    if (dy >= 0 || oy <= 0) {
+      this.ripples.lift();
+      return;
+    }
+    const t = oy / -dy;
+    const wx = ox + dx * t;
+    const wz = oz + dz * t;
+    /* Below the stone's top the ray is inside its height: from there to
+       the water it must not cross its plan. */
+    const below = Math.max(0, 1 - STONE.top / oy);
+    const [sx, sz] = STONE.center;
+    const blocked = crossesPlan(ox + dx * t * below - sx, oz + dz * t * below - sz, wx - sx, wz - sz);
+    if (wz - oz > HAND_RIPPLES.farthest || blocked) {
+      this.ripples.lift();
+      return;
+    }
+    this.ripples.move(wx, wz, x, y, this.waterTime, performance.now());
   }
 
   pointerUp(): void {
@@ -1720,6 +1799,7 @@ class Stage implements StageEngine {
     this.camera.centre();
     this.lastPointer = null;
     this.atmosphere.pointerLeave();
+    this.ripples.lift();
   }
 
   activity(): void {

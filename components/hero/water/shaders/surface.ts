@@ -10,7 +10,17 @@
  *
  * Needs WATER_GLSL and STONE_GLSL before it.
  */
+
 export const SURFACE_GLSL = /* glsl */ `
+/* THE HAND ON THE WATER (water/motion.ts HAND_RIPPLES), drawn by its own
+   pass at the scene's pixels (water/ripples.ts): its slope where a camera
+   ray meets the water, read only inside the rect the pass drew this frame
+   (uv: x0, y0, x1, y1; empty, all 0, when none lives — what lies outside
+   it is an older frame's) — the three programs that draw the lake read
+   it, none works it out. */
+uniform sampler2D uHandSlope;
+uniform vec4 uHandArea;
+
 struct LakeSurface {
   /* where the ray meets the water (y = 0), and the ray, normalised */
   vec3 surface;
@@ -43,12 +53,22 @@ LakeSurface lakeSurface(vec3 origin, vec3 ray, float zWater, vec2 sigma) {
      drawn from them (below). */
   vec3 lakeTilt = reflect(d, n);
   vec2 lakeRoughness = roughness;
-  /* The lake laps at the stone: small wavelets thrown back off its faces,
-     dying within half a metre (water/motion.ts lapping). */
+  /* The lake laps at the stone: its short waves thrown back off the faces
+     they run into, dying within half a metre (water/motion.ts lapping). */
   vec2 away;
   float fromStone = stoneWaterline(surface.xz, away);
   vec3 tilted = n / n.y;
-  tilted.xz -= lapSlope(fromStone, away, sigma, roughness);
+  tilted.xz -= lapSlope(surface.xz, fromStone, away, sigma, roughness);
+  /* The hand's touches on the water, and the stone's echoes of them, where
+     its pass drew them: at this point's own pixel (the camera's
+     projection, written out: the 404's camera has no projectUv). */
+  if (uHandArea.z > uHandArea.x) {
+    vec3 c = transpose(uCamRot) * (surface - uCamPos);
+    vec2 at = c.xy / c.z * uFocal / uView + uCenter;
+    if (all(greaterThanEqual(at, uHandArea.xy)) && all(lessThan(at, uHandArea.zw))) {
+      tilted.xz -= textureLod(uHandSlope, at, 0.0).rg;
+    }
+  }
   n = normalize(tilted);
   vec3 r = reflect(d, n);
   r.y = max(r.y, uMinElevation * -d.y);

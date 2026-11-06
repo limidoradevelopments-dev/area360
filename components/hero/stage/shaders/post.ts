@@ -14,6 +14,7 @@
  *                the print and the grain
  */
 
+import { STONE_SHAPE_GLSL } from "../../stone/shaders/stone";
 import { BACKDROP_GLSL } from "./backdrop";
 import { CAMERA_GLSL } from "./camera";
 import { FILM_GLSL, PRINT_GLSL } from "./film";
@@ -83,6 +84,34 @@ ${CAMERA_GLSL}
 ${FILM_GLSL}
 ${BACKDROP_GLSL}
 ${PRINT_GLSL}
+${STONE_SHAPE_GLSL}
+
+/* The bright air spilling over the stone and its reflection (stage/
+   optics.ts FILM.wrap): its fringe at their edges, read from a narrow
+   level of the diffusion (\`uWrapGlow\`), and its veil over their whole dark,
+   from the diffusion itself; then how far round the block it is laid, as
+   the camera sees it and in the lake (m). */
+uniform sampler2D uWrapGlow;
+uniform vec4 uStoneWrap;
+/* where the stone and its reflection can show (shares of the frame: x0, y0,
+   x1, y1; stone/stone.ts extent): the test is made only there */
+uniform vec4 uStoneBox;
+
+/* Whether this pixel's ray passes the stone above the water, or its image
+   in the lake as a still mirror gives it — the block (stone/shaders/
+   stone.ts) grown a little, so its edge pixels are in, and in the lake
+   further, by what the moving water wavers it. The wrap is laid only
+   there: the lake's other reflections are the photograph's, its lens's
+   glare already in them. Grown, it can lay nothing on the air or the
+   water beside them: the wrap adds only where a pixel is darker than the
+   air round it, and beside a dark block the water and the fog are
+   lighter than that. */
+bool stoneShown(vec3 ray) {
+  if (nearStone(uCamPos, ray, uStoneWrap.z)) return true;
+  if (ray.y >= 0.0) return false;
+  vec3 at = uCamPos + ray * (uCamPos.y / -ray.y);
+  return nearStone(at, vec3(ray.x, -ray.y, ray.z), uStoneWrap.w);
+}
 
 /* the scene: linear light, and (alpha) how much of it is the photograph's
    light seen straight — d(light)/d(photograph) */
@@ -199,6 +228,20 @@ void main() {
      stands against lighter trees or the fog, a little of their light
      softens its edge — never the other way, which would grey the fog. */
   light += uHalation * clamp(straight, 0.0, 1.0) * max(glow - light, vec3(0.0));
+  /* THE STONE IN THE SAME AIR (stage/optics.ts FILM.wrap): the same law
+     over the stone and its reflection, which the stage draws with no lens
+     and no fog's glow of their own. */
+  if (uStoneWrap.x + uStoneWrap.y > 0.0 && all(greaterThanEqual(vUv, uStoneBox.xy)) && all(lessThanEqual(vUv, uStoneBox.zw))
+      && stoneShown(ray)) {
+    /* The fringe only where the air beside is far brighter than the pixel —
+       the silhouette, its reflection's edge: within the stone a dark fleck
+       or a pit is never more than ~1.25 of its neighbours under, and lifted
+       with the edges, its grain went flat. */
+    float near_ = textureLod(uWrapGlow, vUv, 0.0).r;
+    float own = max(dot(light, vec3(0.2126, 0.7152, 0.0722)), 1e-4);
+    float edge = smoothstep(0.25, 0.8, near_ / own - 1.0);
+    light += uStoneWrap.x * edge * max(vec3(near_) - light, vec3(0.0)) + uStoneWrap.y * max(glow - light, vec3(0.0));
+  }
 
   /* THE FLOWERS, PRINTED ON THEIR OWN (bloom/optics.ts BLOOM.print). Lit
      as they truly are, their whites carry about the fog's own light, and

@@ -157,6 +157,27 @@ export class StonePass {
     this.draw(this.mirror, f);
   }
 
+  /**
+   * Where the stone and its reflection can show this frame, as shares of
+   * the frame (x0, y0, x1, y1, y up): both rects together, generous as
+   * they are drawn. The film pass lays the air over the stone only inside
+   * it (stage/shaders/post.ts stoneShown): nothing else of the frame asks.
+   */
+  extent(width: number, height: number, out: Float32Array): Float32Array {
+    /* Empty (x0 > x1) until a rect is laid in; nothing allocated. */
+    out[0] = out[1] = 1;
+    out[2] = out[3] = 0;
+    for (let i = 0; i < 2; i += 1) {
+      const rect = i === 0 ? this.seen.rect : this.mirror.rect;
+      if (rect[2] === 0 || rect[3] === 0) continue;
+      out[0] = Math.min(out[0], rect[0] / width);
+      out[1] = Math.min(out[1], rect[1] / height);
+      out[2] = Math.max(out[2], (rect[0] + rect[2]) / width);
+      out[3] = Math.max(out[3], (rect[1] + rect[3]) / height);
+    }
+    return out;
+  }
+
   /** Hands the scene pass the slots (texture units from UNITS.stone). */
   bindScene(u: Uniforms): void {
     const gl = this.gl;

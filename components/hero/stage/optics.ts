@@ -163,6 +163,38 @@ export const FILM = {
   /* 0.14: the user's own values, 2026-10-20 (tuner). */
   halation: 0.14,
   /**
+   * THE STONE IN THE SAME AIR (2026-11-06, the user: the forest and the lake
+   * are lit softly by the fog, the stone has distinct edges and dark faces —
+   * "it doesn't feel like the same atmospheric light is affecting both").
+   * Measured at 1440: a spruce's edge against the fog falls over 3–6 px and
+   * keeps a pale fringe ~10 px into its dark; the stone's went from 31 to
+   * 88 in one pixel and kept none. The photograph carries what a camera in
+   * fog gives every dark thing against bright air — the fog's forward
+   * glow between the lens and it (the atmospheric point spread function:
+   * Narasimhan & Nayar, "Shedding Light on the Weather", CVPR 2003) and the
+   * lens's own veiling glare — and the stage drew the stone without
+   * either: a cut-out, as a CG element laid over a plate without its LIGHT
+   * WRAP is (the compositor's fix: the plate's blurred light laid back
+   * over the element's dark edge, bright side only). So the stone and its
+   * reflection take the halation's law too (post.ts), bright side only, in
+   * two widths: `fringe` × a narrow blur of the frame (the diffusion's
+   * quarter level, a few pixels: the trees' own fringe), spilling over
+   * their dark edges; and `veil` × the diffusion itself, a faint lift of
+   * the whole dark where the fog all round is brighter (the veiling glare:
+   * no black on camera is black). The diffusion alone, laid at any
+   * strength, lifted the faces evenly and left the edge as hard as before.
+   * Their shape stays sharp (STONE.edge 0, the user's): only light is
+   * added. Laid where the block shows, `grow` metres round it (its edge
+   * pixels), and `growInLake` round its reflection, whose edges the moving
+   * water wavers (post.ts stoneShown).
+   */
+  /* Measured at 1440 (the shaded face's silhouette): its edge falls over
+   * ~4 px with a fringe +10–25 levels, the trees' 3–6 px; the faces lifted
+   * ~2 levels by the veil; their grain within ~10% of before (the fringe
+   * held off it by a knee: post.ts). Past ~1.5 the stone reads hazed, a
+   * thing further away than it stands. */
+  wrap: { fringe: 0.7, veil: 0.12, grow: 0.02, growInLake: 0.1 },
+  /**
    * The print, in display values: midtones hold, shadows and highlights are
    * pushed by their own amounts, blended smoothly across the pivot; a toe
    * (film never reaches true black); and a SHOULDER above `knee` — the

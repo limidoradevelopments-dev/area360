@@ -18,7 +18,7 @@
  * angles.
  */
 
-import { LAPS, RIPPLES_DRAWN, SWELL_COUNT, UNDULATION_COUNT, WAVES } from "../motion";
+import { LAPS, RETURNS, RHYTHM_COUNT, RIPPLES_DRAWN, SWELL_COUNT, UNDULATION_COUNT, WAVES } from "../motion";
 
 export const WATER_GLSL = /* glsl */ `
 #define WAVE_COUNT ${WAVES.length}
@@ -26,6 +26,9 @@ export const WATER_GLSL = /* glsl */ `
 /* the swell and the undulation: everywhere, unlike the ripples */
 #define BROAD_COUNT ${SWELL_COUNT + UNDULATION_COUNT}
 #define LAP_COUNT ${LAPS.length}
+#define RETURN_COUNT ${RETURNS.length}
+/* the undulation's longest waves, whose height sets the lapping's rhythm */
+#define RHYTHM_COUNT ${RHYTHM_COUNT}
 
 /* the body of the lake (linear), reflectance at normal incidence */
 uniform vec3 uWaterBody;
@@ -56,11 +59,15 @@ uniform vec3 uWaterClarity;
 uniform float uSubjectWaver;
 /* the lowest a reflected ray may dip, as a share of its mirror elevation */
 uniform float uMinElevation;
-/* the lake lapping at the stone: wavenumber (rad/m), amplitude (m), phase
-   now (as the waves'); then how far it reaches (m) and its gain (1 =
-   designed) */
+/* the lake lapping at the stone: its rings — wavenumber (rad/m),
+   amplitude (m), phase now (as the waves') — and the lake's short waves it
+   throws back — wavenumber (rad/m, x and z), amplitude (m), phase now;
+   then how far they reach (m), their gain (1 = designed), the share a face
+   the returned waves leave keeps, and how far the undulation's height
+   lifts them (a share per metre of it) */
 uniform vec3 uLaps[LAP_COUNT];
-uniform vec2 uLapFade;
+uniform vec4 uReturns[RETURN_COUNT];
+uniform vec4 uLapFade;
 
 /* Where a ray meets the water, as a depth (metres); far away if it rises. */
 float waterDepth(vec3 origin, vec3 ray) {
@@ -129,10 +136,22 @@ vec3 waterNormal(vec2 p, vec2 sigma, out vec2 roughness, out vec2 smear) {
   return normalize(vec3(-slope.x, 1.0, -slope.y));
 }
 
-/* The lapping at a point \`d\` metres out from the stone's waterline,
-   \`away\` the unit direction out: its slope (x, z), filtered by the pixel's
-   footprint as the waves are, what is filtered out added to \`roughness\`. */
-vec2 lapSlope(float d, vec2 away, vec2 sigma, inout vec2 roughness) {
+/* The lapping at \`p\` (x, z on the water), \`d\` metres out from the stone's
+   waterline, \`away\` the unit direction out there: its slope (x, z),
+   filtered by the pixel's footprint as the waves are, what is filtered out
+   added to \`roughness\`. Two parts (water/motion.ts lapping):
+   THE RINGS, running out from the faces, alike all round — as they were.
+   THE LAKE'S WAVES THROWN BACK (lapping.returns). Each is one of the
+   lake's short waves, k, and the field the stone sends back
+   leaves its waterline with the wave's own phase there (a wall reflects a
+   wave whole): k's part along the wall kept, its part across it turned
+   outward. Off a face it runs into (k·n < 0) that is the mirror image,
+   k − 2(k·n)n, the two crossing in the wall's cross-hatch; past a face it
+   leaves, the wave going on out, at the lee's share. \`away\` is the
+   distance's own gradient — a face's normal before it, radial round a
+   corner — so a corner sends arcs and nothing is cut where the two meet.
+   One form for both: the outward turn is |k·n| − k·n. */
+vec2 lapSlope(vec2 p, float d, vec2 away, vec2 sigma, inout vec2 roughness) {
   float fade = uLapFade.y * exp(-d / uLapFade.x);
   vec2 slope = vec2(0.0);
   if (fade < 1e-3) return slope;
@@ -142,6 +161,31 @@ vec2 lapSlope(float d, vec2 away, vec2 sigma, inout vec2 roughness) {
     float seen = exp(-0.5 * dot(ks, ks));
     vec2 grad = w.y * fade * w.x * away;
     slope -= grad * sin(w.x * d + w.z) * seen;
+    roughness += 0.5 * grad * grad * (1.0 - seen * seen);
+  }
+  /* The undulation's height where this water meets the stone, over its
+     spread: short waves steepen on its crests and slacken in its troughs,
+     so each of its bands reaching the stone lifts them there. Never
+     reversed: past the trough's depth they are only gone. */
+  vec2 wall = p - away * d;
+  float height = 0.0;
+  for (int i = BROAD_COUNT - RHYTHM_COUNT; i < BROAD_COUNT; i++) {
+    vec4 w = uWaves[i];
+    height += w.z * cos(dot(w.xy, wall) + w.w);
+  }
+  float back = fade * max(1.0 + uLapFade.w * height, 0.0);
+  for (int i = 0; i < RETURN_COUNT; i++) {
+    vec4 w = uReturns[i];
+    float kn = dot(w.xy, away);
+    float turn = abs(kn) - kn;
+    vec2 k = w.xy + turn * away;
+    /* Whole off a face it meets, the lee's share past one it leaves:
+       eased between over the last 30° of grazing. */
+    float meets = mix(uLapFade.z, 1.0, smoothstep(0.0, 0.5, -kn * inversesqrt(dot(w.xy, w.xy))));
+    vec2 ks = k * sigma;
+    float seen = exp(-0.5 * dot(ks, ks));
+    vec2 grad = w.z * back * meets * k;
+    slope -= grad * sin(dot(w.xy, p) + w.w + turn * d) * seen;
     roughness += 0.5 * grad * grad * (1.0 - seen * seen);
   }
   return slope;
