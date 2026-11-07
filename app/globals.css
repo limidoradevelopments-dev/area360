@@ -37,6 +37,8 @@
 /* Over every section, in the page's corner. */
 @import "../components/settings/settings.css";
 @import "../components/not-found/not-found.css";
+/* A work's own page (app/works/[slug]). */
+@import "../components/work-detail/work-detail.css";
 
 /* The docs spell utilities in examples; keep the scanner out of them. */
 @source not "../AGENTS.md";

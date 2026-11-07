@@ -53,6 +53,17 @@
    * columns: 7 to 9 is columns 7 and 8). Its corner dots stand on them. */
   --grid-promise-block-start: 7;
   --grid-promise-block-end: 9;
+  /* THE MEASURE KEPT (2026-11-07, the user: the page's gutter went to 4px,
+   * and the copy's line breaks — its rhythm — must stay as they were):
+   * the copy is set to the width its block had at the gutter it was drawn
+   * with, 20px (16px on a phone). A block of s of N columns is s/N of the
+   * row less (N − s)/N of a gutter, so with a narrower gutter it widens by
+   * (that gutter − the page's) × (N − s)/N — taken back here, at the
+   * block's end (the start stays on the page's axis). Two of twelve:
+   * 10/12. Its end dots stand where the copy ends. */
+  --space-promise-measure-gutter: 1.25rem;
+  /* 20px */
+  --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 10 / 12);
 
   /* ── The copy ── the site's reading voice, as the hero's. */
   --text-promise: var(--text-copy);
@@ -124,6 +135,14 @@
    * covers, which the root scaler knows nothing about. Half a screen: the
    * dark arrives as a band rising with the section, not as its edge. */
   --size-promise-veil: 50svh;
+
+  /* ── Below the air ── how far the letters' canvas reaches past the
+   * section's end into the works: a share of the screen (svh), as the air
+   * layer is. At 45% they sank past the works' title and over the first
+   * row's top before they are gone. 90% (2026-11-07, the user: in front
+   * of the works' pictures, going slowly): they fall the length of the
+   * first row before they are gone. */
+  --size-promise-air-below: 90svh;
 }
 
 /* Tablet and small laptop: the copy takes four columns (7–10). At 768 that
@@ -132,6 +151,8 @@
   :root {
     --promise-unit: 1rem;
     --grid-promise-block-end: 11;
+    /* Four of twelve: 8/12. */
+    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 8 / 12);
   }
 }
 
@@ -145,6 +166,9 @@
     --promise-unit: 1rem;
     --grid-promise-block-start: 2;
     --grid-promise-block-end: 4;
+    /* The phone frame's 16px gutter; two of four: 2/4. */
+    --space-promise-measure-gutter: 1rem;
+    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 2 / 4);
     --space-promise-stage: calc(var(--promise-unit) * 3);
     /* 48px */
   }
@@ -224,10 +248,17 @@
   visibility: hidden;
 }
 
+/* THE CANVAS REACHES BELOW THE LAYER, INTO THE WORKS (2026-11-07, the
+ * user: the bloom's letters "fall into this works section and blurred
+ * disappear"): the layer's own box — a screen, and so when it is let go —
+ * is as it was; only its canvas hangs past its foot, over the works' top,
+ * where the letters go out of focus and out (assembly.ts, the shader's
+ * `sinking`). Painted over the works (the layer's z-index; the works
+ * stack nothing above it), never taking the pointer. */
 [data-promise-canvas] {
   display: block;
   width: 100%;
-  height: 100%;
+  height: calc(100% + var(--size-promise-air-below));
 }
 
 /* ── A passage ── the page's columns (a subgrid: one grid, not a copy of
@@ -287,6 +318,7 @@
 [data-promise-dot="block-end"] {
   grid-column: span 1 / var(--grid-promise-block-end);
   justify-self: end;
+  margin-right: var(--size-promise-measure-trim);
   box-shadow: var(--shadow-promise-corner-end);
 }
 
@@ -295,6 +327,7 @@
  * "remains" alone on its line before the pause. */
 [data-promise-text] {
   grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
+  margin-right: var(--size-promise-measure-trim);
   font-size: var(--text-promise);
   line-height: var(--leading-promise);
   letter-spacing: var(--tracking-promise);

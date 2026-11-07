@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
 
   /**
    * THE SHADERS SHIPPED WITHOUT THEIR COMMENTS (scripts/glsl-loader.cjs):
-   * about a fifth of the hero engine's script; the promise's letters' and
-   * the 404's scene's too.
+   * about a fifth of the hero engine's script; the promise's letters',
+   * the 404's scene's and the works' breath's too.
    * Production builds only — in development a shader's compile log should
    * point at the source as written.
    */
@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
       ? {
           rules: {
             "*.ts": {
-              condition: { path: /components\/(hero|promise|not-found)\/.*shaders\// },
+              condition: { path: /components\/(hero|promise|not-found|works)\/.*shaders\// },
               loaders: ["./scripts/glsl-loader.cjs"],
               as: "*.ts",
             },

@@ -32,7 +32,7 @@
 /* Grid & spacing — a SEPARATE, non-inline @theme block, on purpose.
  *
  * The ONLY two shared spacing tokens: every section's outer margin and its
- * column gutter. 30px / 20px at the 1440 origin, in rem so they ride the root
+ * column gutter. 30px / 4px at the 1440 origin, in rem so they ride the root
  * scaler. Generates the margin and gutter spacing utilities.
  *
  * NOT INLINE, because the phone block (tokens.css) overrides the margin. An
@@ -42,5 +42,7 @@
  * you intend to override in a media block belongs in this block. */
 @theme {
   --spacing-margin: 1.875rem;
-  --spacing-gutter: 1.25rem;
+  /* 4px, at every size (2026-11-07, the user: tighter again, "use 4px";
+   * it was 20px and 16 on a phone, then 8px the same day). */
+  --spacing-gutter: 0.25rem;
 }

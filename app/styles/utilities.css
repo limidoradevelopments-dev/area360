@@ -20,6 +20,53 @@
   background-size: var(--size-noise-tile) var(--size-noise-tile);
 }
 
+/* ── The film's grain, over the whole page (ui/FilmGrain) ──
+ *
+ * The hero's grain as one tile (public/grain.png, scripts/grain.mjs: mid
+ * grey ± the grain), laid by SOFT-LIGHT, which moves a pixel by about its
+ * own light × its dark — the hero's weighting (strongest in the midtones,
+ * least in the deepest black: film.ts `finish`) — so one tile reads as the
+ * hero's grain over the black and over a picture alike.
+ *
+ * RE-SEEDED AT THE FILM'S RATE ON THE COMPOSITOR: the layer is a tile
+ * larger than the screen every way and jumps to a new place 24 times a
+ * second (ten places, a stepped transform: no paint, no script, nothing
+ * on the main thread). Over everything but the curtain, never taking the
+ * pointer. */
+[data-film-grain] {
+  position: fixed;
+  inset: calc(var(--size-grain-tile) * -0.5);
+  z-index: 90;
+  pointer-events: none;
+  background-image: url("/grain.png");
+  background-size: var(--size-grain-tile) var(--size-grain-tile);
+  mix-blend-mode: soft-light;
+  animation: film-grain var(--duration-grain-cycle) steps(1, end) infinite;
+}
+
+/* OVER THE HERO'S SCENE (the home page): its film already has grain. The
+ * layer waits unseen — not fetched, not moving — until the scene's light
+ * starts to go (HeroSection writes its opacity and marks it shown). */
+[data-film-grain="over-scene"]:not([data-shown]) {
+  visibility: hidden;
+  background-image: none;
+  animation-play-state: paused;
+}
+
+/* Ten places, a cycle of 10/24 s: each frame of film a new grain. */
+@keyframes film-grain {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(calc(var(--size-grain-tile) * -0.37), calc(var(--size-grain-tile) * 0.21)); }
+  20% { transform: translate(calc(var(--size-grain-tile) * 0.18), calc(var(--size-grain-tile) * -0.33)); }
+  30% { transform: translate(calc(var(--size-grain-tile) * -0.12), calc(var(--size-grain-tile) * -0.44)); }
+  40% { transform: translate(calc(var(--size-grain-tile) * 0.41), calc(var(--size-grain-tile) * 0.09)); }
+  50% { transform: translate(calc(var(--size-grain-tile) * -0.29), calc(var(--size-grain-tile) * 0.38)); }
+  60% { transform: translate(calc(var(--size-grain-tile) * 0.33), calc(var(--size-grain-tile) * 0.27)); }
+  70% { transform: translate(calc(var(--size-grain-tile) * -0.46), calc(var(--size-grain-tile) * -0.08)); }
+  80% { transform: translate(calc(var(--size-grain-tile) * 0.07), calc(var(--size-grain-tile) * 0.46)); }
+  90% { transform: translate(calc(var(--size-grain-tile) * 0.26), calc(var(--size-grain-tile) * -0.19)); }
+}
+
 /* Glass: stark white at low opacity, heavy blur, 1px light inner edge. */
 .glass {
   background-color: var(--color-glass);

@@ -129,10 +129,18 @@ export default function HeroSection({ className, respectReducedMotion = false }:
     const section = scope.current;
     const scene = section?.querySelector<HTMLElement>("[data-hero-scene]");
     if (!section || !scene) return;
+    /* THE PAGE'S GRAIN (ui/FilmGrain) comes in as the scene's light goes:
+       the scene's film carries its own, and the page is never grained
+       twice. Shown (fetched, moving) only once the light starts to go. */
+    const grain = document.querySelector<HTMLElement>('[data-film-grain="over-scene"]');
     return followDescent(section, (progress) => {
       const light = descentLight(progress);
       scene.style.opacity = light < 1 ? String(light) : "";
       scene.toggleAttribute("data-dark", light <= 0);
+      if (grain) {
+        grain.style.opacity = light > 0 ? String(1 - light) : "";
+        grain.toggleAttribute("data-shown", light < 1);
+      }
     });
   }, []);
 

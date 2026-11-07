@@ -84,6 +84,29 @@
   --tracking-display: -0.06em;
   /* about −6%: the user's frames, for all display type */
   --tracking-title: var(--tracking-display);
+  /* THE SECTION TITLE: an h2, every section's heading under the page's h1
+   * (the works' "Piece Of Unforgettable Memories") — the title's face and
+   * leading, a step down it on one rhythm (2026-11-07, the user: "use a
+   * rhythmic different text size for h2 … reduce the letter spacing, maybe
+   * −3%"). THE RHYTHM: a major third, ×1.25 a step — the heading's 18px,
+   * the section title's ~24px, the title's 30px — so h3, h2 and h1 read as
+   * one scale (16, 20, 24 on a phone). Tracked −3%: at a smaller size
+   * the display's −6% closes the italic's letters up. */
+  --text-section-title: 1.5rem;
+  /* 24px */
+  --leading-section-title: var(--leading-title);
+  --tracking-section-title: -0.03em;
+  /* THE HEADING: a heading in the body's face, under a section's title — a
+   * work's name over its card (the user, 2026-11-06: "18px … use
+   * variables, because we are gonna reuse those"), and every such name
+   * after it. Newsreader at its one weight, the whole white; the copy's
+   * tracking, and a leading for one or two lines of a name. 16px on a
+   * phone, as the copy and the title step down there. */
+  --text-heading: 1.125rem;
+  /* 18px */
+  --leading-heading: 1.2;
+  --tracking-heading: var(--tracking-copy);
+  --color-heading: var(--color-on-night);
   /* THE UI: the words that are controls — the nav, the dock's choices. */
   --text-ui: 0.75rem;
   /* 12px */
@@ -101,6 +124,12 @@
   --font-cormorant-ascent: 0.924;
   --font-cormorant-descent: 0.287;
   --font-cormorant-box: 1.211;
+  /* And Newsreader's (measured in the browser, 2026-11-06: its line box at
+   * `normal` is exactly 1em), for the body face's baselines — a work's
+   * name and its scope under a card. */
+  --font-newsreader-ascent: 0.735;
+  --font-newsreader-descent: 0.265;
+  --font-newsreader-box: 1;
 
   /* ── The grid ──
    * The page's columns: twelve, four on a phone (the user's 390 frame).
@@ -168,23 +197,33 @@
   /* ── The paper's grain (utilities.css bg-noise): one tile of its SVG
    * noise, drawn at its own size. ── */
   --size-noise-tile: 256px;
+
+  /* ── The film's grain over the page (utilities.css data-film-grain) ──
+   * Its tile, at its own size (one pixel a CSS px: a datum, the grain is
+   * the film's, never scaled), and its cycle: ten places at the film's 24
+   * a second (the hero's FILM.fps). */
+  --size-grain-tile: 256px;
+  --duration-grain-cycle: calc(10s / 24);
 }
 
 /* Phone: the SHARED tokens that step down — the grid's, and the copy's
  * size. The outer margin narrows so a phone's text column is not lost to
- * air, and the gutter with it: the user's 390 frame is four columns, 16px
- * margins, 16px gutters. (The margin and gutter live in the non-inline
- * @theme block in theme.css, which is what lets this override reach their
+ * air: the user's 390 frame is four columns, 16px margins. The gutter is
+ * 4px at every size (theme.css). (The margin lives in the non-inline
+ * @theme block in theme.css, which is what lets this override reach its
  * utilities.) */
 @media (max-width: 767.98px) {
   :root {
     --spacing-margin: 1rem;
-    --spacing-gutter: 1rem;
     --grid-columns: 4;
     /* The copy at the phone frame's 12px; the title at its 24px, on its
      * leading (31.7px). */
     --text-copy: 0.75rem;
+    --text-heading: 1rem;
+    /* 16px */
     --text-title: 1.5rem;
     --leading-title: 1.32;
+    --text-section-title: 1.25rem;
+    /* 20px */
   }
 }

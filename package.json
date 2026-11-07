@@ -12,7 +12,8 @@
     "mist": "python scripts/hero-plates/mist.py",
     "still": "python scripts/hero-plates/still.py",
     "lost-plate": "node scripts/lost/plate.mjs",
-    "lost-still": "node scripts/lost/still.mjs"
+    "lost-still": "node scripts/lost/still.mjs",
+    "grain": "node scripts/grain.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

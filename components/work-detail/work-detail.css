@@ -1,0 +1,145 @@
+/* ─── A work's page ───
+ *
+ * One template for every work (app/works/[slug]). A SCAFFOLD until the
+ * user's frame of it (2026-11-06): the site's voices on the page's black,
+ * on the page's grid — the way back at the top edge, the work's name and
+ * scope on the page's axis (column 7; 2 on a phone), and its pictures
+ * down the page, the whole width between the margins, a gutter apart.
+ * Every voice is the site's own (tokens.css); only the gaps between them
+ * are this page's.
+ *
+ * One unit. Every token below is its artboard px / 16. */
+:root {
+  --work-page-unit: 1rem;
+
+  --color-work-page-ground: var(--color-night);
+
+  /* ── The way back: the site's reading voice, a hairline arrow before
+   * it (the 404's way home's measures, from the words' size) ── */
+  --text-work-page-back: var(--text-copy);
+  --leading-work-page-back: var(--leading-copy);
+  --tracking-work-page-back: var(--tracking-copy);
+  --color-work-page-back: var(--color-copy);
+  --size-work-page-arrow: calc(var(--text-work-page-back) * 1.2);
+  --space-work-page-arrow-gap: calc(var(--text-work-page-back) * 0.75);
+
+  /* ── The name and scope: the title voice and the copy ── */
+  --text-work-page-title: var(--text-title);
+  --leading-work-page-title: var(--leading-title);
+  --tracking-work-page-title: var(--tracking-title);
+  --color-work-page-title: var(--color-on-night);
+  --text-work-page-scope: var(--text-copy);
+  --leading-work-page-scope: var(--leading-copy);
+  --tracking-work-page-scope: var(--tracking-copy);
+  --color-work-page-scope: var(--color-copy);
+  --grid-work-page-axis: 7;
+
+  /* ── The spaces ── */
+  --space-work-page-head: calc(var(--work-page-unit) * 10);
+  /* 160px: the way back to the name */
+  --space-work-page-scope: calc(var(--work-page-unit) * 0.75);
+  /* 12px: the name to its scope */
+  --space-work-page-pictures: calc(var(--work-page-unit) * 5);
+  /* 80px: the scope to the first picture */
+
+  /* A picture still to come: the works' empty card (works.css), at a wide
+   * card's aspect. */
+  --size-work-page-empty-aspect: 920 / 650;
+}
+
+/* Tablet and small laptop: the same. */
+@media (max-width: 1279.98px) {
+  :root {
+    --work-page-unit: 1rem;
+  }
+}
+
+/* Phone: the axis on column 2, the spaces closer. */
+@media (max-width: 767.98px) {
+  :root {
+    --work-page-unit: 1rem;
+    --grid-work-page-axis: 2;
+    --space-work-page-head: calc(var(--work-page-unit) * 6);
+    /* 96px */
+    --space-work-page-pictures: calc(var(--work-page-unit) * 3);
+    /* 48px */
+  }
+}
+
+[data-work-page] {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  align-content: start;
+  column-gap: var(--spacing-gutter);
+  min-height: 100svh;
+  padding-inline: var(--spacing-margin);
+  padding-block: var(--space-edge-y);
+  background: var(--color-work-page-ground);
+}
+
+[data-work-page-back] {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  column-gap: var(--space-work-page-arrow-gap);
+  color: var(--color-work-page-back);
+  font-size: var(--text-work-page-back);
+  line-height: var(--leading-work-page-back);
+  letter-spacing: var(--tracking-work-page-back);
+  text-decoration: none;
+}
+
+[data-work-page-back]:focus-visible {
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
+}
+
+[data-work-page-arrow] {
+  width: var(--size-work-page-arrow);
+  height: var(--size-work-page-arrow);
+  flex: none;
+}
+
+[data-work-page-head] {
+  grid-column: var(--grid-work-page-axis) / -1;
+  margin-top: var(--space-work-page-head);
+}
+
+[data-work-page-title] {
+  color: var(--color-work-page-title);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: var(--text-work-page-title);
+  line-height: var(--leading-work-page-title);
+  letter-spacing: var(--tracking-work-page-title);
+}
+
+[data-work-page-scope] {
+  margin-top: var(--space-work-page-scope);
+  color: var(--color-work-page-scope);
+  font-size: var(--text-work-page-scope);
+  line-height: var(--leading-work-page-scope);
+  letter-spacing: var(--tracking-work-page-scope);
+}
+
+[data-work-page-pictures] {
+  grid-column: 1 / -1;
+  display: grid;
+  row-gap: var(--spacing-gutter);
+  margin-top: var(--space-work-page-pictures);
+}
+
+/* In black and white, as every work's picture is (works.css). */
+[data-work-page-picture] img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: grayscale(1);
+}
+
+[data-work-page-picture="empty"] {
+  aspect-ratio: var(--size-work-page-empty-aspect);
+  background: var(--color-works-empty);
+}

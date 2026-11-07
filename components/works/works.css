@@ -1,11 +1,42 @@
 /* ─── The works ───
  *
- * The section after the reality promise (2026-11-02): opened as a space,
- * its work still to come (the user's frame: a title over four cards). The
- * page's grid on the page's black, in the page's own flow: the promise's
- * stage goes on up and this follows it, nothing laid over anything (the
- * user, 2026-11-02). The moth's last letters fade out above its top edge
- * (promise/assembly.ts, the bloom).
+ * The section after the reality promise (the user's 1920 frame and its
+ * grid overlay, 2026-11-06), on the page's black, in the page's own flow:
+ * the promise's stage goes on up and this follows it, nothing laid over
+ * anything (2026-11-02). The moth's last letters fade out above its top
+ * edge (promise/assembly.ts, the bloom).
+ *
+ * READ OFF THE FRAME, every size the frame's px ÷ 16 (AGENTS.md):
+ *
+ *   THE TITLE. "Piece Of Unforgettable Memories", the section's h2, in the
+ *   site's section-title voice (tokens.css: Cormorant semibold italic 24px
+ *   at −3%, a step under the hero's h1 on one rhythm), on the page's axis — column 7, where the hero's words
+ *   and the promise's copy stand (2 on a phone) — its baseline 128px under
+ *   the section's top and 82px over the first row of cards.
+ *
+ *   THE CARDS. On the page's twelve columns: a wide card (six columns) and
+ *   two narrow ones (three), then two wide — the pattern repeats
+ *   (content.ts WORKS_PATTERN); on a phone the first work the four
+ *   columns, every other two to a row (the user, 2026-11-07). Every picture 650px tall at the frame's
+ *   1920 (920 × 650 wide, 450 × 650 narrow): a wide card's picture is
+ *   drawn by its aspect, and its row's narrow ones take its height (one
+ *   track for a row's pictures: below). 243px from a row's pictures to
+ *   the next row's.
+ *
+ *   THE NAME AND SCOPE. Under each picture: the work's name in the site's
+ *   heading voice (tokens.css: Newsreader 18px, the whole white; the
+ *   user's), its baseline 35.5px under the picture; under it the scope in
+ *   the copy's voice at the half white (the user: "scope text is body
+ *   copy", then, 2026-11-07, "white opacity 50%", and the frame's dotted
+ *   rule after the name taken out), its baseline 26px under the name's.
+ *
+ *   IN BLACK AND WHITE (2026-11-07, the user: every work's picture "as
+ *   black and white images no matter its real colour"): the site prints in
+ *   silver, as the hero does — the picture drawn through a full greyscale,
+ *   and the breath's frost over it the same (shaders/breath.ts).
+ *
+ *   THE EMPTY CARD. No picture yet: the frame's grey, #303030 — white at
+ *   13% over the black (the dark system: a grey is white held back).
  *
  * One unit. Every token below is its artboard px / 16. */
 :root {
@@ -13,32 +44,297 @@
 
   --color-works-ground: var(--color-night);
 
-  /* ── The space ── a screen, for the works to come: A SHARE OF THE
-   * SCREEN'S HEIGHT (svh), as every section here is at least a screen
-   * tall; the root scaler knows nothing of the screen's height. */
-  --size-works-least: 100svh;
+  /* ── The title: the site's section-title voice (an h2) ── */
+  --text-works-heading: var(--text-section-title);
+  --leading-works-heading: var(--leading-section-title);
+  --tracking-works-heading: var(--tracking-section-title);
+  --color-works-heading: var(--color-on-night);
+  /* The grid line it stands on: the page's axis. */
+  --grid-works-axis: 7;
+  /* The section's top — the promise's end — to its baseline: 128px, the
+   * promise's own breathing space (its stars stand 128px from their dots:
+   * promise.css), so the two sections part on the page's one rhythm (the
+   * user, 2026-11-07: "increase the spacing between works and promise a
+   * bit"; the frame's was 71px). */
+  --space-works-heading-baseline: calc(var(--works-unit) * 8);
+  /* 128px */
+  --space-works-heading-gap: calc(var(--works-unit) * 5.125);
+  /* 82px: its baseline to the first row's pictures */
+  /* Where its line box starts above its baseline, and ends below it:
+   * Cormorant Garamond's ascent and descent, each with half of what the
+   * leading adds to its box — here takes from it (tokens.css: its
+   * metrics; as the hero's headline, copy.css). */
+  --space-works-heading-head: calc(var(--text-works-heading) * (var(--font-cormorant-ascent) + (var(--leading-works-heading) - var(--font-cormorant-box)) / 2));
+  --space-works-heading-foot: calc(var(--text-works-heading) * (var(--font-cormorant-descent) + (var(--leading-works-heading) - var(--font-cormorant-box)) / 2));
+
+  /* ── The cards ── */
+  --size-works-wide-aspect: 920 / 650;
+  --size-works-narrow-aspect: 450 / 650;
+  --color-works-empty: color-mix(in srgb, var(--color-on-night) 13%, var(--color-night));
+  --space-works-row: calc(var(--works-unit) * 15.1875);
+  /* 243px: a row's pictures' foot to the next row's top */
+
+  /* ── The depth (the parallax) ── how far the picture behind the frame
+   * travels either way, a share of the frame's height: 14%, so across the
+   * screen it moves 28% of the frame against the page (it was 10% and
+   * linear: the user, 2026-11-07, "bit noticeable — now it feels like a
+   * normal linear one"). A NUMBER, not a length: the layer's inset and its
+   * travel are worked out from it (below), so the picture never shows its
+   * edge. And THE SETTLE: the picture comes in drawn this much larger and
+   * settles to its size as the frame rises past the screen's middle — a
+   * lens racking back as the work arrives. */
+  --works-depth-travel: 0.14;
+  --size-works-depth-zoom: 1.16;
+
+  /* ── The name: the site's heading voice ── */
+  --text-works-name: var(--text-heading);
+  --leading-works-name: var(--leading-heading);
+  --tracking-works-name: var(--tracking-heading);
+  --color-works-name: var(--color-heading);
+  /* ── The scope: the site's reading voice ── */
+  --text-works-scope: var(--text-copy);
+  --leading-works-scope: var(--leading-copy);
+  --tracking-works-scope: var(--tracking-copy);
+  --color-works-scope: var(--color-on-night-muted);
+  --space-works-name-drop: calc(var(--works-unit) * 2.21875);
+  /* 35.5px: the picture's foot to the name's baseline */
+  --space-works-scope-pitch: calc(var(--works-unit) * 1.625);
+  /* 26px: the name's baseline to the scope's */
+  /* Their line boxes about their baselines: Newsreader's metrics
+   * (tokens.css), as the title's are Cormorant's. */
+  --space-works-name-head: calc(var(--text-works-name) * (var(--font-newsreader-ascent) + (var(--leading-works-name) - var(--font-newsreader-box)) / 2));
+  --space-works-name-foot: calc(var(--text-works-name) * (var(--font-newsreader-descent) + (var(--leading-works-name) - var(--font-newsreader-box)) / 2));
+  --space-works-scope-head: calc(var(--text-works-scope) * (var(--font-newsreader-ascent) + (var(--leading-works-scope) - var(--font-newsreader-box)) / 2));
+  --space-works-scope-foot: calc(var(--text-works-scope) * (var(--font-newsreader-descent) + (var(--leading-works-scope) - var(--font-newsreader-box)) / 2));
 }
 
-/* Tablet and small laptop. */
+/* Tablet and small laptop: the frame's columns hold (at 768 a narrow card
+ * is ~160px, its name its width and its rule gone: too small never breaks
+ * a layout). */
 @media (max-width: 1279.98px) {
   :root {
     --works-unit: 1rem;
   }
 }
 
-/* Phone. */
+/* Phone: no frame yet. The axis on column 2 as the hero's and the
+ * promise's are; the first work the four columns, every other two (a row
+ * of two, each its own 450 × 650); the voices' own phone sizes (tokens.css:
+ * the name 16px, the scope 12px) on spaces in proportion, the rows
+ * closer. */
 @media (max-width: 767.98px) {
   :root {
     --works-unit: 1rem;
+    --grid-works-axis: 2;
+    --space-works-heading-baseline: calc(var(--works-unit) * 6);
+    /* 96px: the phone's row (below), the same rhythm closer */
+    --space-works-heading-gap: calc(var(--works-unit) * 3);
+    /* 48px */
+    --space-works-row: calc(var(--works-unit) * 6);
+    /* 96px */
+    --space-works-name-drop: calc(var(--works-unit) * 1.75);
+    /* 28px */
+    --space-works-scope-pitch: calc(var(--works-unit) * 1.375);
+    /* 22px */
   }
 }
 
+/* The section: the page's grid on the page's black. EVERY CARD TAKES TWO
+ * ROWS of it, its picture and its words (a subgrid), so a row's pictures
+ * share one track — its narrow ones as tall as its wide one, whatever
+ * their words wrap to — and its words another. */
 [data-works] {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
   column-gap: var(--spacing-gutter);
-  min-height: var(--size-works-least);
   padding-inline: var(--spacing-margin);
+  padding-top: calc(var(--space-works-heading-baseline) - var(--space-works-heading-head));
   background: var(--color-works-ground);
+}
+
+/* ── The title ── */
+[data-works-title] {
+  grid-column: var(--grid-works-axis) / -1;
+  margin-bottom: calc(var(--space-works-heading-gap) - var(--space-works-heading-foot));
+  color: var(--color-works-heading);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: var(--text-works-heading);
+  line-height: var(--leading-works-heading);
+  letter-spacing: var(--tracking-works-heading);
+}
+
+/* Its mask clips DOWN only: the line drops in from above it, and the
+ * italic's overhang stays whole. */
+[data-works-title] [data-reveal-mask] {
+  overflow: visible clip;
+}
+
+/* ── A card ── six columns, or three; two rows of the section. */
+[data-work] {
+  grid-column: span 6;
+  grid-row: span 2;
+  display: grid;
+  grid-template-rows: subgrid;
+}
+
+[data-work="narrow"] {
+  grid-column: span 3;
+}
+
+/* The whole card is the link; its picture and its words on the card's two
+ * rows. No hover style: the breath answers the hand. */
+[data-work-link] {
+  grid-row: 1 / -1;
+  display: grid;
+  grid-template-rows: subgrid;
+  color: inherit;
+  text-decoration: none;
+}
+
+[data-work-link]:focus-visible {
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
+}
+
+/* ── The picture's frame ── the glass: it clips what is behind it, and the
+ * breath's canvas is laid in it. A wide card's picture is drawn by its
+ * aspect; a narrow one fills the row's track. It is the parallax's
+ * timeline: how far through the screen it is. */
+[data-work-media] {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-works-empty);
+  view-timeline: --work-depth block;
+}
+
+[data-work="wide"] [data-work-media] {
+  aspect-ratio: var(--size-works-wide-aspect);
+}
+
+/* ── THE DEPTH ── the picture behind the glass, taller than the frame by
+ * the travel above and below (an inset's percentage is of the frame's
+ * height). */
+[data-work-depth] {
+  position: absolute;
+  inset: calc(var(--works-depth-travel) * -100%) 0;
+}
+
+[data-work-image] {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1);
+}
+
+/* MOVED BY THE SCROLL ON THE COMPOSITOR: two scroll-driven animations on
+ * the frame's view timeline, no script, as smooth as the scroll itself
+ * (Lenis smooths the wheel):
+ *
+ *   THE DRIFT (translate): from the travel up as the frame comes in at the
+ *   screen's foot to the travel down as it leaves at its top, so the
+ *   picture goes up the screen slower than the page — it is further away.
+ *   EASED IN AND OUT, not linear: slow where the frame comes and goes at
+ *   the screen's edges, fastest as it crosses the middle, where it is
+ *   looked at — the depth is seen there, not spent where no one looks.
+ *
+ *   THE SETTLE (scale): drawn larger as it comes in, settled to its size
+ *   by the time the frame is a little past the screen's middle, on the
+ *   site's press curve (ui/motion.ts: an ease-out gentler than the
+ *   reveal's, whose settle was over before the frame was a third up the
+ *   screen).
+ *
+ * Separate properties (translate and scale), so each keeps its own curve
+ * and range; the scale only ever covers more, so no edge shows. The travel
+ * a share of the layer's own height (a translate's percentage is), which
+ * is the frame's and twice the travel. Where the browser has no scroll
+ * timelines, the picture simply stands. */
+@supports (animation-timeline: view()) {
+  [data-work-depth] {
+    animation:
+      works-drift cubic-bezier(0.45, 0, 0.55, 1) both,
+      works-settle cubic-bezier(0.33, 1, 0.68, 1) both;
+    animation-timeline: --work-depth, --work-depth;
+    animation-range: cover, entry 0% cover 55%;
+  }
+
+  [data-works][data-works-calm] [data-work-depth] {
+    animation: none;
+  }
+}
+
+@keyframes works-drift {
+  from {
+    translate: 0 calc(var(--works-depth-travel) / (1 + 2 * var(--works-depth-travel)) * -100%);
+  }
+
+  to {
+    translate: 0 calc(var(--works-depth-travel) / (1 + 2 * var(--works-depth-travel)) * 100%);
+  }
+}
+
+@keyframes works-settle {
+  from {
+    scale: var(--size-works-depth-zoom);
+  }
+
+  to {
+    scale: 1;
+  }
+}
+
+/* The breath's canvas (breath.ts), over the picture, and what it leaves
+ * fading on a card the hand has left: never taking the pointer. */
+[data-works-breath] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── The words ── under the picture: the name's baseline at its drop, the
+ * scope's a pitch under it, and the room to the next row after. */
+[data-work-caption] {
+  padding-top: calc(var(--space-works-name-drop) - var(--space-works-name-head));
+  padding-bottom: calc(var(--space-works-row) - var(--space-works-name-drop) - var(--space-works-scope-pitch) - var(--space-works-scope-foot));
+}
+
+[data-work-title] {
+  color: var(--color-works-name);
+  font-size: var(--text-works-name);
+  line-height: var(--leading-works-name);
+  letter-spacing: var(--tracking-works-name);
+}
+
+[data-work-scope] {
+  margin-top: calc(var(--space-works-scope-pitch) - var(--space-works-name-foot) - var(--space-works-scope-head));
+  color: var(--color-works-scope);
+  font-size: var(--text-works-scope);
+  line-height: var(--leading-works-scope);
+  letter-spacing: var(--tracking-works-scope);
+}
+
+/* Phone (the user, 2026-11-07): the first work the four columns at a wide
+ * card's aspect, every other two to a row, each a narrow card's aspect
+ * (no wide card in its row to take the height of). */
+@media (max-width: 767.98px) {
+  [data-work] {
+    grid-column: span 2;
+  }
+
+  [data-work] [data-work-media] {
+    aspect-ratio: var(--size-works-narrow-aspect);
+  }
+
+  [data-work]:first-of-type {
+    grid-column: span 4;
+  }
+
+  [data-work]:first-of-type [data-work-media] {
+    aspect-ratio: var(--size-works-wide-aspect);
+  }
 }

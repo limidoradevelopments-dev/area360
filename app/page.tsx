@@ -4,6 +4,7 @@ import { Preloader } from "@/components/preloader";
 import { PromiseSection } from "@/components/promise";
 import { SettingsDock } from "@/components/settings";
 import { WorksSection } from "@/components/works";
+import FilmGrain from "@/components/ui/FilmGrain";
 import StageRevealProvider from "@/components/ui/StageReveal";
 
 /**
@@ -32,6 +33,7 @@ export default function Home() {
         <WorksSection />
       </main>
       <SettingsDock />
+      <FilmGrain overScene />
     </StageRevealProvider>
   );
 }

@@ -221,7 +221,7 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
     g.uniform1f(u.uScroll, scroll);
     g.uniform1f(u.uLayer, Math.min(Math.max(scroll, e.layerFrom), e.layerTo));
     g.uniform1f(u.uTime, time);
-    g.uniform2f(u.uView, e.width, e.height);
+    g.uniform2f(u.uView, e.width, e.height + e.below);
     g.uniform2f(u.uMark, e.markLeft, e.markTop);
     g.uniform1f(u.uPin, e.pinStart);
     g.uniform4f(u.uHeld, holding[0] ? 1 : 0, holding[1] ? 1 : 0, holding[2] ? 1 : 0, holding[3] ? 1 : 0);
@@ -316,7 +316,7 @@ export function startAssembly(parts: AssemblyParts, options: AssemblyOptions): (
   function sizeCanvas(e: Engine) {
     const ratio = Math.min(window.devicePixelRatio || 1, ASSEMBLY.maxPixelRatio);
     const width = Math.max(1, Math.round(e.width * ratio));
-    const height = Math.max(1, Math.round(e.height * ratio));
+    const height = Math.max(1, Math.round((e.height + e.below) * ratio));
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
   }
@@ -430,6 +430,7 @@ interface Measured {
   readonly sectionTop: number;
   readonly width: number;
   readonly height: number;
+  readonly below: number;
   /** The air layer's left within the section, and where its top can be. */
   readonly layerLeft: number;
   readonly layerFrom: number;
@@ -472,6 +473,9 @@ function measure(parts: AssemblyParts, letters: { above: PassageLetters; below: 
     sectionTop: sectionRect.top + window.scrollY,
     width: air.clientWidth,
     height,
+    /* The canvas overflows the layer's foot (promise.css): the layer's own
+       box, and so when it is let go, are as they were. */
+    below: Math.max(0, parts.canvas.clientHeight - height),
     layerLeft: airRect.left - sectionRect.left,
     layerFrom,
     layerTo: section.offsetHeight - padBottom - height,
@@ -506,6 +510,9 @@ interface Engine {
   readonly sectionTop: number;
   readonly width: number;
   readonly height: number;
+  /** How far the canvas reaches below the air layer's foot, px: into the
+   *  works, where the bloom's letters go out of focus and out. */
+  readonly below: number;
   readonly layerFrom: number;
   readonly layerTo: number;
   readonly markLeft: number;
@@ -678,6 +685,7 @@ function assemble(m: Measured, atlas: GlyphAtlas): Engine {
     sectionTop: m.sectionTop,
     width: m.width,
     height: m.height,
+    below: m.below,
     layerFrom: m.layerFrom,
     layerTo: m.layerTo,
     markLeft: m.markLeft,

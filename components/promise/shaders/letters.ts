@@ -273,11 +273,27 @@ void main() {
       size *= 1.0 + 0.5 * depth;
       depthBlur = abs(depth) * 0.85;
       // ITS LIGHT BURNS OUT: halving every half-life; as it dies, an
-      // uneven flicker (two sines a golden ratio apart, never a pulse);
-      // and gone where the air layer ends: the next section's edge.
+      // uneven flicker (two sines a golden ratio apart, never a pulse).
       float burning = exp2(-since / uEmber.x);
       float flicker = 1.0 - (1.0 - burning) * 0.35 * (0.5 + 0.5 * sin(uTime * 9.0 + r4 * TAU) * sin(uTime * 9.0 * PHI + r1 * TAU));
-      float edge = 1.0 - smoothstep(uView.y - uEmber.w, uView.y, position.y);
+      // INTO THE WORKS, OUT OF FOCUS (2026-11-07, the user: the letters
+      // "fall into the works section and blurred disappear, without
+      // hiding the end of the promise section"): the canvas reaches below
+      // the air layer's foot — the promise's end — into the works. A
+      // letter sinking past it (from uEmber.w above it) goes out of focus
+      // and spreads a little, as a light falling away from the lens does,
+      // and its light goes as it reaches the canvas's foot: dissolved
+      // into the dark, never cut at the section's edge.
+      // IN FRONT OF THE PICTURES, GOING SLOWLY (2026-11-07, the user:
+      // falling in front of the works' images, "not instantly
+      // disappear"): the focus goes over the whole way down and the light
+      // only in its second half — they cross the first row whole, soft,
+      // and are gone by the canvas's foot. (Squared from the promise's
+      // end, half their light was gone a fifth of the way in.)
+      float sinking = smoothstep(uScreen - uEmber.w, uView.y, position.y);
+      depthBlur = max(depthBlur, sinking);
+      size *= 1.0 + 0.3 * sinking;
+      float edge = 1.0 - smoothstep(mix(uScreen, uView.y, 0.35), uView.y, position.y);
       float end = 1.0 - smoothstep(0.8 * uOpen.w, uOpen.w, since);
       fading = burning * flicker * edge * end / (1.0 + 0.45 * max(depth, 0.0)) * (1.0 - 0.4 * max(-depth, 0.0));
     }

@@ -338,12 +338,20 @@ export const ASSEMBLY = {
    *   it was), and against the page it sinks at ~1.8, meeting the next
    *   section's edge within a third to two thirds of a screen.
    *
-   *   LIGHT — halving every 0.3 of a screen (embers; at 0.18 they were out
+   *   LIGHT — halving every 0.55 of a screen (embers; at 0.18 they were out
    *   before they had fallen), catching 0.4 toward white as it lets go,
-   *   gone by 0.95 (its last fifth faded out), and
-   *   faded over the last 22% of the screen above the air layer's foot —
-   *   the works' top edge, where the air layer ends (over 8% the letters
-   *   seemed to pile into a level line there, then vanish).
+   *   gone by 1.7 (its last fifth faded out; 0.4 and 1.3, then 0.3 and 0.95, before they fell into the works: they were out before they crossed its pictures).
+   *
+   *   INTO THE WORKS (2026-11-07, the user: they "fall into this works
+   *   section and blurred disappear without hiding the end of the promise
+   *   section … match it to this dark ethereal vibe"). The air layer's
+   *   canvas reaches below its foot — the promise's end — into the works
+   *   (promise.css --size-promise-air-below); from `edge` of a screen
+   *   above that end a letter goes out of focus and spreads as it sinks,
+   *   and its light goes as it reaches the canvas's foot. It was faded
+   *   over the last 22% of a screen ABOVE the end, so the letters were
+   *   gone before the works came, and the promise's end read as a cut
+   *   (life 0.95 and half-life 0.3 then: they burnt out on the way).
    *
    *   SHUTTER — a moving letter is smeared by its speed on the screen over
    *   1/50 s, a film frame's exposure, at most 8× its height. */
@@ -356,10 +364,10 @@ export const ASSEMBLY = {
     opening: 0.05,
     settling: 0.12,
     drift: 0.8,
-    halfLife: 0.3,
+    halfLife: 0.55,
     catch: 0.4,
-    life: 0.95,
-    edge: 0.22,
+    life: 1.7,
+    edge: 0.08,
     shutter: 1 / 50,
   },
   /* THE SCROLL'S SPEED, for the streak: followed at 12 a second (approach,
