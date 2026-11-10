@@ -4,32 +4,29 @@
 :root {
   --intro-unit: 1rem;
 
-  --text-intro-display: calc(var(--intro-unit) * 5.75);
-  /* 92px */
+  --text-intro-display: var(--text-rhythm-96);
   --leading-intro-display: 0.9;
   --tracking-intro-display: -0.035em;
 
-  --text-intro-body: calc(var(--intro-unit) * 1.125);
-  /* 18px */
-  --leading-intro-body: 1.5;
+  --text-intro-body: var(--text-rhythm-19);
+  --leading-intro-body: calc(24 / 19);
 
-  --space-intro-block: calc(var(--intro-unit) * 7.5);
-  /* 120px */
-  --space-intro-row: calc(var(--intro-unit) * 1.5);
-  /* 24px */
+  /* Spaces are steps of the scale (theme.css), not multiples of the unit:
+   * each band names its own, below. */
+  --space-intro-block: var(--spacing-rhythm-128);
+  --space-intro-row: var(--spacing-micro-24);
+  --size-intro-card-pad: var(--spacing-micro-24);
 
-  --size-intro-card-pad: calc(var(--intro-unit) * 1.75);
-  /* 28px */
   --radius-intro-card: calc(var(--intro-unit) * 0.75);
   /* 12px */
-  --text-intro-stat: calc(var(--intro-unit) * 3.5);
-  /* 56px */
+  --text-intro-stat: var(--text-rhythm-60);
 }
 
 /* Tablet and small laptop. */
 @media (max-width: 1279.98px) {
   :root {
     --intro-unit: 0.8rem;
+    --space-intro-row: var(--spacing-micro-20);
   }
 }
 
@@ -37,8 +34,8 @@
 @media (max-width: 767.98px) {
   :root {
     --intro-unit: 0.62rem;
-    /* Body copy must not shrink with the unit on a phone — small body type is
-     * just small type. Pin it back to an absolute rem. */
-    --text-intro-body: 1rem;
+    --space-intro-row: var(--spacing-micro-16);
+    --size-intro-card-pad: var(--spacing-micro-16);
+    --leading-intro-body: calc(20 / 15);
   }
 }

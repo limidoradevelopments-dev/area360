@@ -12,7 +12,7 @@
  *   site's section-title voice (tokens.css: Cormorant semibold italic 24px
  *   at −3%, a step under the hero's h1 on one rhythm), on the page's axis — column 7, where the hero's words
  *   and the promise's copy stand (2 on a phone) — its baseline 128px under
- *   the section's top and 82px over the first row of cards.
+ *   the section's top and 80px over the first row of cards.
  *
  *   THE CARDS. On the page's twelve columns: a wide card (six columns) and
  *   two narrow ones (three), then two wide — the pattern repeats
@@ -20,15 +20,15 @@
  *   columns, every other two to a row (the user, 2026-11-07). Every picture 650px tall at the frame's
  *   1920 (920 × 650 wide, 450 × 650 narrow): a wide card's picture is
  *   drawn by its aspect, and its row's narrow ones take its height (one
- *   track for a row's pictures: below). 243px from a row's pictures to
+ *   track for a row's pictures: below). 256px from a row's pictures to
  *   the next row's.
  *
  *   THE NAME AND SCOPE. Under each picture: the work's name in the site's
- *   heading voice (tokens.css: Newsreader 18px, the whole white; the
- *   user's), its baseline 35.5px under the picture; under it the scope in
+ *   heading voice (tokens.css: Newsreader 19px, the whole white; the
+ *   user's), its baseline 32px under the picture; under it the scope in
  *   the copy's voice at the half white (the user: "scope text is body
  *   copy", then, 2026-11-07, "white opacity 50%", and the frame's dotted
- *   rule after the name taken out), its baseline 26px under the name's.
+ *   rule after the name taken out), its baseline 24px under the name's.
  *
  *   IN BLACK AND WHITE (2026-11-07, the user: every work's picture "as
  *   black and white images no matter its real colour"): the site prints in
@@ -38,10 +38,8 @@
  *   THE EMPTY CARD. No picture yet: the frame's grey, #303030 — white at
  *   13% over the black (the dark system: a grey is white held back).
  *
- * One unit. Every token below is its artboard px / 16. */
+ * Every space a step of the scale (theme.css). */
 :root {
-  --works-unit: 1rem;
-
   --color-works-ground: var(--color-night);
 
   /* ── The title: the site's section-title voice (an h2) ── */
@@ -56,10 +54,9 @@
    * promise.css), so the two sections part on the page's one rhythm (the
    * user, 2026-11-07: "increase the spacing between works and promise a
    * bit"; the frame's was 71px). */
-  --space-works-heading-baseline: calc(var(--works-unit) * 8);
-  /* 128px */
-  --space-works-heading-gap: calc(var(--works-unit) * 5.125);
-  /* 82px: its baseline to the first row's pictures */
+  --space-works-heading-baseline: var(--spacing-rhythm-128);
+  /* Its baseline to the first row's pictures. */
+  --space-works-heading-gap: var(--spacing-rhythm-80);
   /* Where its line box starts above its baseline, and ends below it:
    * Cormorant Garamond's ascent and descent, each with half of what the
    * leading adds to its box — here takes from it (tokens.css: its
@@ -71,8 +68,8 @@
   --size-works-wide-aspect: 920 / 650;
   --size-works-narrow-aspect: 450 / 650;
   --color-works-empty: color-mix(in srgb, var(--color-on-night) 13%, var(--color-night));
-  --space-works-row: calc(var(--works-unit) * 15.1875);
-  /* 243px: a row's pictures' foot to the next row's top */
+  /* A row's pictures' foot to the next row's top. */
+  --space-works-row: var(--spacing-rhythm-256);
 
   /* ── The depth (the parallax) ── how far the picture behind the frame
    * travels either way, a share of the frame's height: 14%, so across the
@@ -96,10 +93,10 @@
   --leading-works-scope: var(--leading-copy);
   --tracking-works-scope: var(--tracking-copy);
   --color-works-scope: var(--color-on-night-muted);
-  --space-works-name-drop: calc(var(--works-unit) * 2.21875);
-  /* 35.5px: the picture's foot to the name's baseline */
-  --space-works-scope-pitch: calc(var(--works-unit) * 1.625);
-  /* 26px: the name's baseline to the scope's */
+  /* The picture's foot to the name's baseline. */
+  --space-works-name-drop: var(--spacing-rhythm-32);
+  /* The name's baseline to the scope's. */
+  --space-works-scope-pitch: var(--spacing-micro-24);
   /* Their line boxes about their baselines: Newsreader's metrics
    * (tokens.css), as the title's are Cormorant's. */
   --space-works-name-head: calc(var(--text-works-name) * (var(--font-newsreader-ascent) + (var(--leading-works-name) - var(--font-newsreader-box)) / 2));
@@ -108,34 +105,21 @@
   --space-works-scope-foot: calc(var(--text-works-scope) * (var(--font-newsreader-descent) + (var(--leading-works-scope) - var(--font-newsreader-box)) / 2));
 }
 
-/* Tablet and small laptop: the frame's columns hold (at 768 a narrow card
- * is ~160px, its name its width and its rule gone: too small never breaks
- * a layout). */
-@media (max-width: 1279.98px) {
-  :root {
-    --works-unit: 1rem;
-  }
-}
-
-/* Phone: no frame yet. The axis on column 2 as the hero's and the
+/* Tablet and small laptop: nothing steps down: the frame's columns hold (at
+ * 768 a narrow card is ~160px, its name its width and its rule gone: too
+ * small never breaks a layout).
+ *
+ * Phone: no frame yet. The axis on column 2 as the hero's and the
  * promise's are; the first work the four columns, every other two (a row
  * of two, each its own 450 × 650); the voices' own phone sizes (tokens.css:
- * the name 16px, the scope 12px) on spaces in proportion, the rows
+ * the name 15px, the scope 12px) on spaces in proportion, the rows
  * closer. */
 @media (max-width: 767.98px) {
   :root {
-    --works-unit: 1rem;
     --grid-works-axis: 2;
-    --space-works-heading-baseline: calc(var(--works-unit) * 6);
-    /* 96px: the phone's row (below), the same rhythm closer */
-    --space-works-heading-gap: calc(var(--works-unit) * 3);
-    /* 48px */
-    --space-works-row: calc(var(--works-unit) * 6);
-    /* 96px */
-    --space-works-name-drop: calc(var(--works-unit) * 1.75);
-    /* 28px */
-    --space-works-scope-pitch: calc(var(--works-unit) * 1.375);
-    /* 22px */
+    /* A pitch from baseline to baseline rides with the type, which comes
+     * down a rung here. */
+    --space-works-scope-pitch: var(--spacing-micro-20);
   }
 }
 

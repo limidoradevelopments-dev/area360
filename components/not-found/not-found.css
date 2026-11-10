@@ -30,9 +30,8 @@
   --leading-lost-title: var(--leading-title);
   --tracking-lost-title: var(--tracking-title);
   --color-lost-title: var(--color-hero-title);
-  /* From its last baseline to the link's middle: the frame's. */
-  --space-lost-title-gap: calc(var(--lost-unit) * 2.4375);
-  /* 39px */
+  /* From its last baseline to the link's middle. */
+  --space-lost-title-gap: var(--spacing-macro-40);
   /* How far the headline's line box reaches below its last baseline:
    * Cormorant Garamond's descent, plus half of what the leading adds to
    * its box (tokens.css: its metrics; as the hero's headline, copy.css). */
@@ -45,15 +44,14 @@
   --color-lost-link: var(--color-copy);
   --size-lost-link-line: calc(var(--text-lost-link) * var(--leading-lost-link));
   /* The arrow's box from the words it leads: Lucide's arrow is 20 of its
-   * 24 across, so a box 1.2 of the text draws an arrow its size; the gap
-   * three quarters of it (the frame's 14px and 10.5px at 14px). */
+   * 24 across, so a box 1.2 of the text draws an arrow its size. */
   --size-lost-arrow: calc(var(--text-lost-link) * 1.2);
-  --space-lost-arrow-gap: calc(var(--text-lost-link) * 0.75);
+  --space-lost-arrow-gap: var(--spacing-micro-12);
 
   /* ── The strip: the supporting words ── */
   --text-lost-strip: var(--text-support);
-  /* Its pitch from its own size: the frame's 37px at 10px. */
-  --leading-lost-strip: calc(var(--text-lost-strip) * 3.7);
+  /* Its pitch, and the least between its two columns. */
+  --leading-lost-strip: var(--spacing-macro-40);
   /* On a phone the frame's block, at the right margin (column 7 itself
    * sizes it on a wider screen: below). */
   --size-lost-strip: calc(var(--lost-unit) * 8.375);
@@ -83,17 +81,10 @@
 @media (max-width: 767.98px) {
   :root {
     --lost-unit: 1rem;
-    --space-lost-title-top: calc(var(--lost-unit) * 2.25);
-    /* 36px */
-    --space-lost-title-gap: calc(var(--lost-unit) * 2.0625);
-    /* 33px */
+    --space-lost-title-top: var(--spacing-macro-32);
+    --space-lost-title-gap: var(--spacing-macro-32);
+    --space-lost-arrow-gap: var(--spacing-micro-8);
   }
-}
-
-/* Over the 404, the whole page is its black: an overscroll shows ground,
- * never the site's paper. */
-:root:has([data-lost]) {
-  background: var(--color-lost-ground);
 }
 
 [data-lost] {
@@ -250,6 +241,7 @@
 /* A flex box, not an inline one: on its parent's line an inline box sat on
  * a baseline with the line's own descent under it, 9px above the edge. */
 [data-lost-link] {
+  position: relative;
   display: flex;
   width: max-content;
   color: var(--color-lost-link);
@@ -258,6 +250,13 @@
   letter-spacing: var(--tracking-lost-link);
   pointer-events: auto;
   transition: color 0.18s var(--ease-out-soft);
+}
+
+/* THE PRESS AREA, a thumb's size round a line of type (tokens.css). */
+[data-lost-link]::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--space-press-reach) * -1);
 }
 
 [data-lost-link] [data-reveal-line] {

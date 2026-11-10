@@ -14,7 +14,7 @@ export default function IntroStatCard({ stat }: { stat: IntroStat }) {
     <article
       data-reveal-card
       className={cx(
-        "glass flex flex-col justify-between gap-8",
+        "glass flex flex-col justify-between gap-macro-32",
         "p-[var(--size-intro-card-pad)] rounded-[var(--radius-intro-card)]",
       )}
     >

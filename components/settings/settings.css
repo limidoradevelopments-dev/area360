@@ -19,29 +19,27 @@
 
   --size-settings-panel: calc(var(--settings-unit) * 12.5);
   /* 200px */
-  --space-settings-pad: calc(var(--settings-unit) * 0.5);
-  /* 8px: the panel's padding, every side */
-  --space-settings-rule: calc(var(--settings-unit) * 0.5);
-  /* 8px: either side of the rule under Auto */
-  --space-settings-row: calc(var(--settings-unit) * 0.375);
-  /* 6px: between the levels */
-  --space-settings-gap: calc(var(--settings-unit) * 0.75);
-  /* 12px: the panel to the button */
-  --space-settings-wave: calc(var(--settings-unit) * 0.375);
-  /* 6px: the sound's wave to the settings button */
+  /* The panel's padding, every side. */
+  --space-settings-pad: var(--spacing-micro-8);
+  /* Either side of the rule under Auto. */
+  --space-settings-rule: var(--spacing-micro-8);
+  /* Between the levels. */
+  --space-settings-row: var(--spacing-micro-4);
+  /* The panel to the button. */
+  --space-settings-gap: var(--spacing-micro-12);
+  /* The sound's wave to the settings button. */
+  --space-settings-wave: var(--spacing-micro-4);
   /* How far above its place the dock waits to drop in: its pre-entrance
    * state (motion.ts DOCK_MOTION.enterLiftRem tweens from the same distance). */
-  --space-settings-lift: calc(var(--settings-unit) * -0.75);
-  /* −12px */
+  --space-settings-lift: calc(var(--spacing-micro-12) * -1);
 
   /* The site's voices (tokens.css): every word in it the UI (12px), but
    * Auto's note ("High Quality") the supporting words (10px). */
   --text-settings: var(--text-ui);
   --text-settings-note: var(--text-support);
-  /* Auto and its note sit close, one line on the next (15px); the levels
-   * each take a fuller line (16.5px), 6px apart: the frame's pitches. */
-  --leading-settings-pair: 1.25;
-  --leading-settings-row: 1.375;
+  /* A level on the UI's own line, 16px; Auto's note closer under it, on 12. */
+  --leading-settings-row: var(--leading-ui);
+  --leading-settings-note: 1.2;
 
   --size-settings-button: calc(var(--settings-unit) * 1.25);
   /* 20px */
@@ -55,13 +53,11 @@
   /* 8px: room for the wave to rise as it plays */
   /* TOUCH TARGETS: 44 CSS px tall for both buttons; across, each reaches
    * half the gap toward the other and further outward, so the two never
-   * take each other's press (the sound's 24 + 10 + 3, the settings
-   * button's 20 + 3 + 12: both over WCAG's 24 px minimum). */
+   * take each other's press (the sound's 24 + 12 + 2, the settings
+   * button's 20 + 2 + 12: both over WCAG's 24 px minimum). */
   --size-settings-hit: 2.75rem;
-  --space-settings-hit-out: 0.625rem;
-  /* 10px */
-  --space-settings-hit-edge: 0.75rem;
-  /* 12px */
+  --space-settings-hit-out: var(--spacing-micro-12);
+  --space-settings-hit-edge: var(--space-press-reach);
 
   --color-settings-ground: var(--color-night);
   --color-settings-ink: var(--color-on-night);
@@ -94,7 +90,7 @@
  * fog stopped answering wherever the hand went in that corner. The button
  * takes it, and the panel while it is open. */
 [data-settings-dock] {
-  right: calc(var(--spacing-margin) + env(safe-area-inset-right, 0px));
+  right: var(--spacing-margin);
   bottom: calc(var(--spacing-margin) + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
   font-family: var(--font-newsreader), Georgia, serif;
@@ -111,15 +107,13 @@
 /* ON A PHONE, THE SOUND ALONE, BOTTOM LEFT (the user's 390 frame,
  * 2026-10-30): the byline takes the bottom-right corner (hero/copy), and
  * the frame keeps only the sound's wave, on the mark's own axis — its 24px
- * centred under the header's 64px mark — at the frame's 30px foot. No
+ * centred under the header's 64px mark — at the frame's foot. No
  * quality button there, as the frame draws it: the scene's Auto (measured
  * in the dark) sets a phone's quality. */
 @media (max-width: 767.98px) {
   [data-settings-dock] {
     right: auto;
-    left: calc(
-      var(--spacing-margin) + (var(--size-header-mark) - var(--size-settings-wave-w)) / 2 + env(safe-area-inset-left, 0px)
-    );
+    left: calc(var(--spacing-margin) + (var(--size-header-mark) - var(--size-settings-wave-w)) / 2);
     bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
     align-items: flex-start;
   }
@@ -154,9 +148,16 @@
   overflow: visible;
 }
 
-[data-settings-sound]:hover,
 [data-settings-sound][aria-pressed="true"] {
   color: var(--color-settings-ink);
+}
+
+/* ONLY WHERE THERE IS A HAND TO HOVER: a phone's press leaves :hover on the
+ * button, and the wave switched off would stand white as if still playing. */
+@media (hover: hover) {
+  [data-settings-sound]:hover {
+    color: var(--color-settings-ink);
+  }
 }
 
 [data-settings-sound]::after {
@@ -252,10 +253,6 @@
   margin-top: var(--space-settings-row);
 }
 
-[data-settings-option][data-auto] {
-  line-height: var(--leading-settings-pair);
-}
-
 [data-settings-option]:hover,
 [data-settings-option][data-checked] {
   color: var(--color-settings-ink);
@@ -264,6 +261,7 @@
 [data-settings-note] {
   color: var(--color-settings-muted);
   font-size: var(--text-settings-note);
+  line-height: var(--leading-settings-note);
 }
 
 [data-settings-rule] {

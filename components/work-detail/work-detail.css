@@ -8,10 +8,8 @@
  * Every voice is the site's own (tokens.css); only the gaps between them
  * are this page's.
  *
- * One unit. Every token below is its artboard px / 16. */
+ * Every space a step of the scale (theme.css). */
 :root {
-  --work-page-unit: 1rem;
-
   --color-work-page-ground: var(--color-night);
 
   /* ── The way back: the site's reading voice, a hairline arrow before
@@ -21,7 +19,7 @@
   --tracking-work-page-back: var(--tracking-copy);
   --color-work-page-back: var(--color-copy);
   --size-work-page-arrow: calc(var(--text-work-page-back) * 1.2);
-  --space-work-page-arrow-gap: calc(var(--text-work-page-back) * 0.75);
+  --space-work-page-arrow-gap: var(--spacing-micro-12);
 
   /* ── The name and scope: the title voice and the copy ── */
   --text-work-page-title: var(--text-title);
@@ -35,34 +33,25 @@
   --grid-work-page-axis: 7;
 
   /* ── The spaces ── */
-  --space-work-page-head: calc(var(--work-page-unit) * 10);
-  /* 160px: the way back to the name */
-  --space-work-page-scope: calc(var(--work-page-unit) * 0.75);
-  /* 12px: the name to its scope */
-  --space-work-page-pictures: calc(var(--work-page-unit) * 5);
-  /* 80px: the scope to the first picture */
+  /* The way back to the name. */
+  --space-work-page-head: var(--spacing-rhythm-160);
+  /* The name to its scope. */
+  --space-work-page-scope: var(--spacing-micro-12);
+  /* The scope to the first picture. */
+  --space-work-page-pictures: var(--spacing-rhythm-80);
 
   /* A picture still to come: the works' empty card (works.css), at a wide
    * card's aspect. */
   --size-work-page-empty-aspect: 920 / 650;
 }
 
-/* Tablet and small laptop: the same. */
-@media (max-width: 1279.98px) {
-  :root {
-    --work-page-unit: 1rem;
-  }
-}
-
-/* Phone: the axis on column 2, the spaces closer. */
+/* Tablet and small laptop: the same.
+ *
+ * Phone: the axis on column 2, the spaces closer. */
 @media (max-width: 767.98px) {
   :root {
-    --work-page-unit: 1rem;
     --grid-work-page-axis: 2;
-    --space-work-page-head: calc(var(--work-page-unit) * 6);
-    /* 96px */
-    --space-work-page-pictures: calc(var(--work-page-unit) * 3);
-    /* 48px */
+    --space-work-page-arrow-gap: var(--spacing-micro-8);
   }
 }
 
@@ -78,6 +67,7 @@
 }
 
 [data-work-page-back] {
+  position: relative;
   grid-column: 1 / -1;
   justify-self: start;
   display: inline-flex;
@@ -88,6 +78,13 @@
   line-height: var(--leading-work-page-back);
   letter-spacing: var(--tracking-work-page-back);
   text-decoration: none;
+}
+
+/* THE PRESS AREA, a thumb's size round a line of type (tokens.css). */
+[data-work-page-back]::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--space-press-reach) * -1);
 }
 
 [data-work-page-back]:focus-visible {

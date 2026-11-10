@@ -31,7 +31,14 @@
   --blur-preloader-soft: 0.1em;
   --blur-preloader-echo: 0.28em;
 
-  /* ── The axis ── where it stands from the screen's centre: a little left
+  /* THESE ARE PLACES, NOT SPACES: where each part of one drawing stands
+   * from the axis's centre, fitted to the user's frame, and the whole of it
+   * scaled by the unit as a picture is. Like the stars' placement and the
+   * mark's own shape, they are off the spacing scale on purpose (AGENTS.md,
+   * Scaling System §6). The two real spaces here, the mark's gap to the axis
+   * and the count's drop from the top edge, are steps of it.
+   *
+   * ── The axis ── where it stands from the screen's centre: a little left
    * (the mark and the words are centred together, not the line) and a
    * little low, as the frame hangs it. */
   --space-preloader-axis-x: calc(var(--preloader-unit) * -1.695);
@@ -44,16 +51,15 @@
   /* ── The mark ── the half logo at its own proportions (96:146). */
   --size-preloader-mark: calc(var(--preloader-unit) * 6.275);
   /* 100px wide */
-  --space-preloader-mark-gap: calc(var(--preloader-unit) * 0.205);
-  /* 3px short of the axis */
+  /* Short of the axis. */
+  --space-preloader-mark-gap: var(--spacing-micro-4);
   --space-preloader-mark-top: calc(var(--preloader-unit) * -5.495);
   /* -88px */
 
-  /* ── The count ── italic, its baseline 19px from the top. */
+  /* ── The count ── italic, its baseline a step from the top. */
   --text-preloader-count: calc(var(--preloader-unit) * 1.1875);
   /* 19px */
-  --space-preloader-count: calc(var(--preloader-unit) * 1.18);
-  /* 19px */
+  --space-preloader-count: var(--spacing-micro-20);
   --tracking-preloader-count: var(--tracking-display);
 
   /* ── The words ──
@@ -130,6 +136,7 @@
 @media (max-width: 1279.98px) {
   :root {
     --preloader-unit: 0.9rem;
+    --space-preloader-count: var(--spacing-micro-16);
   }
 }
 
@@ -138,6 +145,7 @@
 @media (max-width: 767.98px) {
   :root {
     --preloader-unit: 0.8rem;
+    --space-preloader-count: var(--spacing-micro-16);
   }
 }
 

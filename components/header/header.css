@@ -8,10 +8,10 @@
  * mark and the clock's box in the whole white.
  *
  * READ OFF THE FRAMES: every size below is the frame's px ÷ 16 (AGENTS.md).
- * The leading, 1.43, is the frame's own (17px at 12px). SINCE 2026-10-30,
- * the user's sizes: the nav alone at 12px, the clock and its zone at 10px
+ * The line boxes are on the 4px grid (tokens.css). SINCE 2026-10-30, the
+ * user's sizes: the nav alone at 12px, the clock and its zone at 10px
  * as every supporting word is (hero/copy: the notes) — the clock's box
- * then 16px with its hairlines; the nav's words 2px apart, a 19px pitch.
+ * then 16px with its hairlines; the nav's words the scale's 4px apart.
  *
  * THE PHONE IS ITS OWN DRAWING, not the desktop scaled: its mark is a
  * fifth smaller and set a little higher, its words nearer the rule; its nav
@@ -40,34 +40,27 @@
   --text-header: var(--text-support);
   --text-header-nav: var(--text-ui);
   --leading-header: var(--leading-support);
+  --leading-header-nav: var(--leading-ui);
 
-  /* The clock: the time in its box, the zone under it. The box holds the
-   * proportion the frame drew round its 12px time (65px wide), brought down
-   * with the type: about 0.6 em of air either side. */
-  --space-header-clock-pad: calc(var(--header-unit) * 0.375);
-  /* 6px either side of the time */
-  --space-header-clock-gap: calc(var(--header-unit) * 0.25);
-  /* 4px: the box to the zone */
+  /* The clock: the time in its box, the zone under it: either side of the
+   * time, and the box to the zone. */
+  --space-header-clock-pad: var(--spacing-micro-4);
+  --space-header-clock-gap: var(--spacing-micro-4);
 
-  /* The nav: its words, the gap to the hairline, and the hairline running
-   * on a little past the last word, as the frame draws it. */
-  --space-header-nav-gap: calc(var(--header-unit) * 0.063);
-  /* 1px between the words (the frame's 6, closed up at the user's word,
-   * twice): a 19px pitch, the list read as one block */
-  --space-header-nav-rule: calc(var(--header-unit) * 0.5);
-  /* 8px: the words to the rule */
-  --space-header-rule-tail: calc(var(--header-unit) * 0.25);
-  /* 4px */
+  /* The nav: its words (the scale's smallest step, the frame's 6 closed up
+   * at the user's word so the list reads as one block), the gap to the
+   * hairline, and the hairline running on a little past the last word, as
+   * the frame draws it. */
+  --space-header-nav-gap: var(--spacing-micro-4);
+  --space-header-nav-rule: var(--spacing-micro-8);
+  --space-header-rule-tail: var(--spacing-micro-4);
   /* The scroll cue: the gap that runs down the rule (its ends feathered
    * inside it, so the rule at rest is whole to its top). */
-  --size-header-cue: calc(var(--header-unit) * 2);
-  /* 32px, against the rule's ~79 */
-  --size-header-cue-soft: calc(var(--header-unit) * 0.75);
-  /* 12px of feather each end */
+  --size-header-cue: var(--spacing-macro-32);
+  --size-header-cue-soft: var(--spacing-micro-12);
   /* A link's press area reaches this far left of its word (and across the
    * gaps to its neighbours, and on to the rule). */
-  --space-header-link-reach: calc(var(--header-unit) * 0.75);
-  /* 12px */
+  --space-header-link-reach: var(--space-press-reach);
 
   --color-header-ink: var(--color-on-night-soft);
   --color-header-strong: var(--color-on-night);
@@ -88,20 +81,26 @@
     --header-unit: 1rem;
     --size-header-mark: calc(var(--header-unit) * 4);
     /* 64px */
-    /* The frame sets the mark 7px above the clock's and the nav's line: its
+    /* The frame sets the mark above the clock's and the nav's line: its
      * wings, the drawing's weight, then sit level with the clock's box. */
-    --space-header-mark-y: calc(var(--header-unit) * -0.4375);
-    /* -7px */
-    --space-header-clock-pad: calc(var(--header-unit) * 0.0625);
-    /* 1px: the phone's box holds the time close (the frame's 52px) */
-    --space-header-nav-rule: calc(var(--header-unit) * 0.25);
-    /* 4px */
+    --space-header-mark-y: calc(var(--spacing-micro-8) * -1);
+    --space-header-nav-rule: var(--spacing-micro-4);
     --space-header-rule-tail: 0px;
   }
 }
 
+/* PRESSED BY A FINGER, the words open to a 24px pitch (a 16px line and a
+ * step: WCAG 2.5.8's least, so a thumb cannot take the word beside it).
+ * A phone, or anything else driven by touch; a mouse keeps the closed list
+ * the frame draws. */
+@media (max-width: 767.98px), (pointer: coarse) {
+  :root {
+    --space-header-nav-gap: var(--spacing-micro-8);
+  }
+}
+
 /* Over the top of the page (so over the hero), on the hero's grid, from
- * the frame's top edge: 30px at every size (tokens.css --space-edge-y). */
+ * the frame's top edge: the same at every size (tokens.css --space-edge-y). */
 [data-site-header] {
   position: absolute;
   top: 0;
@@ -157,6 +156,8 @@
   width: fit-content;
   padding-inline: var(--space-header-clock-pad);
   border: var(--size-rule) solid var(--color-header-strong);
+  /* The box a whole line of the grid, its two hairlines counted in. */
+  line-height: calc(var(--text-header) * var(--leading-header) - var(--size-rule) * 2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -176,6 +177,7 @@
   padding-right: var(--space-header-nav-rule);
   padding-bottom: var(--space-header-rule-tail);
   font-size: var(--text-header-nav);
+  line-height: var(--leading-header-nav);
   text-align: right;
 }
 

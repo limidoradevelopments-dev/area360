@@ -31,18 +31,66 @@
 
 /* Grid & spacing — a SEPARATE, non-inline @theme block, on purpose.
  *
- * The ONLY two shared spacing tokens: every section's outer margin and its
- * column gutter. 30px / 4px at the 1440 origin, in rem so they ride the root
- * scaler. Generates the margin and gutter spacing utilities.
+ * THE SPACING SCALE (2026-11-10, the user's system; AGENTS.md, Scaling
+ * System §6). EVERY SPACE ON THE SITE IS ONE OF THESE FIFTEEN STEPS:
  *
- * NOT INLINE, because the phone block (tokens.css) overrides the margin. An
+ *   MICRO, multiples of 4: icons, button padding, tight text grouping.
+ *   MACRO, multiples of 8: structural layout, section gaps, the page's
+ *   primary rhythm.
+ *
+ * A feature names its own token for a part (--space-<feature>-<part>) and
+ * points it at a step; it never writes the number again. The steps are rem,
+ * so they read exactly as the design at the 1440 origin and ride the root
+ * scaler above it, the whole page growing as one.
+ *
+ * Each step is also a utility (the micro or macro name after any padding,
+ * margin or gap prefix). STATIC so all fifteen are always emitted: read
+ * through var() from a stylesheet or an inline style, a step the class
+ * scanner never saw would otherwise resolve to nothing.
+ *
+ * THE RHYTHM (2026-11-10, the user: the phone must come down "with
+ * rhythm"): the macro tier AS IT COMES DOWN WITH THE SCREEN. Each is named
+ * by its value at the origin and is one step lower on a tablet, two on a
+ * phone (tokens.css). A structural space is a rhythm token, so it adapts by
+ * itself; a macro or micro token is the same number at every size.
+ *
+ * THE MARGIN AND THE GUTTER are steps too: every section's outer margin
+ * (24, 16 on a phone: tokens.css --space-margin-step), never less than a
+ * notch's safe area, and its column gutter (4 at every size: 2026-11-07,
+ * the user). NOT INLINE, because the bands (tokens.css) override these. An
  * inline token is baked into the utility as a literal, so a later :root
- * override never reaches it — the padding silently stays 30px on a phone.
- * Non-inline, the utility reads var() and the override lands. Any theme token
- * you intend to override in a media block belongs in this block. */
-@theme {
-  --spacing-margin: 1.875rem;
-  /* 4px, at every size (2026-11-07, the user: tighter again, "use 4px";
-   * it was 20px and 16 on a phone, then 8px the same day). */
-  --spacing-gutter: 0.25rem;
+ * override never reaches it — the padding silently stays at the desktop's
+ * on a phone. Non-inline, the utility reads var() and the override lands.
+ * Any theme token you intend to override in a media block belongs in this
+ * block. */
+@theme static {
+  --spacing-micro-4: 0.25rem;
+  --spacing-micro-8: 0.5rem;
+  --spacing-micro-12: 0.75rem;
+  --spacing-micro-16: 1rem;
+  --spacing-micro-20: 1.25rem;
+  --spacing-micro-24: 1.5rem;
+
+  --spacing-macro-32: 2rem;
+  --spacing-macro-40: 2.5rem;
+  --spacing-macro-48: 3rem;
+  --spacing-macro-64: 4rem;
+  --spacing-macro-80: 5rem;
+  --spacing-macro-96: 6rem;
+  --spacing-macro-128: 8rem;
+  --spacing-macro-160: 10rem;
+  --spacing-macro-256: 16rem;
+
+  --spacing-rhythm-32: var(--spacing-macro-32);
+  --spacing-rhythm-40: var(--spacing-macro-40);
+  --spacing-rhythm-48: var(--spacing-macro-48);
+  --spacing-rhythm-64: var(--spacing-macro-64);
+  --spacing-rhythm-80: var(--spacing-macro-80);
+  --spacing-rhythm-96: var(--spacing-macro-96);
+  --spacing-rhythm-128: var(--spacing-macro-128);
+  --spacing-rhythm-160: var(--spacing-macro-160);
+  --spacing-rhythm-256: var(--spacing-macro-256);
+
+  --spacing-margin: max(var(--space-margin-step), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --spacing-gutter: var(--spacing-micro-4);
 }

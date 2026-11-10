@@ -20,7 +20,8 @@
  *   Every pair stands inward from its line.
  *
  *   THE COPY. The hero's copy's voice exactly (tokens.css: the copy):
- *   Newsreader 14px, −1%, leading 1.34, the soft white; 12px on a phone.
+ *   Newsreader 15px on a 20px line, −1%, the soft white; 12 on 16 on a
+ *   phone.
  *
  *   THE STARS (2026-11-01, the user's frame). Between the passages, four
  *   stars — the user's one four-pointed star (37 × 55) at its own size,
@@ -46,8 +47,7 @@
 
   /* ── The beat ── a row of dots to the paragraph beside it, either way,
    * and the section's edge to its first and last row. */
-  --space-promise-beat: calc(var(--promise-unit) * 1);
-  /* 16px */
+  --space-promise-beat: var(--spacing-micro-16);
 
   /* ── The block ── the grid lines the copy stands between (lines, not
    * columns: 7 to 9 is columns 7 and 8). Its corner dots stand on them. */
@@ -60,10 +60,30 @@
    * row less (N − s)/N of a gutter, so with a narrower gutter it widens by
    * (that gutter − the page's) × (N − s)/N — taken back here, at the
    * block's end (the start stays on the page's axis). Two of twelve:
-   * 10/12. Its end dots stand where the copy ends. */
+   * 10/12. Its end dots stand where the copy ends.
+   *
+   * AND AT THE MARGIN IT WAS DRAWN WITH (2026-11-10: the page's margin went
+   * from 30px to a step of the spacing scale): a block of s of N columns
+   * changes by 2s/N of whatever the margin loses, so the trim takes that
+   * back, a third of it for two of twelve. Both are REFERENCES, the width
+   * the copy was set to, not spaces on the page. */
   --space-promise-measure-gutter: 1.25rem;
   /* 20px */
-  --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 10 / 12);
+  --size-promise-measure-margin: 1.875rem;
+  /* 30px */
+  --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 10 / 12 + (var(--size-promise-measure-margin) - var(--spacing-margin)) / 3);
+  /* AND AT THE SIZE IT WAS SET IN (2026-11-10: the copy went from 14px to
+   * the type rhythm's 15): set larger, a line needs a wider measure to
+   * break where it broke. By how much the text itself widens, swept
+   * against the old line breaks at thirteen widths, not 15/14: Newsreader's
+   * optical size narrows its letters as it grows, and Windows rounds a
+   * small size's advances. A share of the block, so the percentage (of a
+   * grid item's own area) takes it back at any width. */
+  --size-promise-measure-grow: 1.045;
+  --size-promise-measure-end: calc(var(--size-promise-measure-trim) * var(--size-promise-measure-grow) - 100% * (var(--size-promise-measure-grow) - 1));
+  /* The measure above the root scaler's knee, in the copy's own ems (see the
+   * query below). */
+  --size-promise-measure-ems: 15.7;
 
   /* ── The copy ── the site's reading voice, as the hero's. */
   --text-promise: var(--text-copy);
@@ -73,10 +93,10 @@
 
   /* ── The dots ──
    * DATUMS, LIKE THE HAIRLINE: they never scale (a 2.6px dot at a 1920
-   * window is drawn soft). 2px, a pair's dots 3px apart; the accent at the
-   * drawn cross's own 80% (settings.css), the frame's amber. */
+   * window is drawn soft). 2px, a pair's dots the scale's 4px apart; the
+   * accent at the drawn cross's own 80% (settings.css), the frame's amber. */
   --size-promise-dot: 2px;
-  --space-promise-dot-pitch: 5px;
+  --space-promise-dot-pitch: calc(var(--size-promise-dot) + var(--space-datum));
   /* centre to centre */
   --color-promise-dot: color-mix(in srgb, var(--color-accent) 80%, transparent);
   /* A dot's twin, one pitch inward: to the right of a line on the left, to
@@ -89,8 +109,8 @@
   --shadow-promise-corner-end: none;
 
   /* ── The stars ── between the passages. */
-  --space-promise-stars-pad: calc(var(--promise-unit) * 8);
-  /* 128px: the dots above to the cluster, the cluster to the dots below */
+  /* The dots above to the cluster, the cluster to the dots below. */
+  --space-promise-stars-pad: var(--spacing-rhythm-128);
   /* One pixel of the frame: the cluster is laid out in it (55 × 55, each
    * star's place and size), so it scales as the rest of the frame does. */
   --size-promise-stars-px: calc(var(--promise-unit) * 0.0625);
@@ -101,8 +121,8 @@
   --size-promise-mark: calc(var(--promise-unit) * 46.8125);
   /* 749px wide */
   --size-promise-mark-aspect: 749 / 560;
-  --space-promise-stage: calc(var(--promise-unit) * 5);
-  /* 80px: the dots to the mark */
+  /* The dots to the mark. */
+  --space-promise-stage: var(--spacing-rhythm-80);
   /* THE MARK IS HELD AT THE SCREEN'S MIDDLE while its letters land, so it
    * must fit the screen's height: never taller than 72% of it (svh, a size
    * that answers to the screen's height, which the root scaler knows
@@ -145,14 +165,26 @@
   --size-promise-air-below: 90svh;
 }
 
+/* ABOVE THE ROOT SCALER'S KNEE (95rem: base.css) THE WHOLE PAGE GROWS AS ONE
+ * PICTURE, so the copy's measure does too: a fixed number of its own ems,
+ * the paragraphs one shape on every larger screen, the breaks of the user's
+ * own 1920 frame. (Set from the viewport, the block outgrew the type and the
+ * breaks wandered through five patterns between 1536 and 2560.) NOT A LAYOUT
+ * BAND: nothing is laid out differently here, one measure is held. */
+@media (min-width: 95rem) {
+  :root {
+    --size-promise-measure-end: calc(100% - var(--text-promise) * var(--size-promise-measure-ems));
+  }
+}
+
 /* Tablet and small laptop: the copy takes four columns (7–10). At 768 that
  * is ~220px, the desktop's measure at 1440; at 1279, ~390px. */
 @media (max-width: 1279.98px) {
   :root {
     --promise-unit: 1rem;
     --grid-promise-block-end: 11;
-    /* Four of twelve: 8/12. */
-    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 8 / 12);
+    /* Four of twelve: 8/12, and two thirds of the margin's gain. */
+    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 8 / 12 + (var(--size-promise-measure-margin) - var(--spacing-margin)) * 2 / 3);
   }
 }
 
@@ -166,11 +198,12 @@
     --promise-unit: 1rem;
     --grid-promise-block-start: 2;
     --grid-promise-block-end: 4;
-    /* The phone frame's 16px gutter; two of four: 2/4. */
+    /* The phone frame's 16px gutter; two of four: 2/4. Its margin was
+     * already on the scale, so there is no margin to give back, and the
+     * copy is still 12px, so there is no size either. */
+    --size-promise-measure-grow: 1;
     --space-promise-measure-gutter: 1rem;
     --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 2 / 4);
-    --space-promise-stage: calc(var(--promise-unit) * 3);
-    /* 48px */
   }
 }
 
@@ -316,9 +349,9 @@
 }
 
 [data-promise-dot="block-end"] {
-  grid-column: span 1 / var(--grid-promise-block-end);
+  grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
   justify-self: end;
-  margin-right: var(--size-promise-measure-trim);
+  margin-right: var(--size-promise-measure-end);
   box-shadow: var(--shadow-promise-corner-end);
 }
 
@@ -327,7 +360,7 @@
  * "remains" alone on its line before the pause. */
 [data-promise-text] {
   grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
-  margin-right: var(--size-promise-measure-trim);
+  margin-right: var(--size-promise-measure-end);
   font-size: var(--text-promise);
   line-height: var(--leading-promise);
   letter-spacing: var(--tracking-promise);

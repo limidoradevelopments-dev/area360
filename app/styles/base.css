@@ -5,8 +5,10 @@ html {
    *
    * The design origin is the 1440 artboard, where 1rem = 16px, so a token
    * written as 1.035rem renders at 16.56px on the artboard it was drawn on.
-   * The root holds 16px up to 95rem (1520px), then grows 0.012px per px of
-   * viewport: 1920 → ~20.8px, 2560 → ~28.5px. That slope is what makes a 5K
+   * The root holds 16px up to 95rem (1520px), then grows 0.008px per px of
+   * viewport: 1920 → 19.2px, 2560 → ~24.3px (2026-11-10, the user: at 0.012
+   * the desktop's body text came out a bit too large as it grew; at 1920 the
+   * copy is now a whole 18px on a 24px line). That slope is what makes a 5K
    * display read as high-end rather than stretched. Every token is a rem
    * multiple of this, so the whole site grows as one piece and there is
    * exactly one curve to reason about.
@@ -19,12 +21,18 @@ html {
    * and technical labels fall under 10px. Scaling DOWN is the job of each
    * feature's step-down blocks, per component unit.
    *
-   * CEILING 3.75rem caps the root at 60px (~5100px viewport); without it an
-   * 8K display computes a 90px root.
+   * CEILING 3.75rem caps the root at 60px (~7000px viewport), so an 8K
+   * display stops growing there.
    *
    * No clamp() anywhere else in the system, except when a size must answer
    * to viewport HEIGHT, which this curve knows nothing about. */
-  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.012), 3.75rem);
+  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.008), 3.75rem);
+  /* THE WHOLE SITE IS ON THE NIGHT, the canvas too: a phone's overscroll
+   * shows ground, never a sheet of paper behind a black page. */
+  background-color: var(--color-night);
+  /* No grey flash over a word as it is pressed: every press has its own
+   * answer here (the whole white). */
+  -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   scrollbar-width: none;
@@ -37,7 +45,7 @@ body::-webkit-scrollbar {
 }
 
 body {
-  background-color: var(--color-background);
+  background-color: var(--color-night);
   color: var(--color-foreground);
   /* BODY TEXT IS NEWSREADER (2026-10-29, the user: "newsreader for body
    * text, keep the existing one for titles"), at the one weight carried

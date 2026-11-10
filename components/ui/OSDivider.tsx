@@ -26,7 +26,7 @@ export default function OSDivider({ left, right, className }: OSDividerProps) {
       role="separator"
       className={cx(
         "w-full border-t border-[color:var(--color-rule)]",
-        hasLabels && "flex items-center justify-between pt-3",
+        hasLabels && "flex items-center justify-between pt-micro-12",
         className,
       )}
     >

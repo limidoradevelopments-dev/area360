@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "lenis/dist/lenis.css";
 import "./globals.css";
@@ -58,6 +58,18 @@ export const metadata: Metadata = {
   description: "Crafting emotions, not just designs.",
 };
 
+/**
+ * THE PHONE'S OWN EDGES. `cover` lays the page under a notch and the home
+ * indicator, so the scene runs to the glass and env(safe-area-inset-*) is
+ * real: without it every one of those reads 0, and the margin (theme.css)
+ * and the header, byline and dock that keep clear of them do nothing. The
+ * browser's own bars take the page's black (tokens.css --color-night).
+ */
+export const viewport: Viewport = {
+  themeColor: "#111111",
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -65,7 +77,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={cx(cormorant.variable, newsreader.variable)}>
-      <body className="min-h-dvh flex flex-col antialiased bg-background text-foreground">
+      <body className="min-h-dvh flex flex-col antialiased bg-night text-foreground">
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

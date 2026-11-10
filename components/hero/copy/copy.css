@@ -3,8 +3,8 @@
  * The headline, the copy under it and the two notes, over the scene (the
  * user's 1920 frame and their 390 phone frame, 2026-10-30), on the hero's
  * twelve columns — four on a phone. The headline Cormorant Garamond
- * semibold italic at 34px, −6%, the whole white; the copy Newsreader at
- * 14px, −1%; the notes Newsreader at 10px; every word but the headline at
+ * semibold italic at 30px, −6%, the whole white; the copy Newsreader at
+ * 15px, −1%; the notes Newsreader at 10px; every word but the headline at
  * 80% white (tokens.css: the soft white).
  *
  * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
@@ -12,7 +12,7 @@
  *   THE AXIS. Column 7's edge (column 2's on a phone): the clock's box
  *   above, "Visceral," and "Not Just The Visible." and the copy all stand
  *   on it; "Designing The" hangs out to its left (HeroTitle). On a phone
- *   the frame moves the axis 5px in, under the clock's figures.
+ *   the frame moves the axis 4px in, under the clock's figures.
  *
  *   THE ROW. The copy and the notes share one top (the frame's guide), at
  *   48.65% of the frame's height, where the notes' first baseline falls on
@@ -21,24 +21,22 @@
  *   and the horizon (hero/stage/camera.ts), so the words keep their place
  *   in the picture on any screen.
  *
- *   THE GAP. The frame's 28px (24px on a phone) runs from the headline's
- *   last baseline to the copy's line box. The headline's line box reaches
- *   below that baseline, so the margin is the gap less that reach.
+ *   THE GAP. 24px at every size runs from the headline's last baseline to
+ *   the copy's line box. The headline's line box reaches below that
+ *   baseline, so the margin is the gap less that reach.
  *
- *   THE LEADING. The headline's lines 38.4px apart (31.7px on a phone); the
- *   copy's 1.34, the user's (18.8px at 14px); the notes' 1.43, the frame's.
+ *   THE LEADING. Every line box a multiple of 4 (tokens.css): the
+ *   headline's 32, the copy's 20 (16 on a phone), the notes' 16.
  *
  * NEVER TAKES THE POINTER: the scene reads the hand through it. */
 :root {
-  --hero-copy-unit: 1rem;
-
-  /* ── The headline: the site's title voice (tokens.css), 30px on its
-   * 33.9px leading (24px on 31.7px on a phone) ── */
+  /* ── The headline: the site's title voice (tokens.css), 30px on a 32px
+   * line (24 on 32 on a phone) ── */
   --text-hero-title: var(--text-title);
   --leading-hero-title: var(--leading-title);
   --tracking-hero-title: var(--tracking-title);
-  --space-hero-title-gap: calc(var(--hero-copy-unit) * 1.75);
-  /* 28px: the last baseline to the copy */
+  /* The last baseline to the copy. */
+  --space-hero-title-gap: var(--spacing-micro-24);
   /* How far the headline's line box reaches below its last baseline:
    * Cormorant Garamond's descent, plus half of what the leading adds to
    * its box — here takes from it (tokens.css: its metrics). */
@@ -46,8 +44,8 @@
 
   /* ── The copy and the notes ──
    * The copy is the site's reading voice (tokens.css: the copy), shared
-   * with every paragraph after the hero: 14px (12 on a phone), −1%, the
-   * user's leading 1.34 — closer than the notes' (the support's 1.43). */
+   * with every paragraph after the hero: 15px on a 20px line (12 on 16 on
+   * a phone), −1%. */
   --text-hero-lede: var(--text-copy);
   --tracking-hero-lede: var(--tracking-copy);
   --leading-hero-lede: var(--leading-copy);
@@ -55,8 +53,8 @@
    * header's clock is. */
   --text-hero-note: var(--text-support);
   --leading-hero-text: var(--leading-support);
-  --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.25);
-  /* 4px: the byline to its year */
+  /* The byline to its year. */
+  --space-hero-note-gap: var(--spacing-micro-4);
 
   /* ── Where they stand ── */
   --space-hero-row: 48.65%;
@@ -64,8 +62,7 @@
   /* The row is never higher than lets the headline clear the header's
    * clock (its box and zone end ~65px down) by a gutter: on a short screen,
    * a landscape phone, it comes down rather than climbing into the clock. */
-  --space-hero-clear: calc(var(--hero-copy-unit) * 5.625);
-  /* 90px */
+  --space-hero-clear: var(--spacing-macro-96);
   --space-hero-row-least: calc(var(--space-hero-clear) + 2 * var(--leading-hero-title) * var(--text-hero-title) + var(--space-hero-title-gap) - var(--space-hero-title-foot));
 
   --color-hero-title: var(--color-on-night);
@@ -74,29 +71,18 @@
 
 /* Tablet and small laptop: the same. The headline is already modest at
  * 30px, and at the band's crowded end (768) the byline wraps into its
- * three columns before it meets the copy. */
-@media (max-width: 1279.98px) {
-  :root {
-    --hero-copy-unit: 1rem;
-  }
-}
-
-/* Phone: the user's 390 frame, its own drawing (the byline 8px: under the
- * supporting voice, the frame's own), restated as multiples of the one
- * unit. The headline's 24px and the copy's 12px are the shared voices' own
- * steps (tokens.css). */
+ * three columns before it meets the copy.
+ *
+ * Phone: the user's 390 frame, its own drawing (the byline a note under the
+ * supporting voice, the frame's own). The headline's 24px and the copy's
+ * 12px are the shared voices' own (tokens.css). */
 @media (max-width: 767.98px) {
   :root {
-    --hero-copy-unit: 1rem;
-    --space-hero-title-gap: calc(var(--hero-copy-unit) * 1.5);
-    /* 24px */
-    --text-hero-note: calc(var(--hero-copy-unit) * 0.5);
-    /* 8px */
-    --space-hero-note-gap: calc(var(--hero-copy-unit) * 0.0625);
-    /* 1px */
+    --text-hero-note: var(--text-rhythm-8);
+    /* On a 12px line (the 4px grid: tokens.css). */
+    --leading-hero-text: 1.5;
     --space-hero-row: 40.65%;
-    --space-hero-axis: calc(var(--hero-copy-unit) * 0.3125);
-    /* 5px */
+    --space-hero-axis: var(--spacing-micro-4);
   }
 }
 
@@ -195,8 +181,8 @@
 
 /* Phone: four columns, the axis on the second. Only "Designing" hangs
  * ("The" stands in the line again, holding it); the byline goes to the
- * frame's foot, 30px up like the header from the top, and the frame shows
- * no availability. */
+ * frame's foot, as far up as the header is down from the top, and the frame
+ * shows no availability. */
 @media (max-width: 767.98px) {
   [data-hero-copy] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
