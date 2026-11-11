@@ -11,6 +11,9 @@
  *   styles/base.css       the root scaler, resets, body
  *   styles/utilities.css  noise, glass, the reveal-mask states
  *
+ *   components/ui/*.css   the shared primitives' own tokens and rules (the
+ *                         embossed dots, the eye tag)
+ *
  *   components/<feature>/<feature>.css
  *                         each feature's own unit, tokens, step-downs and
  *                         component rules, next to its code, in page order
@@ -25,6 +28,10 @@
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/utilities.css";
+
+/* Shared primitives (components/ui), before every feature that sets them. */
+@import "../components/ui/emboss.css";
+@import "../components/ui/eye-tag.css";
 
 /* Features, in page order. */
 @import "../components/preloader/preloader.css";

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { floatCards, type CardCue } from "@/components/ui/floatCards";
+import EyeTag from "@/components/ui/EyeTag";
 import { raiseLines } from "@/components/ui/raiseLines";
 import { useStageReveal } from "@/components/ui/StageReveal";
 import { usePrefersReducedMotion } from "@/components/ui/usePrefersReducedMotion";
@@ -10,17 +10,19 @@ import { useRevealOnce } from "@/components/ui/useRevealOnce";
 
 import WorkCard from "./WorkCard";
 import WorksTitle from "./WorksTitle";
-import { spanOf, WORKS, WORKS_HEADING } from "./content";
+import { numeralOf, spanOf, WORKS, WORKS_HEADING, WORKS_TAG } from "./content";
 import { BREATH, WORKS_REDUCED, WORKS_REVEAL } from "./motion";
 
 /**
  * ─── WorksSection ───
  *
- * The works, the nav's #works (the user's 1920 frame, 2026-11-06): the
- * section's title on the page's axis, over the works' cards on the page's
- * twelve columns — a wide card and two narrow ones, then two wide — each
- * its picture, its name and its scope, linking to its own page
- * (app/works/[slug]).
+ * The works, the nav's #works (the user's 1920 frames, 2026-11-06 and
+ * 2026-11-11): the section's title on the page's axis — a statement in
+ * two lines — and the eye tag at the left margin beside it (ui/EyeTag:
+ * "Every work has a meaning & communicates with F E E L I N G S"), over
+ * the works' cards on the page's twelve columns — a wide card and two
+ * narrow ones, then two wide — each its numeral, its picture, its name
+ * and its scope, linking to its own page (app/works/[slug]).
  *
  * IT FOLLOWS THE PROMISE in the page's own flow (2026-11-02: nothing laid
  * over anything): as it comes up, the moth's letters have bloomed off the
@@ -29,9 +31,11 @@ import { BREATH, WORKS_REDUCED, WORKS_REVEAL } from "./motion";
  * THE PICTURES' DEPTH IS CSS (works.css): a scroll-driven animation on the
  * compositor, nothing of it here.
  *
- * THE ENTRANCE, ONCE, after the curtain: the title drops into its mask;
- * each card floats up as it comes into view, a row's cards left to right
- * (motion.ts WORKS_REVEAL). Web Animations, not GSAP: GSAP's chunk stays
+ * THE ENTRANCE, ONCE, after the curtain: the title's lines drop into their
+ * masks; the tag plays its own (ui/EyeTag, held for the curtain)
+ * (motion.ts WORKS_REVEAL). THE CARDS HAVE NONE (2026-11-11, the user:
+ * "card one time appear animation remove completely"): they are simply
+ * there, their pictures' depth and the breath their only motion. Web Animations, not GSAP: GSAP's chunk stays
  * off the page's first load (AGENTS.md, Loading).
  *
  * THE BREATH (motion.ts BREATH, breath.ts): over a card's picture, the
@@ -67,40 +71,17 @@ export default function WorksSection({ className, respectReducedMotion = false }
     calmAtEntrance.current = calm;
   }, [calm]);
 
-  /* The title, once it is in view and the curtain has lifted. */
+  /* The title, once it is in view and the curtain has lifted: its lines in
+     reading order. */
   useEffect(() => {
-    const line = title.current?.querySelector<HTMLElement>("[data-reveal-line]");
-    if (!revealed || !titleSeen || !line) return;
-    const m = WORKS_REVEAL.title;
-    return raiseLines([{ el: line, at: 0 }], m, calmAtEntrance.current ? WORKS_REDUCED : null);
+    const root = title.current;
+    if (!revealed || !titleSeen || !root) return;
+    const lines = Array.from(root.querySelectorAll<HTMLElement>("[data-reveal-line]"), (el, k) => ({
+      el,
+      at: k * WORKS_REVEAL.titleStagger,
+    }));
+    return raiseLines(lines, WORKS_REVEAL.title, calmAtEntrance.current ? WORKS_REDUCED : null);
   }, [revealed, title, titleSeen]);
-
-  /* The cards, each as it comes into view: those that come in together
-     float up left to right. */
-  useEffect(() => {
-    const root = section.current;
-    if (!revealed || !root) return;
-    const stops: (() => void)[] = [];
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const arriving = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left);
-        if (!arriving.length) return;
-        const cues: CardCue[] = arriving.map((entry, k) => {
-          observer.unobserve(entry.target);
-          return { el: entry.target as HTMLElement, at: k * WORKS_REVEAL.cardStagger };
-        });
-        stops.push(floatCards(cues, calmAtEntrance.current ? WORKS_REDUCED : null));
-      },
-      { threshold: WORKS_REVEAL.cardThreshold },
-    );
-    for (const card of root.querySelectorAll("[data-reveal-card]")) observer.observe(card);
-    return () => {
-      observer.disconnect();
-      for (const stop of stops) stop();
-    };
-  }, [revealed]);
 
   /* The breath: where a hand can hover, once the section nears. */
   useEffect(() => {
@@ -136,9 +117,14 @@ export default function WorksSection({ className, respectReducedMotion = false }
       data-works-calm={calm ? "" : undefined}
       className={className}
     >
-      <WorksTitle ref={title} id={HEADING_ID} title={WORKS_HEADING} />
+      <header data-works-head>
+        {/* The tag first: over the title on a phone, so first for a
+            reader too (AGENTS.md §9: the source is the reading order). */}
+        <EyeTag lines={WORKS_TAG.lines} word={WORKS_TAG.word} ready={revealed} respectReducedMotion={respectReducedMotion} />
+        <WorksTitle ref={title} id={HEADING_ID} lines={WORKS_HEADING} />
+      </header>
       {WORKS.map((work, index) => (
-        <WorkCard key={work.slug} work={work} span={spanOf(index)} />
+        <WorkCard key={work.slug} work={work} span={spanOf(index)} numeral={numeralOf(index)} />
       ))}
     </section>
   );

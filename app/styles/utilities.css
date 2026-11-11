@@ -120,6 +120,16 @@
   filter: blur(var(--blur-reveal-card-from));
 }
 
+/* A rule drawn in from one end (ui/wipeIn): undrawn, it is clipped away
+ * whole, from its start's side — or its end's, where the value says so. */
+[data-reveal-wipe] {
+  clip-path: inset(0 100% 0 0);
+}
+
+[data-reveal-wipe="end"] {
+  clip-path: inset(0 0 0 100%);
+}
+
 /* Without scripting nothing will ever run the entrance, so nothing may be
  * left in its pre-entrance state. */
 @media (scripting: none) {
@@ -127,9 +137,11 @@
   [data-reveal-line],
   [data-reveal-lines],
   [data-reveal-fade],
-  [data-reveal-card] {
+  [data-reveal-card],
+  [data-reveal-wipe] {
     transform: none !important;
     opacity: 1 !important;
     filter: none !important;
+    clip-path: none !important;
   }
 }

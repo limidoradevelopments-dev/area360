@@ -35,12 +35,63 @@ export interface Work {
   readonly scope: string;
   /** The card's picture. None: the frame's empty card. */
   readonly cover?: WorkImage;
-  /** Its page's pictures, in order (the page's design is still to come). */
-  readonly images?: readonly WorkImage[];
+
+  /* ── Its page (app/works/[slug], components/work-detail) ── */
+  /** What it is, in a paragraph: under "About". */
+  readonly about?: string;
+  /** What was done, a line each: under "Services". */
+  readonly services?: readonly string[];
+  /** What came of it: under "Result". */
+  readonly result?: string;
+  /** Its page's pictures, in order, down the page. None: the cover alone,
+   *  or the frame's empty picture. */
+  readonly media?: readonly WorkMedia[];
 }
 
-/** The section's title, on the page's axis. */
-export const WORKS_HEADING = "Piece Of Unforgettable Memories";
+/**
+ * One of a work's page's pictures, and how it is laid:
+ *
+ *   "bleed"   a photograph, to the column's edges (the page's default);
+ *   "matted"  a screen — a page of the work as it was seen — laid on a
+ *             mat a shade off the black, a margin round it, as a print is
+ *             mounted (the user's frame, 2026-11-11).
+ */
+export type WorkMediaLay = "bleed" | "matted";
+
+export interface WorkMedia {
+  readonly image: WorkImage;
+  readonly lay?: WorkMediaLay;
+}
+
+/** The section's title, on the page's axis, line by line as the frame
+ *  breaks it (2026-11-11, the user's frame; it was "Piece Of Unforgettable
+ *  Memories"). Each line drops into its own mask. */
+export const WORKS_HEADING: readonly string[] = ["Settling Is Easy", "The Work Here Isn’t Built For That"];
+
+/** The eye tag at the left margin, beside the title (ui/EyeTag): its lead
+ *  line by line as the frame breaks it, and the word it spells in tiles. */
+export const WORKS_TAG = {
+  lines: ["Every work has a meaning", "& communicates with"],
+  word: "Feelings",
+} as const;
+
+/** A card's numeral over its picture, by its place in the list: ( I ),
+ *  ( II ), ( III )… Roman, as a book numbers its plates. */
+export function numeralOf(index: number): string {
+  const steps: readonly [number, string][] = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
+    [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  let n = index + 1;
+  let roman = "";
+  for (const [value, letters] of steps) {
+    while (n >= value) {
+      roman += letters;
+      n -= value;
+    }
+  }
+  return roman;
+}
 
 /** The works, in the grid's order. The frame's names; the fourth and
  *  fifth were "Kavi Klavis" again there, numbered here so each has its own
@@ -50,10 +101,33 @@ export const WORKS: readonly Work[] = [
     slug: "kavi-klavis", title: "Kavi Klavis", scope: "Art Direction / Web Design & Development",
     cover: {
       src: "/works/kavi-klavis/cover.png",
-      width: 1840,
-      height: 1560,
+      width: 2822,
+      height: 1994,
       alt: "A stone in a misty lake with two tied chamomiles",
     },
+    /* The frame's words (2026-11-11), its repeated sentence as drawn. */
+    about:
+      "From the first concept to the final interaction, I bring together design and technology to transform a brand’s quietest strengths into its most unforgettable qualities. From the first concept to the final interaction, I bring together design and technology to",
+    services: ["Web Design", "Web Development"],
+    result: "From the first concept to the final interaction,",
+    /* Screens of this site as it stands, taken at 1920 × 1080 (headless
+       Chrome, 2026-11-11), between its photographs. */
+    media: [
+      {
+        image: { src: "/works/kavi-klavis/cover.png", width: 2822, height: 1994, alt: "A stone in a misty lake with two tied chamomiles" },
+      },
+      {
+        lay: "matted",
+        image: { src: "/works/kavi-klavis/screen-promise.webp", width: 1920, height: 1080, alt: "The site’s promise: its words gathered into the shape of a moth" },
+      },
+      {
+        image: { src: "/works/kavi-klavis/lake.webp", width: 2376, height: 1080, alt: "The misty lake between its two dark shores, the stone in the still water" },
+      },
+      {
+        lay: "matted",
+        image: { src: "/works/kavi-klavis/screen-home.webp", width: 1920, height: 1080, alt: "The site’s first screen: the lake, the stone and the headline over them" },
+      },
+    ],
   },
   { slug: "island-hopes-travels", title: "Island Hopes Travels", scope: "Art Direction / Web Design & Development" },
   { slug: "project-3", title: "Project 3", scope: "Art Direction / Web Design & Development" },
@@ -84,4 +158,10 @@ export function workBySlug(slug: string): Work | undefined {
 /** A work's page. */
 export function workHref(work: Work): string {
   return `/works/${work.slug}`;
+}
+
+/** The work after this one in the grid's order; the first after the last. */
+export function nextWork(work: Work): Work {
+  const at = WORKS.indexOf(work);
+  return WORKS[(at + 1) % WORKS.length];
 }

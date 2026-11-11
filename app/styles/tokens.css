@@ -117,15 +117,16 @@
   /* about −6%: the user's frames, for all display type */
   --tracking-title: var(--tracking-display);
   /* THE SECTION TITLE: an h2, every section's heading under the page's h1
-   * (the works' "Piece Of Unforgettable Memories") — the title's face, a
-   * note down it (2026-11-07, the user: "use a rhythmic different text size
-   * for h2 … reduce the letter spacing, maybe −3%"): 19, 24 and 30 for h3,
-   * h2 and h1, 15, 19 and 24 on a phone. On a 28px line (24 on a phone).
-   * Tracked −3%: at a smaller size the display's −6% closes the italic's
-   * letters up. */
+   * (the works' "Settling Is Easy …") — the title's face, a note down it:
+   * 19, 24 and 30 for h3, h2 and h1, 15, 19 and 24 on a phone (2026-11-07,
+   * the user: "use a rhythmic different text size for h2"). On a 28px line
+   * (24 on a phone). Tracked −1% since 2026-11-11 (the user: "letter
+   * spacing also bit loose"; it was −3%). That day it went a note down to
+   * 19 and came back the same day ("title too small … increase the size a
+   * bit"): 24 is the note above 19, and nothing lies between. */
   --text-section-title: var(--text-rhythm-24);
   --leading-section-title: calc(28 / 24);
-  --tracking-section-title: -0.03em;
+  --tracking-section-title: -0.01em;
   /* THE HEADING: a heading in the body's face, under a section's title — a
    * work's name over its card (the user, 2026-11-06: "use variables,
    * because we are gonna reuse those"), and every such name after it.
@@ -135,6 +136,17 @@
   --leading-heading: calc(24 / 19);
   --tracking-heading: var(--tracking-copy);
   --color-heading: var(--color-on-night);
+  /* THE SMALL COPY ("body small"): reading text set a note under the copy,
+   * where it is a block of facts beside a picture rather than a passage to
+   * read — a work's details on its page (2026-11-11, the user: "detail
+   * page text size use body small … if not make a body small text").
+   * Newsreader 12 on a 16px line, the copy's tracking and colour: the UI's
+   * note, read rather than pressed. On a phone it is the copy itself
+   * (12 on 16 there too), so the two meet. */
+  --text-copy-small: var(--text-rhythm-12);
+  --leading-copy-small: calc(16 / 12);
+  --tracking-copy-small: var(--tracking-copy);
+  --color-copy-small: var(--color-copy);
   /* THE UI: the words that are controls — the nav, the dock's choices.
    * 12px on a 16px line. */
   --text-ui: var(--text-rhythm-12);
@@ -152,12 +164,24 @@
   --font-cormorant-ascent: 0.924;
   --font-cormorant-descent: 0.287;
   --font-cormorant-box: 1.211;
+  /* Its capitals' height (measured in the browser, 2026-11-11: an H's ink
+   * over its size), for hanging two voices from one cap line — the works'
+   * eye tag beside its title. */
+  --font-cormorant-cap: 0.625;
   /* And Newsreader's (measured in the browser, 2026-11-06: its line box at
    * `normal` is exactly 1em), for the body face's baselines — a work's
    * name and its scope under a card. */
   --font-newsreader-ascent: 0.735;
   --font-newsreader-descent: 0.265;
   --font-newsreader-box: 1;
+  /* Its capitals' height at the small optical sizes it is set in (10 to
+   * 15px: the H's ink, measured as Cormorant's). */
+  --font-newsreader-cap: 0.7;
+  /* How far above the middle of a 1em line its capitals' ink is centred
+   * (measured 2026-11-11 at 4× device pixels in headless Chrome, 12px
+   * capitals, ink rows above and below compared): what a capital is
+   * lowered by to sit in the middle of a box (the eye tag's tiles). */
+  --font-newsreader-cap-rise: 0.045;
 
   /* ── The grid ──
    * The page's columns: twelve, four on a phone (the user's 390 frame).

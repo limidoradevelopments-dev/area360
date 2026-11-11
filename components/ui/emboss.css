@@ -1,0 +1,52 @@
+/* ─── The embossed dots (ui/EmbossRule) ───
+ *
+ * A row of dots pressed out of the page's black (2026-11-11, the user's
+ * work-page frame and their drawing of one dot): a raised bump lit from
+ * the top left — a highlight above it, a shadow below, the two crosswise
+ * shadows that round it, and two inner shadows that give its face a
+ * curve. Ornament that reads only at arm's length: the stitching of the
+ * page, never a line that divides it.
+ *
+ * THE USER'S DRAWING, MADE SMALL (2026-11-11, the user: "make this embossed
+ * dot pattern dots small and matching with this existing system"): their
+ * 16px dot (a 9px disc of #101010 under four drop shadows and two inner
+ * shadows, in sRGB) redrawn as a 4px disc — the scale's first step — with
+ * every offset and blur scaled with it (4/9), its colours and strengths
+ * as given, so it is the same bump, smaller. Its gradient's stops both
+ * stood at 1, so it drew one colour, #101010: that colour is written. It
+ * is the night's own bump: drawn for #111111, every ground it stands on.
+ *
+ * A ROW OF WHOLE DOTS AT ANY WIDTH, WITH NO SCRIPT AND NO ELEMENT A DOT:
+ * one background, a tile a dot and its gap wide (the dot centred in it),
+ * repeated ROUND — as many whole tiles as fit, each widened by the
+ * remainder's share (under 1% of a 12px tile on any row wider than 600px:
+ * the dot, drawn with its aspect kept, does not change; only the gaps
+ * even out). The row reaches half a gap past its box each way, so its
+ * first and last dots stand ON its edges, as the frame draws them on the
+ * margin and the column's end.
+ *
+ * ON THE SCALE: dots 4px across, 8px apart (a pitch of 12), the row 8px
+ * tall — the drawing's box — each a micro step (the frame drew 9px dots
+ * 16px apart, in a 16px row). */
+:root {
+  --image-emboss-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cg filter='url(%23e)'%3E%3Ccircle cx='6' cy='4' r='2' fill='%23101010'/%3E%3C/g%3E%3Cdefs%3E%3Cfilter id='e' x='0' y='0' width='12' height='8' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'%3E%3CfeFlood flood-opacity='0' result='B'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='0.444' dy='0.444'/%3E%3CfeGaussianBlur stdDeviation='0.667'/%3E%3CfeColorMatrix values='0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0.9 0'/%3E%3CfeBlend in2='B' result='e1'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='-0.444' dy='-0.444'/%3E%3CfeGaussianBlur stdDeviation='0.444'/%3E%3CfeColorMatrix values='0 0 0 0 0.105882 0 0 0 0 0.105882 0 0 0 0 0.105882 0 0 0 0.9 0'/%3E%3CfeBlend in2='e1' result='e2'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='0.444' dy='-0.444'/%3E%3CfeGaussianBlur stdDeviation='0.444'/%3E%3CfeColorMatrix values='0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0.2 0'/%3E%3CfeBlend in2='e2' result='e3'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='-0.444' dy='0.444'/%3E%3CfeGaussianBlur stdDeviation='0.444'/%3E%3CfeColorMatrix values='0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0.2 0'/%3E%3CfeBlend in2='e3' result='e4'/%3E%3CfeBlend in='SourceGraphic' in2='e4' result='S'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='-0.444' dy='-0.444'/%3E%3CfeGaussianBlur stdDeviation='0.444'/%3E%3CfeComposite in2='A' operator='arithmetic' k2='-1' k3='1'/%3E%3CfeColorMatrix values='0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0 0.027451 0 0 0 0.5 0'/%3E%3CfeBlend in2='S' result='i1'/%3E%3CfeColorMatrix in='SourceAlpha' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='A'/%3E%3CfeOffset dx='0.444' dy='0.444'/%3E%3CfeGaussianBlur stdDeviation='0.444'/%3E%3CfeComposite in2='A' operator='arithmetic' k2='-1' k3='1'/%3E%3CfeColorMatrix values='0 0 0 0 0.105882 0 0 0 0 0.105882 0 0 0 0 0.105882 0 0 0 0.3 0'/%3E%3CfeBlend in2='i1'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E");
+
+  /* The dot itself, and the drawing's box: the row's height. */
+  --size-emboss-dot: 0.25rem;
+  /* 4px */
+  --size-emboss-row: 0.5rem;
+  /* 8px */
+  /* Between two dots: a step of the scale, the same at every size (the
+   * dots are sized to the eye, as the micro tier is). */
+  --space-emboss-gap: var(--spacing-micro-8);
+}
+
+[data-emboss-rule] {
+  display: block;
+  height: var(--size-emboss-row);
+  margin-inline: calc(var(--space-emboss-gap) / -2);
+  background-image: var(--image-emboss-dot);
+  background-size: calc(var(--size-emboss-dot) + var(--space-emboss-gap)) var(--size-emboss-row);
+  background-repeat: round no-repeat;
+  background-position: 0 50%;
+}

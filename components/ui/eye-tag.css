@@ -1,0 +1,133 @@
+/* ─── The eye tag (ui/EyeTag) ───
+ *
+ * A short lead over a word spelled one letter a tile (the user's works
+ * frame, 2026-11-11): "Every work has a meaning & communicates with",
+ * then F E E L I N G S, each in its own hairline square. Shared by every
+ * section that sets one; the section places it (its root is data-eye-tag).
+ *
+ * READ OFF THE FRAME (1920), in the site's voices:
+ *
+ *   THE LEAD: the supporting voice (10 on 16), at the half white — an
+ *   aside, quieter than the title beside it.
+ *   THE WORD: one letter a tile, in capitals, in the supporting voice (10:
+ *   the floor of the site's type; it was the UI's 12 until the user,
+ *   2026-11-11, "make this feelings text a bit small") at the soft white;
+ *   each tile a 12px hairline square at the half white, a step under the
+ *   lead's last line.
+ *   THE WORD IS AS WIDE AS THE LEAD (the user, 2026-11-11: "whatever I type
+ *   … individually go inside a box, … the same width as the eye tag's
+ *   paragraph … the space in between until [it] meets the right edge"):
+ *   the tag is as wide as its widest line, and the squares are spread
+ *   across it, the first on its left edge, the last on its right, the room
+ *   shared between them — whatever the word. A word too long for the lead
+ *   (its squares and their least gap wider than its widest line) widens
+ *   the tag instead, never overflowing it.
+ *   THE GLINT: the same square in the whole white, lit only while the
+ *   entrance runs (ui/motion.ts EYE_TAG), with the faintest bloom round it:
+ *   the site's glare, light rather than a shape.
+ *
+ * The tile is a size, not a space (AGENTS.md §6): a square drawn round a
+ * letter. Every space is a step of the scale. */
+:root {
+  --text-eye-tag: var(--text-support);
+  --leading-eye-tag: var(--leading-support);
+  --color-eye-tag: var(--color-on-night-muted);
+
+  --text-eye-tag-letter: var(--text-support);
+  --color-eye-tag-letter: var(--color-copy);
+  --size-eye-tag-tile: 0.75rem;
+  /* 12px */
+  --color-eye-tag-frame: var(--color-on-night-muted);
+  --color-eye-tag-glint: var(--color-on-night);
+  --blur-eye-tag-glint: 0.5rem;
+  /* 8px: a blur is light, not a space */
+  --color-eye-tag-bloom: rgb(255 255 255 / 0.22);
+
+  /* THE LETTER IN THE MIDDLE OF ITS TILE (2026-11-11, the user: it sat
+   * "too close to the box's top edge"). The tile centres the letter's
+   * line, not its capital, whose ink stands above the line's middle:
+   * lowered by that (tokens.css --font-newsreader-cap-rise, measured), its
+   * ink is as far from the square's top as from its foot, within a
+   * quarter of a pixel. */
+  --space-eye-tag-letter-drop: calc(var(--text-eye-tag-letter) * var(--font-newsreader-cap-rise));
+  /* Room above a capital trimmed to its height (below), for its overshoot:
+   * in em of the letter, a measurement of the glyph. */
+  --space-eye-tag-letter-room: 0.04em;
+
+  /* The least room between two squares: the word spread across the lead
+   * has more. */
+  --space-eye-tag-tiles: var(--spacing-micro-4);
+  /* The lead's last line box to the tiles. */
+  --space-eye-tag-word: var(--spacing-micro-8);
+}
+
+/* As wide as its widest line (or its word, if that is wider), its lead
+ * and word stretched to it. */
+[data-eye-tag] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  color: var(--color-eye-tag);
+  font-size: var(--text-eye-tag);
+  line-height: var(--leading-eye-tag);
+}
+
+[data-eye-tag-word] {
+  display: flex;
+  justify-content: space-between;
+  column-gap: var(--space-eye-tag-tiles);
+  margin-top: var(--space-eye-tag-word);
+}
+
+[data-eye-tag-tile] {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--size-eye-tag-tile);
+  height: var(--size-eye-tag-tile);
+  color: var(--color-eye-tag-letter);
+  font-size: var(--text-eye-tag-letter);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* The letter's mask, lowered so its capital's middle is the tile's middle. */
+[data-eye-tag-tile] > [data-reveal-mask] {
+  position: relative;
+  top: var(--space-eye-tag-letter-drop);
+}
+
+/* EXACTLY, WHERE THE BROWSER CAN TRIM A LINE TO ITS CAPITALS (Chrome 133,
+ * Safari 18.2): the letter's line box is its capital, top to baseline, and
+ * that is what the tile centres — at every size, where the nudge above
+ * holds only at the size it was measured at (Chrome snaps a baseline to a
+ * whole pixel, a different share of each size: at 1920 the letters rode
+ * 1.4px high). The mask keeps a hair of room above the capital (the
+ * overshoot of an S or a G), given back by its margin. */
+@supports (text-box: trim-both cap alphabetic) {
+  [data-eye-tag-tile] > [data-reveal-mask] {
+    top: 0;
+    padding-top: var(--space-eye-tag-letter-room);
+    margin-top: calc(var(--space-eye-tag-letter-room) * -1);
+  }
+
+  [data-eye-tag-tile] [data-reveal-line] {
+    text-box: trim-both cap alphabetic;
+  }
+}
+
+/* The square, and its lit twin over it. */
+[data-eye-tag-frame],
+[data-eye-tag-glint] {
+  position: absolute;
+  inset: 0;
+  border: var(--size-rule) solid var(--color-eye-tag-frame);
+  pointer-events: none;
+}
+
+[data-eye-tag-glint] {
+  border-color: var(--color-eye-tag-glint);
+  box-shadow: 0 0 var(--blur-eye-tag-glint) var(--color-eye-tag-bloom);
+  opacity: 0;
+}

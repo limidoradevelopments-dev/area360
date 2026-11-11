@@ -68,3 +68,35 @@ export const LINE_DROP = {
   ...LINE_ENTRANCE,
   fromYPercent: -LINE_ENTRANCE.fromYPercent,
 } as const;
+
+/**
+ * THE EYE TAG's entrance (ui/EyeTag: a short lead and a word spelled one
+ * letter a tile, 2026-11-11), shared by every section that sets one.
+ *
+ * THE LEAD drops into its masks as every line over the night does; THE
+ * WORD IS STRUCK, letter by letter, left to right: each letter drops into
+ * its tile as a light runs over the tile's edge — a hairline of the whole
+ * white that flashes in fast and dies slowly (`glint`: the site's glare,
+ * never a pulse: sharp, light, gone) — and the tile's own edge comes up
+ * under it. So the eye is led along the word once, at the pace of a
+ * reading glance (`tileStagger`: eight letters in ~0.5 s). ONE PASS: no
+ * loop, nothing left running.
+ */
+export const EYE_TAG = {
+  /** Once most of it is on the screen. */
+  threshold: 0.6,
+  /** The lead's lines, as every paragraph's (LINE_ENTRANCE.stagger less). */
+  lineStagger: 0.08,
+  /** The word begins as the lead's first line lands its first half. */
+  wordAt: 0.3,
+  tileStagger: 0.07,
+  /** A tile's edge comes up under the glint, a beat after it is struck. */
+  frameDelay: 0.08,
+  frameSeconds: 0.6,
+  /** The glint: up in `peak` of its time, then a long fall. */
+  glintSeconds: 0.9,
+  glintPeak: 0.12,
+} as const;
+
+/** The eye tag under reduced motion: no travel and no glint, a short fade. */
+export const EYE_TAG_REDUCED = { fadeSeconds: 0.2 } as const;

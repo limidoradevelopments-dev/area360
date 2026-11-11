@@ -1,142 +1,542 @@
 /* ─── A work's page ───
  *
- * One template for every work (app/works/[slug]). A SCAFFOLD until the
- * user's frame of it (2026-11-06): the site's voices on the page's black,
- * on the page's grid — the way back at the top edge, the work's name and
- * scope on the page's axis (column 7; 2 on a phone), and its pictures
- * down the page, the whole width between the margins, a gutter apart.
- * Every voice is the site's own (tokens.css); only the gaps between them
- * are this page's.
+ * One template for every work (app/works/[slug]): the user's frames of
+ * 2026-11-11 — their 1920 frame, its grid overlay, and their phone frames
+ * open and folded — on the site's systems (AGENTS.md §6–§9): every space a
+ * step of the scale, every size a voice.
  *
- * Every space a step of the scale (theme.css). */
+ * A SPREAD ON A WIDE SCREEN: the work's words on the left five columns,
+ * held at the top of the screen, and the foot held at its bottom, while
+ * the pictures scroll past on the right seven, a step apart.
+ *
+ *   THE BAR. The mark (32px across, centred on a 32px line under the edge:
+ *   the frame's 4px lower than the edge), a step (24) to the row of
+ *   embossed dots (ui/EmbossRule) across the five columns.
+ *   THE NAME. The site's heading voice (19 on 24, the whole white), its
+ *   baseline 48 under the dots, a hairline ↘ a step (20) after it on the
+ *   baseline: the pictures are below and to the right.
+ *   THE DETAILS. In the small copy (12 on 16: the user, "body small").
+ *   "About" 48 under the name, baseline to baseline, and its paragraph a
+ *   step under it (4: a line box apart), on a measure of three columns; "Services" and "Result" side by side 32 under the
+ *   paragraph's last line, 80 between them (the frame: Result 80 past
+ *   "Web Development", on the phone frame 48 — the rhythm's own step
+ *   down), ending with the paragraph on column 3.
+ *   THE PANEL IS AS TIGHT AT EVERY SIZE (2026-11-11, the user: "desktop
+ *   … vertical space make more tight"): its three drops are the phone's
+ *   (48, 48, 32) everywhere, macro steps, not rhythm ones — the frame's
+ *   80, 80, 48 read loose on a wide screen.
+ *   THE FOOT. A row of dots, a step (24), and a 32px line holding the two
+ *   ways out in the supporting voice (the user, 2026-11-11) — a 32px
+ *   hairline and a step (16) before "Back home", after "Next Project" —
+ *   at the bottom edge.
+ *   THE SPLIT. The words' rows (the dots, the foot) end a step (48, 40 on
+ *   a tablet) before their columns do, so the words and the pictures are
+ *   held apart (2026-11-11, the user: "make a gap between this content
+ *   side and this image side"); the pictures keep their columns.
+ *   THE PICTURES. A step (16) apart; a photograph to the column's edges, a
+ *   screen on a mat a shade off the black (white at 2.5%: the frame's) with
+ *   7% of the column round it — a share, so the mat is the same picture at
+ *   every size (the frame's ~75px at 1090, the phone frame's ~24 at 358).
+ *
+ * ONE COLUMN ON A PHONE (AGENTS.md §9; the user's phone frames): the panel
+ * at the top, the pictures the whole width, the foot ending the page. The
+ * panel STAYS (sticky) once its fold is running (WorkDetailSection): the
+ * bar over the pictures, the details folding away as they come up and
+ * opening from the toggle — ↙ open, a dash folded (fold.ts). The bar's
+ * ground is the night down to its dots and then lets go, over the name, so
+ * the pictures rise into the dark under it and the name stays legible over
+ * them (the frame lays the name over the pictures).
+ *
+ * Every space a step of the scale (theme.css); the structural ones rhythm
+ * tokens, which come down with the screen by themselves. */
 :root {
-  --color-work-page-ground: var(--color-night);
+  --color-wp-ground: var(--color-night);
 
-  /* ── The way back: the site's reading voice, a hairline arrow before
-   * it (the 404's way home's measures, from the words' size) ── */
-  --text-work-page-back: var(--text-copy);
-  --leading-work-page-back: var(--leading-copy);
-  --tracking-work-page-back: var(--tracking-copy);
-  --color-work-page-back: var(--color-copy);
-  --size-work-page-arrow: calc(var(--text-work-page-back) * 1.2);
-  --space-work-page-arrow-gap: var(--spacing-micro-12);
+  /* ── The grid ── the words' columns and the pictures', and the About
+   * paragraph's measure in the words' columns. */
+  --grid-wp-words: 1 / span 5;
+  --grid-wp-pictures: 6 / -1;
+  --grid-wp-panel: 5;
+  --grid-wp-measure: 3;
+  /* And Services and Result side by side, ending on the same column (the
+   * user, 2026-11-11: "needs to end by hitting col 3"). */
+  --grid-wp-facts: 3;
+  /* The words' rows end this far before the pictures' column. */
+  --space-wp-split: var(--spacing-rhythm-48);
 
-  /* ── The name and scope: the title voice and the copy ── */
-  --text-work-page-title: var(--text-title);
-  --leading-work-page-title: var(--leading-title);
-  --tracking-work-page-title: var(--tracking-title);
-  --color-work-page-title: var(--color-on-night);
-  --text-work-page-scope: var(--text-copy);
-  --leading-work-page-scope: var(--leading-copy);
-  --tracking-work-page-scope: var(--tracking-copy);
-  --color-work-page-scope: var(--color-copy);
-  --grid-work-page-axis: 7;
+  /* ── The bar ── */
+  --size-wp-mark: 2rem;
+  /* 32px */
+  --size-wp-mark-line: 2rem;
+  /* 32px: the line the mark is centred on, as a word is on its line */
+  --space-wp-mark-rule: var(--spacing-micro-24);
 
-  /* ── The spaces ── */
-  /* The way back to the name. */
-  --space-work-page-head: var(--spacing-rhythm-160);
-  /* The name to its scope. */
-  --space-work-page-scope: var(--spacing-micro-12);
-  /* The scope to the first picture. */
-  --space-work-page-pictures: var(--spacing-rhythm-80);
+  /* ── The name: the site's heading voice ── */
+  --text-wp-title: var(--text-heading);
+  --leading-wp-title: var(--leading-heading);
+  --tracking-wp-title: var(--tracking-heading);
+  --color-wp-title: var(--color-heading);
+  /* The dots' row to its baseline. */
+  --space-wp-title-drop: var(--spacing-macro-48);
+  /* The hairline ↘ after it: its box, and the step before it. */
+  --size-wp-pointer: 0.5rem;
+  /* 8px */
+  --space-wp-pointer: var(--spacing-micro-20);
 
-  /* A picture still to come: the works' empty card (works.css), at a wide
-   * card's aspect. */
-  --size-work-page-empty-aspect: 920 / 650;
+  /* ── The details: the small copy (tokens.css, 2026-11-11, the user: "use
+   * body small"), headings whole, words at the half ── */
+  --text-wp-copy: var(--text-copy-small);
+  --leading-wp-copy: var(--leading-copy-small);
+  --tracking-wp-copy: var(--tracking-copy-small);
+  --color-wp-label: var(--color-on-night);
+  --color-wp-copy: var(--color-on-night-muted);
+  /* A heading's line box to its words'. */
+  --space-wp-label-gap: var(--spacing-micro-4);
+  /* The name's baseline to About's. */
+  --space-wp-about-drop: var(--spacing-macro-48);
+  /* The paragraph's last baseline to Services'. */
+  --space-wp-facts-drop: var(--spacing-macro-32);
+  /* Services' column to Result's. */
+  --space-wp-facts-gap: var(--spacing-rhythm-80);
+
+  /* Where a line box starts above its baseline and ends below it (the
+   * faces' metrics, tokens.css). */
+  --space-wp-title-head: calc(var(--text-wp-title) * (var(--font-newsreader-ascent) + (var(--leading-wp-title) - var(--font-newsreader-box)) / 2));
+  --space-wp-title-foot: calc(var(--text-wp-title) * (var(--font-newsreader-descent) + (var(--leading-wp-title) - var(--font-newsreader-box)) / 2));
+  --space-wp-copy-head: calc(var(--text-wp-copy) * (var(--font-newsreader-ascent) + (var(--leading-wp-copy) - var(--font-newsreader-box)) / 2));
+  --space-wp-copy-foot: calc(var(--text-wp-copy) * (var(--font-newsreader-descent) + (var(--leading-wp-copy) - var(--font-newsreader-box)) / 2));
+
+  /* ── The foot ── */
+  --space-wp-foot-rule: var(--spacing-micro-24);
+  --size-wp-link-row: 2rem;
+  /* 32px: the line the two ways out are centred on */
+  --size-wp-link-line: 2rem;
+  /* 32px: the hairline that points the way */
+  --space-wp-link-gap: var(--spacing-micro-16);
+  /* The supporting voice (the user, 2026-11-11: the copy's was too loud
+   * for a way out). */
+  --text-wp-link: var(--text-support);
+  --leading-wp-link: var(--leading-support);
+  --color-wp-link: var(--color-on-night-muted);
+  --color-wp-link-on: var(--color-on-night);
+  /* THE HAIRLINE'S ANSWER TO THE HAND: a gap runs along it the way the
+   * link goes, once — the header's scroll cue, the site's one gesture for
+   * a rule that moves (header/scrollCue.ts). Its length, and its pass on
+   * the wipe curve (ui/motion.ts WIPE_EASE). */
+  --size-wp-link-cue: 0.5rem;
+  /* 8px */
+  --duration-wp-link-cue: 0.7s;
+  --ease-wp-link-cue: cubic-bezier(0.78, 0, 0.3, 1);
+  --duration-wp-link-colour: 0.3s;
+
+  /* ── The pictures ── */
+  --space-wp-pictures: var(--spacing-micro-16);
+  --color-wp-mat: color-mix(in srgb, var(--color-on-night) 2.5%, var(--color-night));
+  --size-wp-mat: 7%;
+  --size-wp-empty-aspect: 920 / 650;
+
+  /* ── The phone's column (unused on a spread) ── */
+  /* The bar's foot under the name (a breath before the pictures), the
+   * details' foot to the pictures, and the pictures to the foot. */
+  --space-wp-bar-foot: 0px;
+  --space-wp-details-foot: 0px;
+  --space-wp-foot-top: var(--spacing-rhythm-80);
+  /* THE TOGGLE'S DRAWING: ↙ turns into a dash as the details fold (its
+   * shaft swings level, its head draws back into it), on the reveal
+   * curve; the head a little quicker, so it is gone before the shaft is
+   * level. CSS transitions on a 10px drawing's transform: a state's
+   * answer, not an entrance (AGENTS.md). */
+  --size-wp-fold-mark: calc(10rem / 16);
+  /* 10px */
+  --duration-wp-fold-mark: 0.55s;
+  --duration-wp-fold-head: 0.35s;
+  --ease-wp-fold-mark: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Tablet and small laptop: the same.
- *
- * Phone: the axis on column 2, the spaces closer. */
-@media (max-width: 767.98px) {
+/* Tablet and small laptop: the spread holds, the paragraph takes the
+ * words' whole five columns (three would be ~240px at 1024). */
+@media (max-width: 1279.98px) {
   :root {
-    --grid-work-page-axis: 2;
-    --space-work-page-arrow-gap: var(--spacing-micro-8);
+    --grid-wp-measure: 5;
+    --grid-wp-facts: 5;
   }
 }
 
+/* Phone: one column — the words, the pictures, the foot — each the whole
+ * width. */
+@media (max-width: 767.98px) {
+  :root {
+    --grid-wp-words: 1 / -1;
+    --grid-wp-pictures: 1 / -1;
+    --grid-wp-panel: 4;
+    --grid-wp-measure: 4;
+    --grid-wp-facts: 4;
+    --space-wp-split: 0px;
+    --space-wp-bar-foot: var(--spacing-micro-16);
+    --space-wp-details-foot: var(--spacing-rhythm-80);
+  }
+}
+
+/* ── The page ── the site's grid on the night, one row as tall as the
+ * pictures make it (at least the screen), the words and the foot held in
+ * it. NO SCROLL ANCHORING: the phone's fold moves the pictures itself
+ * (fold.ts); the browser "keeping" them would throw them down. */
 [data-work-page] {
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
-  align-content: start;
+  grid-template-rows: 1fr;
   column-gap: var(--spacing-gutter);
   min-height: 100svh;
   padding-inline: var(--spacing-margin);
-  padding-block: var(--space-edge-y);
-  background: var(--color-work-page-ground);
+  background: var(--color-wp-ground);
+  overflow-anchor: none;
 }
 
-[data-work-page-back] {
-  position: relative;
-  grid-column: 1 / -1;
-  justify-self: start;
-  display: inline-flex;
+/* ── The panel ── held at the top of the screen; one taller than the
+ * screen with the foot under it is held by its own foot instead, above
+ * the page's (its height and the foot's measured: WorkDetailSection). */
+[data-wp-panel] {
+  grid-column: var(--grid-wp-words);
+  grid-row: 1;
+  align-self: start;
+  position: sticky;
+  top: min(0px, calc(100svh - var(--size-wp-panel, 0px) - var(--size-wp-foot, 0px)));
+}
+
+[data-wp-bar] {
+  padding-top: calc(var(--space-edge-y) + env(safe-area-inset-top, 0px));
+  padding-right: var(--space-wp-split);
+  padding-bottom: var(--space-wp-bar-foot);
+}
+
+/* The mark, centred on its line. */
+[data-wp-mark] {
+  display: flex;
   align-items: center;
-  column-gap: var(--space-work-page-arrow-gap);
-  color: var(--color-work-page-back);
-  font-size: var(--text-work-page-back);
-  line-height: var(--leading-work-page-back);
-  letter-spacing: var(--tracking-work-page-back);
-  text-decoration: none;
+  width: var(--size-wp-mark);
+  height: var(--size-wp-mark-line);
+  color: var(--color-wp-title);
 }
 
-/* THE PRESS AREA, a thumb's size round a line of type (tokens.css). */
-[data-work-page-back]::after {
-  content: "";
-  position: absolute;
-  inset: calc(var(--space-press-reach) * -1);
+[data-wp-mark] [data-reveal-mask] {
+  width: 100%;
 }
 
-[data-work-page-back]:focus-visible {
+[data-wp-mark] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 66 / 47;
+}
+
+[data-wp-mark]:focus-visible,
+[data-wp-link]:focus-visible,
+[data-wp-toggle]:focus-visible {
   outline: var(--size-rule) solid var(--color-focus);
   outline-offset: var(--size-focus-offset);
 }
 
-[data-work-page-arrow] {
-  width: var(--size-work-page-arrow);
-  height: var(--size-work-page-arrow);
-  flex: none;
+[data-wp-bar] > [data-emboss-rule] {
+  margin-top: var(--space-wp-mark-rule);
 }
 
-[data-work-page-head] {
-  grid-column: var(--grid-work-page-axis) / -1;
-  margin-top: var(--space-work-page-head);
+/* The name and, on a phone, the toggle at the row's end, on its baseline. */
+[data-wp-heading] {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--space-wp-pointer);
+  margin-top: calc(var(--space-wp-title-drop) - var(--space-wp-title-head));
 }
 
-[data-work-page-title] {
-  color: var(--color-work-page-title);
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-weight: 600;
-  font-style: italic;
-  font-size: var(--text-work-page-title);
-  line-height: var(--leading-work-page-title);
-  letter-spacing: var(--tracking-work-page-title);
+[data-wp-title] {
+  color: var(--color-wp-title);
+  font-size: var(--text-wp-title);
+  line-height: var(--leading-wp-title);
+  letter-spacing: var(--tracking-wp-title);
 }
 
-[data-work-page-scope] {
-  margin-top: var(--space-work-page-scope);
-  color: var(--color-work-page-scope);
-  font-size: var(--text-work-page-scope);
-  line-height: var(--leading-work-page-scope);
-  letter-spacing: var(--tracking-work-page-scope);
+[data-wp-pointer] {
+  display: inline-block;
+  width: var(--size-wp-pointer);
+  height: var(--size-wp-pointer);
+  margin-left: var(--space-wp-pointer);
+  overflow: visible;
+  vertical-align: baseline;
 }
 
-[data-work-page-pictures] {
-  grid-column: 1 / -1;
+/* The toggle is the phone's (below). */
+[data-wp-toggle] {
+  display: none;
+}
+
+/* ── The details ── */
+[data-wp-details] {
+  padding-top: calc(var(--space-wp-about-drop) - var(--space-wp-title-foot) - var(--space-wp-bar-foot) - var(--space-wp-copy-head));
+  padding-bottom: var(--space-wp-details-foot);
+}
+
+[data-wp-label],
+[data-wp-copy] {
+  font-size: var(--text-wp-copy);
+  line-height: var(--leading-wp-copy);
+  letter-spacing: var(--tracking-wp-copy);
+}
+
+[data-wp-label] {
+  color: var(--color-wp-label);
+}
+
+[data-wp-copy] {
+  color: var(--color-wp-copy);
+}
+
+/* The paragraph, and the facts, on their measures: so many of the words'
+ * columns and the gutters between them. */
+[data-wp-about] [data-wp-copy] {
+  width: calc((100% - (var(--grid-wp-panel) - 1) * var(--spacing-gutter)) * var(--grid-wp-measure) / var(--grid-wp-panel) + (var(--grid-wp-measure) - 1) * var(--spacing-gutter));
+}
+
+[data-wp-facts] {
+  width: calc((100% - (var(--grid-wp-panel) - 1) * var(--spacing-gutter)) * var(--grid-wp-facts) / var(--grid-wp-panel) + (var(--grid-wp-facts) - 1) * var(--spacing-gutter));
+}
+
+[data-wp-label] + [data-wp-copy] {
+  margin-top: var(--space-wp-label-gap);
+}
+
+/* Services and Result side by side: the first as wide as its words, the
+ * second the rest of the measure. */
+[data-wp-facts] {
   display: grid;
-  row-gap: var(--spacing-gutter);
-  margin-top: var(--space-work-page-pictures);
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--space-wp-facts-gap);
+}
+
+[data-wp-about] + [data-wp-facts] {
+  margin-top: calc(var(--space-wp-facts-drop) - var(--space-wp-copy-foot) - var(--space-wp-copy-head));
+}
+
+/* ── The pictures ── */
+[data-wp-media] {
+  grid-column: var(--grid-wp-pictures);
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-wp-pictures);
+  padding-block: var(--space-edge-y);
+}
+
+/* THE GLASS over each picture (the picture's own box): the breath's canvas
+ * is laid in it while the hand is there (works/breath.ts), as over a
+ * card's. */
+[data-wp-glass] {
+  position: relative;
+  display: block;
+  overflow: hidden;
 }
 
 /* In black and white, as every work's picture is (works.css). */
-[data-work-page-picture] img {
+[data-wp-figure] img {
   display: block;
   width: 100%;
   height: auto;
   filter: grayscale(1);
 }
 
-[data-work-page-picture="empty"] {
-  aspect-ratio: var(--size-work-page-empty-aspect);
+/* A screen on its mat: a share of the column round it (a padding's
+ * percentage is of the column's width, above and below too). */
+[data-wp-figure="matted"] {
+  padding: var(--size-wp-mat);
+  background: var(--color-wp-mat);
+}
+
+[data-wp-figure="empty"] {
+  aspect-ratio: var(--size-wp-empty-aspect);
   background: var(--color-works-empty);
+}
+
+/* ── The foot ── held at the bottom of the screen under the words. */
+[data-wp-foot] {
+  grid-column: var(--grid-wp-words);
+  grid-row: 1;
+  align-self: end;
+  position: sticky;
+  bottom: 0;
+  padding-right: var(--space-wp-split);
+  padding-bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
+}
+
+[data-wp-links] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--size-wp-link-row);
+  margin-top: var(--space-wp-foot-rule);
+}
+
+[data-wp-link] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  column-gap: var(--space-wp-link-gap);
+  color: var(--color-wp-link);
+  font-size: var(--text-wp-link);
+  line-height: var(--leading-wp-link);
+  text-decoration: none;
+  transition: color var(--duration-wp-link-colour) ease-out;
+}
+
+/* THE PRESS AREA, a thumb's size round a line of type (tokens.css). */
+[data-wp-link]::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--space-press-reach) * -1);
+}
+
+[data-wp-link-line] {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--size-wp-link-line);
+  height: var(--size-rule);
+  overflow: hidden;
+  background: currentColor;
+}
+
+/* The gap that runs along it: waiting off its end nearest the word, it
+ * runs out the far end — away from the word, the way the link goes — and
+ * snaps back unseen when the hand leaves. */
+[data-wp-link-line]::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: var(--size-wp-link-cue);
+  background: var(--color-wp-ground);
+}
+
+[data-wp-link="back"] [data-wp-link-line]::after {
+  transform: translateX(var(--size-wp-link-line));
+}
+
+[data-wp-link="next"] [data-wp-link-line]::after {
+  transform: translateX(-100%);
+}
+
+@media (hover: hover) {
+  [data-wp-link]:hover {
+    color: var(--color-wp-link-on);
+  }
+
+  [data-wp-link]:hover [data-wp-link-line]::after {
+    transition: transform var(--duration-wp-link-cue) var(--ease-wp-link-cue);
+  }
+
+  [data-wp-link="back"]:hover [data-wp-link-line]::after {
+    transform: translateX(-100%);
+  }
+
+  [data-wp-link="next"]:hover [data-wp-link-line]::after {
+    transform: translateX(var(--size-wp-link-line));
+  }
+}
+
+[data-wp-link]:focus-visible {
+  color: var(--color-wp-link-on);
+}
+
+/* ── The phone: one column ── */
+@media (max-width: 767.98px) {
+  [data-work-page] {
+    grid-template-rows: auto auto 1fr;
+  }
+
+  /* Above the pictures as they pass under it; still in the page until its
+   * fold runs, then held at the top (fold.ts marks the page). */
+  [data-wp-panel] {
+    position: relative;
+    top: auto;
+    z-index: 2;
+  }
+
+  [data-work-page][data-wp-fold] [data-wp-panel] {
+    position: sticky;
+    top: 0;
+  }
+
+  /* The night to the dots, then letting go over the name. */
+  [data-wp-bar] {
+    --size-wp-bar-solid: calc(var(--space-edge-y) + env(safe-area-inset-top, 0px) + var(--size-wp-mark-line) + var(--space-wp-mark-rule) + var(--size-emboss-row));
+    background: linear-gradient(to bottom, var(--color-wp-ground) var(--size-wp-bar-solid), color-mix(in srgb, var(--color-wp-ground) 82%, transparent) calc(var(--size-wp-bar-solid) + (100% - var(--size-wp-bar-solid)) * 0.6), transparent 100%);
+  }
+
+  [data-wp-pointer] {
+    display: none;
+  }
+
+  [data-wp-toggle] {
+    position: relative;
+    display: block;
+    flex: none;
+    width: var(--size-wp-fold-mark);
+    height: var(--size-wp-fold-mark);
+    color: var(--color-wp-title);
+  }
+
+  [data-wp-toggle]::after {
+    content: "";
+    position: absolute;
+    inset: calc(var(--space-press-reach) * -1.5);
+  }
+
+  [data-wp-fold-mark] {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  [data-wp-fold-arrow],
+  [data-wp-fold-head] {
+    transform-box: view-box;
+    transition:
+      transform var(--duration-wp-fold-mark) var(--ease-wp-fold-mark),
+      opacity var(--duration-wp-fold-head) var(--ease-wp-fold-mark);
+  }
+
+  [data-wp-fold-arrow] {
+    transform-origin: 50% 50%;
+  }
+
+  /* The head draws back into the shaft's end. */
+  [data-wp-fold-head] {
+    transform-origin: 10% 90%;
+    transition-duration: var(--duration-wp-fold-head);
+  }
+
+  [data-work-page][data-wp-fold="closed"] [data-wp-fold-arrow] {
+    transform: rotate(45deg);
+  }
+
+  [data-work-page][data-wp-fold="closed"] [data-wp-fold-head] {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  [data-work-page][data-wp-fold="closed"] [data-wp-details] {
+    display: none;
+  }
+
+  [data-wp-media] {
+    grid-row: 2;
+    padding-block: 0;
+  }
+
+  [data-wp-foot] {
+    grid-row: 3;
+    align-self: start;
+    position: static;
+    padding-top: var(--space-wp-foot-top);
+  }
 }

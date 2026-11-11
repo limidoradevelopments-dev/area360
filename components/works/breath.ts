@@ -22,6 +22,13 @@
  * PARKED: drawn only while a puff lives; the hand at rest between breaths
  * waits on a timer, not a frame loop; nothing at all while the section is
  * off the screen or the tab hidden.
+ *
+ * ANY GLASS (2026-11-11, the user: the same breath over a work's own
+ * pictures, components/work-detail): what is the glass, the picture's
+ * layer behind it and the picture are found by `BreathHooks` — the works'
+ * cards by default (their frame, their parallax layer, their image); a
+ * work's page passes its own (the picture's box is its glass and its
+ * layer, no parallax).
  */
 
 import { approach } from "@/components/ui/easing";
@@ -42,9 +49,26 @@ const GOLDEN_ANGLE = 2.399963;
 
 const P = BREATH.puffs;
 
-/** Starts it on the section's cards; returns what stops it: every
+/** Where the breath finds its glass in a section: selectors for the
+ *  frame it is laid in (it clips, and is the canvas's box), the layer the
+ *  picture is drawn in (covered, wherever a parallax has it), and the
+ *  picture — both looked for inside the frame. */
+export interface BreathHooks {
+  readonly frame: string;
+  readonly layer: string;
+  readonly image: string;
+}
+
+/** The works' cards (WorkCard). */
+export const CARD_GLASS: BreathHooks = {
+  frame: "[data-work-media]",
+  layer: "[data-work-depth]",
+  image: "img[data-work-image]",
+};
+
+/** Starts it on the section's glasses; returns what stops it: every
  *  listener, observer, timer and GPU object let go. */
-export function startBreath(section: HTMLElement): () => void {
+export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLASS): () => void {
   const canvas = document.createElement("canvas");
   canvas.setAttribute("data-works-breath", "");
   canvas.setAttribute("aria-hidden", "true");
@@ -128,8 +152,8 @@ export function startBreath(section: HTMLElement): () => void {
     if (media !== target) {
       if (media) handOff(media, now);
       media = target;
-      depth = target.querySelector<HTMLElement>("[data-work-depth]");
-      const all = Array.from(section.querySelectorAll("[data-work-media]"));
+      depth = target.querySelector<HTMLElement>(hooks.layer);
+      const all = Array.from(section.querySelectorAll(hooks.frame));
       seed = (all.indexOf(target) + 1) * 101;
       target.appendChild(canvas);
       resize.disconnect();
@@ -166,7 +190,7 @@ export function startBreath(section: HTMLElement): () => void {
     clientX = event.clientX;
     clientY = event.clientY;
     const now = performance.now() / 1000;
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-work-media]") : null;
+    const target = event.target instanceof Element ? event.target.closest<HTMLElement>(hooks.frame) : null;
     if (!target || !section.contains(target)) {
       if (over) leave();
       return;
@@ -262,7 +286,7 @@ export function startBreath(section: HTMLElement): () => void {
   function takePicture(target: HTMLElement) {
     hasImage = false;
     pictureFor = target;
-    image = target.querySelector<HTMLImageElement>("img[data-work-image]");
+    image = target.querySelector<HTMLImageElement>(hooks.image);
     const img = image;
     if (!img || !depth) return;
     const upload = () => {
@@ -524,10 +548,10 @@ export function startBreath(section: HTMLElement): () => void {
 
   if (process.env.NODE_ENV !== "production") {
     handle().__kaviWorks = {
-      state: () => ({ card: media ? Array.from(section.querySelectorAll("[data-work-media]")).indexOf(media) : -1, over, puffs: count, hasImage }),
+      state: () => ({ card: media ? Array.from(section.querySelectorAll(hooks.frame)).indexOf(media) : -1, over, puffs: count, hasImage }),
       /** Breathes on card `index` at (x, y), shares of its frame. */
       breathe(index: number, x = 0.5, y = 0.5) {
-        const target = section.querySelectorAll<HTMLElement>("[data-work-media]")[index];
+        const target = section.querySelectorAll<HTMLElement>(hooks.frame)[index];
         if (!target) return;
         const rect = target.getBoundingClientRect();
         clientX = rect.left + rect.width * x;

@@ -15,16 +15,15 @@
 import { LINE_DROP, REVEAL_EASE_CSS } from "@/components/ui/motion";
 
 export const WORKS_REVEAL = {
-  /* The heading drops into its mask from above, as every heading after the
-   * hero's does (the promise's, the 404's): the house's line, the reveal
-   * curve. Once most of it is on the screen. */
+  /* The heading's lines drop into their masks from above, as every heading
+   * after the hero's does (the promise's, the 404's): the house's line, the
+   * reveal curve, a line after the line before it as every paragraph's
+   * (the promise's 0.08 s). Once most of it is on the screen. */
   title: { ...LINE_DROP, easing: REVEAL_EASE_CSS },
+  titleStagger: 0.08,
   titleThreshold: 0.6,
-  /* Each card floats up (ui/floatCards) once a sixth of it is on the
-   * screen — a row comes in together, its cards LEFT TO RIGHT by where
-   * they stand (geometry, not the list's order), 0.1 s apart. */
-  cardThreshold: 0.15,
-  cardStagger: 0.1,
+  /* The cards have no entrance (2026-11-11, the user: removed): they
+   * stand, their depth and the breath their only motion. */
 } as const;
 
 /** Reduced motion (respectReducedMotion): the lines and cards fade, no

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import FilmGrain from "@/components/ui/FilmGrain";
 import { WorkDetailSection } from "@/components/work-detail";
-import { WORKS, workBySlug } from "@/components/works/content";
+import { nextWork, WORKS, workBySlug } from "@/components/works/content";
 
 /**
  * A work's page, one for every work in components/works/content.ts, made
@@ -25,7 +25,7 @@ interface WorkPageProps {
 export async function generateMetadata({ params }: WorkPageProps): Promise<Metadata> {
   const work = workBySlug((await params).slug);
   if (!work) return {};
-  return { title: `${work.title} — kavi`, description: work.scope };
+  return { title: `${work.title} — kavi`, description: work.about ?? work.scope };
 }
 
 export default async function WorkPage({ params }: WorkPageProps) {
@@ -34,7 +34,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
   return (
     <>
       <main className="relative w-full flex-1 overflow-x-clip">
-        <WorkDetailSection work={work} />
+        <WorkDetailSection work={work} next={nextWork(work)} />
       </main>
       <FilmGrain />
     </>

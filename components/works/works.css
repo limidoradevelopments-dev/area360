@@ -8,11 +8,28 @@
  *
  * READ OFF THE FRAME, every size the frame's px ÷ 16 (AGENTS.md):
  *
- *   THE TITLE. "Piece Of Unforgettable Memories", the section's h2, in the
- *   site's section-title voice (tokens.css: Cormorant semibold italic 24px
- *   at −3%, a step under the hero's h1 on one rhythm), on the page's axis — column 7, where the hero's words
- *   and the promise's copy stand (2 on a phone) — its baseline 128px under
- *   the section's top and 80px over the first row of cards.
+ *   THE TITLE. "Settling Is Easy / The Work Here Isn't Built For That"
+ *   (2026-11-11, the user's frame), the section's h2, in the site's
+ *   section-title voice (tokens.css: Cormorant semibold italic, 24 on 28,
+ *   19 on 24 on a phone, at −1%), on the page's axis — column 7, where the
+ *   hero's words and the promise's copy stand (2 on a phone) — its first
+ *   baseline 128px under the section's top.
+ *
+ *   THE EYE TAG (ui/EyeTag, 2026-11-11): at the left margin, three columns
+ *   wide, its lead's first line hung from the title's cap line (the two
+ *   voices' cap heights: tokens.css). ON A PHONE (the user's phone
+ *   frames, 2026-11-11) the tag stands FIRST, at the margin, two columns
+ *   wide (the frame's one, at a smaller type; at the 10px floor its lead
+ *   needs two), its first baseline where the title's stands on a wide
+ *   screen; the title under it on the axis, a step below its squares;
+ *   and the numerals the title's own gap under it, as on a wide screen
+ *   (the user: "increase between title and cards, matching the rhythm").
+ *
+ *   THE NUMERALS. Over every card, at its left edge: ( I ), ( II ), ( III )
+ *   in the supporting voice at the soft white, their baseline 16px over
+ *   the picture — a book's plate numbers. The title's last baseline to the
+ *   first row's numerals: 160px (the frame's ~170; it was 80 to the
+ *   pictures: the user, "spacing increase between title and cards").
  *
  *   THE CARDS. On the page's twelve columns: a wide card (six columns) and
  *   two narrow ones (three), then two wide — the pattern repeats
@@ -55,8 +72,8 @@
    * user, 2026-11-07: "increase the spacing between works and promise a
    * bit"; the frame's was 71px). */
   --space-works-heading-baseline: var(--spacing-rhythm-128);
-  /* Its baseline to the first row's pictures. */
-  --space-works-heading-gap: var(--spacing-rhythm-80);
+  /* Its last baseline to the first row's numerals' baseline. */
+  --space-works-heading-gap: var(--spacing-rhythm-160);
   /* Where its line box starts above its baseline, and ends below it:
    * Cormorant Garamond's ascent and descent, each with half of what the
    * leading adds to its box — here takes from it (tokens.css: its
@@ -64,11 +81,32 @@
   --space-works-heading-head: calc(var(--text-works-heading) * (var(--font-cormorant-ascent) + (var(--leading-works-heading) - var(--font-cormorant-box)) / 2));
   --space-works-heading-foot: calc(var(--text-works-heading) * (var(--font-cormorant-descent) + (var(--leading-works-heading) - var(--font-cormorant-box)) / 2));
 
+  /* ── The eye tag ── three columns at the margin; its lead's first cap
+   * line hung from the title's: each voice's cap top below its line box's
+   * top, the title's less the tag's (tokens.css: the faces' metrics). */
+  --grid-works-tag: 1 / span 3;
+  --space-works-tag-hang: calc(var(--text-works-heading) * ((var(--leading-works-heading) - var(--font-cormorant-box)) / 2 + var(--font-cormorant-ascent) - var(--font-cormorant-cap)) - var(--text-eye-tag) * ((var(--leading-eye-tag) - var(--font-newsreader-box)) / 2 + var(--font-newsreader-ascent) - var(--font-newsreader-cap)));
+  /* On a phone, over the title: the tag's foot to the title's first line
+   * box (a step of the hand's tier: the two read as one block), and where
+   * its first line box starts above its baseline. */
+  --space-works-tag-title: var(--spacing-micro-12);
+  --space-works-tag-head: calc(var(--text-eye-tag) * (var(--font-newsreader-ascent) + (var(--leading-eye-tag) - var(--font-newsreader-box)) / 2));
+
+  /* ── The numerals: the supporting voice, at the soft white ── */
+  --text-works-numeral: var(--text-support);
+  --leading-works-numeral: var(--leading-support);
+  --color-works-numeral: var(--color-copy);
+  /* A numeral's baseline to its picture. */
+  --space-works-numeral-drop: var(--spacing-micro-16);
+  --space-works-numeral-head: calc(var(--text-works-numeral) * (var(--font-newsreader-ascent) + (var(--leading-works-numeral) - var(--font-newsreader-box)) / 2));
+  --space-works-numeral-foot: calc(var(--text-works-numeral) * (var(--font-newsreader-descent) + (var(--leading-works-numeral) - var(--font-newsreader-box)) / 2));
+
   /* ── The cards ── */
   --size-works-wide-aspect: 920 / 650;
   --size-works-narrow-aspect: 450 / 650;
   --color-works-empty: color-mix(in srgb, var(--color-on-night) 13%, var(--color-night));
-  /* A row's pictures' foot to the next row's top. */
+  /* A row's pictures' foot to the next row's pictures' top (its numerals
+   * stand in that space). */
   --space-works-row: var(--spacing-rhythm-256);
 
   /* ── The depth (the parallax) ── how far the picture behind the frame
@@ -117,16 +155,19 @@
 @media (max-width: 767.98px) {
   :root {
     --grid-works-axis: 2;
+    /* The tag under the title, at the margin. */
+    --grid-works-tag: 1 / span 2;
     /* A pitch from baseline to baseline rides with the type, which comes
      * down a rung here. */
     --space-works-scope-pitch: var(--spacing-micro-20);
   }
 }
 
-/* The section: the page's grid on the page's black. EVERY CARD TAKES TWO
- * ROWS of it, its picture and its words (a subgrid), so a row's pictures
- * share one track — its narrow ones as tall as its wide one, whatever
- * their words wrap to — and its words another. */
+/* The section: the page's grid on the page's black. EVERY CARD TAKES THREE
+ * ROWS of it, its numeral, its picture and its words (a subgrid), so a
+ * row's numerals share one track, its pictures another — its narrow ones
+ * as tall as its wide one, whatever their words wrap to — and its words a
+ * third. */
 [data-works] {
   position: relative;
   display: grid;
@@ -137,10 +178,22 @@
   background: var(--color-works-ground);
 }
 
-/* ── The title ── */
+/* ── The head: the title on the axis, the tag at the margin, on the
+ * section's columns (a subgrid). ── */
+[data-works-head] {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: start;
+}
+
+/* ── The title ── its foot is the gap to the first row's numerals,
+ * baseline to baseline: on the title, not the head, so the tag beside it
+ * never pushes the cards down. */
 [data-works-title] {
   grid-column: var(--grid-works-axis) / -1;
-  margin-bottom: calc(var(--space-works-heading-gap) - var(--space-works-heading-foot));
+  grid-row: 1;
+  margin-bottom: calc(var(--space-works-heading-gap) - var(--space-works-heading-foot) - var(--space-works-numeral-head));
   color: var(--color-works-heading);
   font-family: var(--font-cormorant), Georgia, serif;
   font-weight: 600;
@@ -150,28 +203,45 @@
   letter-spacing: var(--tracking-works-heading);
 }
 
-/* Its mask clips DOWN only: the line drops in from above it, and the
+/* Its masks clip DOWN only: each line drops in from above it, and the
  * italic's overhang stays whole. */
 [data-works-title] [data-reveal-mask] {
   overflow: visible clip;
 }
 
-/* ── A card ── six columns, or three; two rows of the section. */
+/* ── The eye tag ── beside the title, its first cap line on the title's. */
+[data-works-head] [data-eye-tag] {
+  grid-column: var(--grid-works-tag);
+  grid-row: 1;
+  margin-top: var(--space-works-tag-hang);
+}
+
+/* ── A card ── six columns, or three; three rows of the section. */
 [data-work] {
   grid-column: span 6;
-  grid-row: span 2;
+  grid-row: span 3;
   display: grid;
   grid-template-rows: subgrid;
+}
+
+/* Its numeral, its baseline a step over the picture. */
+[data-work-numeral] {
+  justify-self: start;
+  margin-bottom: calc(var(--space-works-numeral-drop) - var(--space-works-numeral-foot));
+  color: var(--color-works-numeral);
+  font-size: var(--text-works-numeral);
+  line-height: var(--leading-works-numeral);
+  white-space: nowrap;
 }
 
 [data-work="narrow"] {
   grid-column: span 3;
 }
 
-/* The whole card is the link; its picture and its words on the card's two
- * rows. No hover style: the breath answers the hand. */
+/* The picture and the words are the link, on the card's last two rows. No
+ * hover style: the breath answers the hand. */
 [data-work-link] {
-  grid-row: 1 / -1;
+  grid-row: 2 / -1;
   display: grid;
   grid-template-rows: subgrid;
   color: inherit;
@@ -281,10 +351,11 @@
 }
 
 /* ── The words ── under the picture: the name's baseline at its drop, the
- * scope's a pitch under it, and the room to the next row after. */
+ * scope's a pitch under it, and the room to the next row after — less
+ * the next row's numerals, which stand in it. */
 [data-work-caption] {
   padding-top: calc(var(--space-works-name-drop) - var(--space-works-name-head));
-  padding-bottom: calc(var(--space-works-row) - var(--space-works-name-drop) - var(--space-works-scope-pitch) - var(--space-works-scope-foot));
+  padding-bottom: calc(var(--space-works-row) - var(--space-works-name-drop) - var(--space-works-scope-pitch) - var(--space-works-scope-foot) - var(--space-works-numeral-head) - var(--space-works-numeral-drop));
 }
 
 [data-work-title] {
@@ -306,6 +377,22 @@
  * card's aspect, every other two to a row, each a narrow card's aspect
  * (no wide card in its row to take the height of). */
 @media (max-width: 767.98px) {
+  /* The tag leads: its first baseline where the title's is on a wide
+   * screen, the title under it. */
+  [data-works] {
+    padding-top: calc(var(--space-works-heading-baseline) - var(--space-works-tag-head));
+  }
+
+  [data-works-head] [data-eye-tag] {
+    grid-row: 1;
+    margin-top: 0;
+  }
+
+  [data-works-title] {
+    grid-row: 2;
+    margin-top: var(--space-works-tag-title);
+  }
+
   [data-work] {
     grid-column: span 2;
   }
