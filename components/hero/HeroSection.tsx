@@ -150,13 +150,25 @@ export default function HeroSection({ className, respectReducedMotion = false }:
   }, []);
 
   /* The stage's one fade at a time (motion.ts ENTRANCE: on the compositor).
-     A new one replaces it from wherever it got to; none queues. */
+     A new one replaces it from wherever it got to; none queues. LET GO ONCE
+     LANDED (AGENTS.md, Idle): its end written inline and the animation
+     cancelled — held by its fill, it kept the stage's layer an active
+     animation for the whole visit (measured 2026-11-18 in the layer tree). */
   const fade = useRef<Animation | null>(null);
   const fadeStage = (frames: Keyframe[], seconds: number, easing: string) => {
     const stage = scope.current?.querySelector<HTMLElement>("[data-hero-stage]");
     if (!stage) return;
     fade.current?.cancel();
-    fade.current = stage.animate(frames, { duration: seconds * 1000, easing, fill: "forwards" });
+    const animation = stage.animate(frames, { duration: seconds * 1000, easing, fill: "forwards" });
+    animation.addEventListener(
+      "finish",
+      () => {
+        stage.style.opacity = String(frames[frames.length - 1].opacity);
+        animation.cancel();
+      },
+      { once: true },
+    );
+    fade.current = animation;
   };
 
   useEffect(() => {

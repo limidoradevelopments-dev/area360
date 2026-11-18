@@ -69,6 +69,7 @@
   line-height: var(--leading-header);
   letter-spacing: var(--tracking-header);
   text-transform: uppercase;
+  text-shadow: var(--shadow-text-on-scene);
   pointer-events: none;
 }
 

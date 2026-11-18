@@ -309,6 +309,17 @@
    * Every other space is a step of the scale itself. */
   --space-datum: 4px;
 
+  /* ── Words over the scene: their edge ──
+   * A hairline of the night round every stroke (2026-11-18, the user: the
+   * words over the hero "not crisp", and then no overlay on the picture).
+   * Light strokes on the light, drifting, grainy fog met it with no edge
+   * (2.4:1); the scene could not be darkened. So the letters carry their
+   * own edge: a shadow one hairline wide at half the night, no offset —
+   * not a glow and not a drop shadow, invisible as an effect at reading
+   * distance, a defined edge at the glyph's own scale. A datum, like the
+   * hairline: it never scales. */
+  --shadow-text-on-scene: 0 0 var(--size-rule) color-mix(in srgb, var(--color-night) 50%, transparent);
+
   /* ── Focus ──
    * Every focusable thing on the night shows the same ring: a hairline of
    * the muted white, a beat off the thing. A datum, like the rule: it never
