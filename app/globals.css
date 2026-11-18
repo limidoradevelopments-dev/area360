@@ -6,16 +6,16 @@
  *
  *   styles/theme.css      @theme: the few tokens that SHOULD become utilities
  *                         (colours, the two families, margin + gutter)
- *   styles/tokens.css     :root tokens every feature shares, the one-unit
- *                         rule, and the two step-down breakpoints
- *   styles/base.css       the root scaler, resets, body
- *   styles/utilities.css  noise, glass, the reveal-mask states
+ *   styles/tokens.css     :root tokens every feature shares: the print
+ *                         (--print), the type chord, the voices, the phone
+ *   styles/base.css       the reader (the root's font size), resets, body
+ *   styles/utilities.css  the film's grain, the reveal states
  *
  *   components/ui/*.css   the shared primitives' own tokens and rules (the
  *                         embossed dots, the eye tag)
  *
  *   components/<feature>/<feature>.css
- *                         each feature's own unit, tokens, step-downs and
+ *                         each feature's own unit, tokens, phone block and
  *                         component rules, next to its code, in page order
  *
  * A NEW FEATURE adds its stylesheet to the list below and nothing else.
@@ -40,7 +40,6 @@
 @import "../components/hero/copy/copy.css";
 @import "../components/promise/promise.css";
 @import "../components/works/works.css";
-@import "../components/intro/intro.css";
 /* Over every section, in the page's corner. */
 @import "../components/settings/settings.css";
 @import "../components/not-found/not-found.css";

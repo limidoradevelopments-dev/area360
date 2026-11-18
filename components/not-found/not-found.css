@@ -21,7 +21,11 @@
  * Only what the frames add is this page's own: the gaps between those,
  * the strip's pitch and width, and the dead flowers' colours. THE GROUND
  * is the site's black: the scene comes up out of it. NEVER TAKES THE
- * POINTER but for the link: the scene reads the hand through the words. */
+ * POINTER but for the link: the scene reads the hand through the words.
+ *
+ * THE PRINT AND THE READER (tokens.css): the headline and the gaps are the
+ * picture and scale with it; the link and the strip are words and hold.
+ * One unit, the strip's width (it holds words): the reader's. */
 :root {
   --lost-unit: 1rem;
 
@@ -69,18 +73,10 @@
   --color-lost-ground: var(--color-night);
 }
 
-/* Tablet and small laptop: the same (the voices step down themselves). */
-@media (max-width: 1279.98px) {
-  :root {
-    --lost-unit: 1rem;
-  }
-}
-
 /* Phone: the user's 390 frame — the headline at the top: its first
  * baseline's depth, and the last one's to the link's middle. */
 @media (max-width: 767.98px) {
   :root {
-    --lost-unit: 1rem;
     --space-lost-title-top: var(--spacing-macro-32);
     --space-lost-title-gap: var(--spacing-macro-32);
     --space-lost-arrow-gap: var(--spacing-micro-8);
@@ -222,8 +218,8 @@
 [data-lost-title] {
   margin: 0 0 calc(var(--space-lost-title-gap) - var(--space-lost-title-foot) - var(--size-lost-link-line) / 2);
   color: var(--color-lost-title);
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-weight: 600;
+  font-family: var(--font-title);
+  font-weight: var(--font-title-weight);
   font-style: italic;
   font-size: var(--text-lost-title);
   line-height: var(--leading-lost-title);
@@ -248,6 +244,8 @@
   font-size: var(--text-lost-link);
   line-height: var(--leading-lost-link);
   letter-spacing: var(--tracking-lost-link);
+  font-variation-settings: var(--font-copy-variation);
+  font-variant-ligatures: var(--font-copy-ligatures);
   pointer-events: auto;
   transition: color 0.18s var(--ease-out-soft);
 }

@@ -7,7 +7,7 @@ import type { HeroTitleLine } from "../content";
 /**
  * ─── HeroTitle ───
  *
- * The headline: Cormorant Garamond semibold italic, the whole white, a line
+ * The headline: Cormorant Garamond medium italic, the whole white, a line
  * to a mask.
  *
  * THE HANG. The frame sets the headline, the copy and the clock on ONE left

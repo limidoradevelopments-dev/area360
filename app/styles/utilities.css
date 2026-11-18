@@ -1,25 +1,5 @@
 /* ─── Shared utilities ─── */
 
-/* Noise / grain over a cool silver base, for OS-level and interactive
- * grounds. The ::after sits at z-0; give content above it z-[1]. */
-.bg-noise {
-  position: relative;
-  isolation: isolate;
-}
-
-.bg-noise::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.035;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: var(--size-noise-tile) var(--size-noise-tile);
-}
-
 /* ── The film's grain, over the whole page (ui/FilmGrain) ──
  *
  * The hero's grain as one tile (public/grain.png, scripts/grain.mjs: mid
@@ -67,16 +47,6 @@
   90% { transform: translate(calc(var(--size-grain-tile) * 0.26), calc(var(--size-grain-tile) * -0.19)); }
 }
 
-/* Glass: stark white at low opacity, heavy blur, 1px light inner edge. */
-.glass {
-  background-color: var(--color-glass);
-  /* UNPREFIXED ONLY. Lightning CSS treats a hand-written webkit twin as a
-   * duplicate and keeps whichever is LAST — written webkit-second, Chrome got
-   * no blur at all. The build adds the prefix itself. */
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: inset 0 0 0 1px var(--color-glass-edge), var(--shadow-float);
-}
-
 /* The mask a line slides up out of. Padding-bottom + negative margin gives
  * descenders room without shifting the baseline. The child is the line that
  * GSAP moves (data-reveal-line). */
@@ -100,10 +70,6 @@
  * LINE_DROP) waits above them instead. */
 [data-reveal-drop] [data-reveal-line] {
   transform: translateY(calc(var(--size-reveal-line-from) * -1));
-}
-
-[data-reveal-fade] {
-  opacity: 0;
 }
 
 /* A paragraph wrapped by its box, to be split into its lines when its
@@ -136,7 +102,6 @@
 
   [data-reveal-line],
   [data-reveal-lines],
-  [data-reveal-fade],
   [data-reveal-card],
   [data-reveal-wipe] {
     transform: none !important;

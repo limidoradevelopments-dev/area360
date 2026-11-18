@@ -32,6 +32,7 @@
  */
 
 import { approach } from "@/components/ui/easing";
+import { printPx } from "@/components/ui/scale";
 
 import { BREATH } from "./motion";
 import { BREATH_LOOK } from "./optics";
@@ -145,8 +146,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
   let nextExhale = 0;
   let exhales = 0;
 
-  const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  let remPx = rem();
+  let unitPx = printPx();
 
   function enter(target: HTMLElement, now: number) {
     if (media !== target) {
@@ -162,7 +162,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
       takePicture(target);
     }
     over = true;
-    remPx = rem();
+    unitPx = printPx();
     const rect = target.getBoundingClientRect();
     handX = clientX - rect.left;
     handY = clientY - rect.top;
@@ -174,7 +174,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
     restY = handY;
     movedAt = now;
     const e = BREATH.enter;
-    emit(handX, handY, now, e.strength, e.radiusRem * remPx, 1, 0, 1, e.form);
+    emit(handX, handY, now, e.strength, e.radiusPrint * unitPx, 1, 0, 1, e.form);
     nextExhale = now + BREATH.exhale.period * 0.7;
     request();
   }
@@ -220,9 +220,9 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
        it. */
     const t = BREATH.trail;
     const gone = Math.hypot(x - puffX, y - puffY);
-    const spacing = Math.max(t.spacingRem * remPx, speed * t.spacingSeconds);
+    const spacing = Math.max(t.spacingPrint * unitPx, speed * t.spacingSeconds);
     if (gone >= spacing) {
-      const r = t.radiusRem * remPx;
+      const r = t.radiusPrint * unitPx;
       const along = Math.min(Math.max(0.35 + (t.reach * gone) / (2 * r), 1), t.stretchMost);
       emit((x + puffX) / 2, (y + puffY) / 2, now, t.strength / (1 + speed / t.speedHalf), r, (x - puffX) / gone, (y - puffY) / gone, along, t.form);
       puffX = x;
@@ -243,7 +243,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
       return;
     }
     exhales += 1;
-    emit(handX, handY, now, e.strength, e.radiusRem * remPx, 1, 0, 1, e.form);
+    emit(handX, handY, now, e.strength, e.radiusPrint * unitPx, 1, 0, 1, e.form);
     /* The next, a calm breath later: two sines a golden ratio apart, so
        no two breaths come round alike. */
     const swing = 0.62 * Math.sin(exhales * GOLDEN_ANGLE) + 0.38 * Math.sin((exhales * GOLDEN_ANGLE) / 1.618034);
@@ -448,7 +448,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
     gl.uniform4fv(u.uPuffA, puffA);
     gl.uniform4fv(u.uPuffB, puffB);
     gl.uniform1i(u.uPuffCount, n);
-    gl.uniform4f(u.uGlass, seed, L.glass.scaleRem * remPx, L.glass.wipe, L.glass.contrast);
+    gl.uniform4f(u.uGlass, seed, L.glass.scalePrint * unitPx, L.glass.wipe, L.glass.contrast);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(u.uImage, 0);
@@ -564,7 +564,7 @@ export function startBreath(section: HTMLElement, hooks: BreathHooks = CARD_GLAS
       exhale(x = 0.5, y = 0.5) {
         if (!media) return;
         const e = BREATH.exhale;
-        emit(media.clientWidth * x, media.clientHeight * y, performance.now() / 1000, e.strength, e.radiusRem * remPx, 1, 0, 1, e.form);
+        emit(media.clientWidth * x, media.clientHeight * y, performance.now() / 1000, e.strength, e.radiusPrint * unitPx, 1, 0, 1, e.form);
       },
       /** Draws the glass as it is `seconds` from now (frozen clocks). */
       drawAt(seconds: number) {

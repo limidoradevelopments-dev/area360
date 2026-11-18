@@ -1,22 +1,29 @@
-import { workHref, type Work, type WorkSpan } from "./content";
+import { workHref, type Work, type WorkSlot } from "./content";
 
 /**
  * ─── WorkCard ───
  *
- * One work: its numeral over its picture — ( I ), ( II ), ( III ), as a
- * book numbers its plates (the user's frame, 2026-11-11) — its picture in
- * its frame (in black and white, whatever its own colours), its name, its
- * scope under it — the picture and the words a link to the work's page.
+ * One work: its picture in its frame (in black and white, whatever its own
+ * colours), and under it its numeral — ( I ), ( II ), ( III ), as a book
+ * numbers its plates — its name and its scope; the whole of it a link to
+ * the work's page (the user's frames, 2026-11-12).
  *
- * THREE ROWS OF THE SECTION'S GRID (a subgrid, works.css): the numerals of
- * a row share one track, its pictures another, its words a third, so a
- * row lines up whatever its words wrap to.
+ * ON THE SECTION'S OWN GRID, BOTH WAYS (a subgrid, works.css): its columns
+ * are the page's, so the numeral stands in the card's first column and the
+ * words from its second; its rows are the section's, so a row's pictures
+ * share one track and its words another, whatever they wrap to. On a phone
+ * the numeral stands in the first column beside the picture's top, the
+ * picture and its words on the three after it.
  *
  * THE FRAME IS THE GLASS, THE DEPTH LAYER WHAT IS BEHIND IT. The frame
  * clips; the layer inside it is taller by the parallax's travel and moved
  * by the scroll on the compositor (works.css, THE DEPTH); the breath's
  * canvas is laid in the frame, over it, while the hand is there
  * (breath.ts). Without a picture the frame is the frame's empty card.
+ *
+ * A SQUARE CARD SINKS (works.css, THE SINK): the link — numeral, picture
+ * and words together — is moved by the scroll on the compositor, the card
+ * itself standing still in the grid as the timeline it is measured on.
  *
  * A PLAIN LINK, A WHOLE PAGE LOAD (as the 404's way home): the work's page
  * is a fresh document with its own entrance, and the way back to the home
@@ -29,21 +36,22 @@ import { workHref, type Work, type WorkSpan } from "./content";
  */
 export interface WorkCardProps {
   work: Work;
-  span: WorkSpan;
+  /** Its place in the grid's pattern (content.ts slotOf). */
+  slot: WorkSlot;
   /** Its numeral, in Roman figures (content.ts numeralOf). */
   numeral: string;
 }
 
-export default function WorkCard({ work, span, numeral }: WorkCardProps) {
+export default function WorkCard({ work, slot, numeral }: WorkCardProps) {
   const { cover } = work;
   return (
-    <article data-work={span}>
-      {/* The plate's number: an ornament of the order the grid already
-          shows, hidden from a reader of the page. Its spaces never break. */}
-      <span data-work-numeral aria-hidden="true">
-        {`( ${numeral} )`}
-      </span>
+    <article data-work={slot.shape} data-work-end={slot.end ? "" : undefined}>
       <a href={workHref(work)} data-work-link>
+        {/* The plate's number: an ornament of the order the grid already
+            shows, hidden from a reader of the page. Its spaces never break. */}
+        <span data-work-numeral aria-hidden="true">
+          {`( ${numeral} )`}
+        </span>
         <div data-work-media>
           <div data-work-depth>
             {cover ? (

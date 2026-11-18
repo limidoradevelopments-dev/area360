@@ -1,18 +1,21 @@
 /* ─── Preloader ───
  *
  * The curtain in front of the hero while its scene loads: the user's frame
- * (2026-10-23, 876×520, read at the 1440 artboard, ×1.644) — a hairline
+ * (2026-10-23, 876×520, read at the artboard, ×1.644) — a hairline
  * axis, the half mark to its left, words to its right, the count at the top.
  *
  * FITTED, NOT EYEBALLED. Every word was matched to the frame pixel by pixel
  * (rendered in Cormorant Garamond at candidate sizes and trackings, the
- * error over its box minimised): the sizes come out whole numbers at 1440
- * (32, 19, 32, 24, 30, 20), the tracking about −6%; the turned word has
+ * error over its box minimised): the sizes come out whole numbers on the
+ * artboard (32, 19, 32, 24, 30, 20), the tracking about −6%; the turned word has
  * since been made as large as the largest (the user's mock: its block
  * below). Every place is measured from the axis's centre, which is where
- * the composition hangs. */
+ * the composition hangs.
+ *
+ * A DRAWING, SO THE PRINT (tokens.css): the whole curtain is one picture
+ * and scales with the screen as one, its unit the print's. */
 :root {
-  --preloader-unit: 1rem;
+  --preloader-unit: var(--print);
 
   --color-preloader-ground: var(--color-night);
   --color-preloader-ink: #585858;
@@ -132,19 +135,18 @@
   --tracking-preloader-f: -0.08em;
 }
 
-/* Tablet and small laptop. */
+/* Tablet and small laptop: the 1280 picture (the print holds it). */
 @media (max-width: 1279.98px) {
   :root {
-    --preloader-unit: 0.9rem;
     --space-preloader-count: var(--spacing-micro-16);
   }
 }
 
-/* Phone: at 320px wide the composition is ~215px across, the axis 22px
- * left of the centre — whole, with air either side. */
+/* Phone: 0.8 of the phone's print, the composition ~215px across at 390
+ * and ~176 at 320 — whole, with air either side. */
 @media (max-width: 767.98px) {
   :root {
-    --preloader-unit: 0.8rem;
+    --preloader-unit: calc(var(--print) * 0.8);
     --space-preloader-count: var(--spacing-micro-16);
   }
 }

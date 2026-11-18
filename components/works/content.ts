@@ -10,8 +10,9 @@
  * one and the card draws it, in its parallax and under the breath.
  *
  * TO ADD A WORK: add it to WORKS, in the order the grid should show it.
- * Its place in the grid is its place in the list (WORKS_PATTERN), and its
- * page is made at the build from its `slug`.
+ * Its place in the grid is its place in the list (WORKS_PATTERN: its shape
+ * on the twelve columns and on a phone), and its page is made at the build
+ * from its `slug`.
  */
 
 /** A picture of a work, as the browser will lay it out before it loads:
@@ -69,14 +70,16 @@ export interface WorkMedia {
 export const WORKS_HEADING: readonly string[] = ["Settling Is Easy", "The Work Here Isn’t Built For That"];
 
 /** The eye tag at the left margin, beside the title (ui/EyeTag): its lead
- *  line by line as the frame breaks it, and the word it spells in tiles. */
+ *  line by line as the frame breaks it — on a phone too, the tag set
+ *  narrow there (the user's phone frame, 2026-11-13) — and the word it
+ *  spells in tiles. */
 export const WORKS_TAG = {
   lines: ["Every work has a meaning", "& communicates with"],
   word: "Feelings",
 } as const;
 
-/** A card's numeral over its picture, by its place in the list: ( I ),
- *  ( II ), ( III )… Roman, as a book numbers its plates. */
+/** A card's numeral, by its place in the list: ( I ), ( II ), ( III )…
+ *  Roman, as a book numbers its plates. */
 export function numeralOf(index: number): string {
   const steps: readonly [number, string][] = [
     [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
@@ -136,17 +139,40 @@ export const WORKS: readonly Work[] = [
 ];
 
 /**
- * How wide each card is, in the grid's order, repeating (the frame): a row
- * of a wide card and two narrow ones, then a row of two wide ones. Wide is
- * six of the twelve columns, narrow three (four and two of a phone's
- * four). A sixth work starts the pattern again.
+ * A card's picture on the twelve columns (works.css):
+ *
+ *   "tall"    a third of the row (four columns), taller than wide;
+ *   "square"  a third of the row, near square (the frame's square, drawn up
+ *             with its row on 2026-11-14): BETWEEN TWO TALL ONES it is the
+ *             shorter, and as the page scrolls it SINKS from their tops
+ *             into line with their feet (works.css, THE SINK);
+ *   "wide"    five columns, a little taller than a tall one.
  */
-export type WorkSpan = "wide" | "narrow";
+export type WorkShape = "tall" | "square" | "wide";
 
-export const WORKS_PATTERN: readonly WorkSpan[] = ["wide", "narrow", "narrow", "wide", "wide"];
+export interface WorkSlot {
+  readonly shape: WorkShape;
+  /** Stands at the row's right margin, the columns before it left empty. */
+  readonly end?: boolean;
+}
 
-/** A work's card width, by its place in the list. */
-export function spanOf(index: number): WorkSpan {
+/**
+ * Each card's place, in the grid's order, repeating (the user's frames,
+ * 2026-11-12): a row of three thirds, the middle one square between two
+ * tall ones; then a row of two wide ones, one at each margin, the two
+ * columns between them empty. A sixth work starts the pattern again. On a
+ * phone every card has one shape, whatever its place (works.css).
+ */
+export const WORKS_PATTERN: readonly WorkSlot[] = [
+  { shape: "tall" },
+  { shape: "square" },
+  { shape: "tall" },
+  { shape: "wide" },
+  { shape: "wide", end: true },
+];
+
+/** A work's place in the pattern, by its place in the list. */
+export function slotOf(index: number): WorkSlot {
   return WORKS_PATTERN[index % WORKS_PATTERN.length];
 }
 

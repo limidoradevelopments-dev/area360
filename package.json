@@ -13,7 +13,8 @@
     "still": "python scripts/hero-plates/still.py",
     "lost-plate": "node scripts/lost/plate.mjs",
     "lost-still": "node scripts/lost/still.mjs",
-    "grain": "node scripts/grain.mjs"
+    "grain": "node scripts/grain.mjs",
+    "check:scale": "node scripts/scale-check.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

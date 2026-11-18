@@ -1,68 +1,100 @@
 /* ─── The eye tag (ui/EyeTag) ───
  *
- * A short lead over a word spelled one letter a tile (the user's works
- * frame, 2026-11-11): "Every work has a meaning & communicates with",
- * then F E E L I N G S, each in its own hairline square. Shared by every
- * section that sets one; the section places it (its root is data-eye-tag).
+ * A short lead over a word spelled out on a strip (the user's works frame,
+ * 2026-11-11; the strip since 2026-11-13): "Every work has a meaning &
+ * communicates with", then F E E L I N G S cut out of one filled band.
+ * Shared by every section that sets one; the section places it (its root
+ * is data-eye-tag).
  *
- * READ OFF THE FRAME (1920), in the site's voices:
+ * IN THE SITE'S VOICES:
  *
  *   THE LEAD: the supporting voice (10 on 16), at the half white — an
  *   aside, quieter than the title beside it.
- *   THE WORD: one letter a tile, in capitals, in the supporting voice (10:
- *   the floor of the site's type; it was the UI's 12 until the user,
- *   2026-11-11, "make this feelings text a bit small") at the soft white;
- *   each tile a 12px hairline square at the half white, a step under the
- *   lead's last line.
+ *   THE WORD: one strip in the half white, the lead's width and the
+ *   letters' height and a little (12px), a step under the lead's last
+ *   line; on it the word in capitals, in the supporting voice, in the
+ *   night — cut out of the light, as a stamp is (2026-11-13, the user's
+ *   phone frame, then "use this style for desktop as well"; it was eight
+ *   hairline squares round soft white letters).
  *   THE WORD IS AS WIDE AS THE LEAD (the user, 2026-11-11: "whatever I type
- *   … individually go inside a box, … the same width as the eye tag's
- *   paragraph … the space in between until [it] meets the right edge"):
- *   the tag is as wide as its widest line, and the squares are spread
- *   across it, the first on its left edge, the last on its right, the room
- *   shared between them — whatever the word. A word too long for the lead
- *   (its squares and their least gap wider than its widest line) widens
- *   the tag instead, never overflowing it.
- *   THE GLINT: the same square in the whole white, lit only while the
- *   entrance runs (ui/motion.ts EYE_TAG), with the faintest bloom round it:
- *   the site's glare, light rather than a shape.
+ *   … the same width as the eye tag's paragraph"): the tag is as wide as
+ *   its widest line, the strip as wide as the tag, cut into one equal share
+ *   a letter, each letter in the middle of its share — whatever the word.
+ *   A word too long for the lead (a share never narrower than the strip is
+ *   tall) widens the tag instead, never overflowing it.
+ *   THE GLINT: one share of the strip in the whole white, riding the
+ *   wipe's front while the entrance runs (ui/motion.ts EYE_TAG), with the
+ *   faintest bloom: the site's glare, light rather than a shape.
  *
- * The tile is a size, not a space (AGENTS.md §6): a square drawn round a
- * letter. Every space is a step of the scale. */
+ * CRISP AT EVERY PIXEL RATIO (2026-11-13, the user: on some phones the
+ * letters' tops were cut and lines showed between them — "need to feel
+ * crisp every time"):
+ *
+ *   ONE FILL. Eight filled boxes at fractional widths each snap their own
+ *   edges to the screen's pixels, and where a browser blends a shared edge
+ *   instead, or two neighbours snap a pixel apart, a hairline seam shows.
+ *   The strip is one box: two edges, nothing between.
+ *   NO MASK ROUND A LETTER. A letter sat in a mask trimmed to the font's
+ *   cap-height metric; Newsreader's small optical cuts draw capitals taller
+ *   than that metric, so the mask cut their tops. The letters now stand
+ *   free over the strip: they are the night on the night until the strip
+ *   comes under them, so they wait for the entrance with nothing to hide
+ *   them and nothing to cut them.
+ *
+ * NARROW, ON A PHONE, where a section asks (EyeTag `narrow`; 2026-11-13,
+ * the user's 399 phone frame, read off it to the pixel: the tag in the
+ * first of four columns beside the works' title, "small while it can
+ * still be read"): the same two lines at 5 on a 6px line, lead and letters
+ * — the type ladder's own note there (tokens.css --text-rhythm-5: 12 ×
+ * 2^(−4/3) is 4.76, to the whole px), the frame's lead (60px wide; ours 68,
+ * Newsreader drawing its widest optical cut that small), within a phone's
+ * first column (at 320 it reaches 2px into the gutter); the pair of lines
+ * is 12, on the grid — and the
+ * strip 6px tall, the frame's, a micro step under the lead (the gap halved
+ * with the type).
+ *
+ * The strip's height is a size, not a space (AGENTS.md §6): a band drawn
+ * round a letter. Every space is a step of the scale. */
 :root {
   --text-eye-tag: var(--text-support);
   --leading-eye-tag: var(--leading-support);
   --color-eye-tag: var(--color-on-night-muted);
 
   --text-eye-tag-letter: var(--text-support);
-  --color-eye-tag-letter: var(--color-copy);
-  --size-eye-tag-tile: 0.75rem;
+  --color-eye-tag-letter: var(--color-night);
+  --size-eye-tag-strip: 0.75rem;
   /* 12px */
-  --color-eye-tag-frame: var(--color-on-night-muted);
+  --color-eye-tag-strip: var(--color-on-night-muted);
   --color-eye-tag-glint: var(--color-on-night);
   --blur-eye-tag-glint: 0.5rem;
   /* 8px: a blur is light, not a space */
   --color-eye-tag-bloom: rgb(255 255 255 / 0.22);
 
-  /* THE LETTER IN THE MIDDLE OF ITS TILE (2026-11-11, the user: it sat
-   * "too close to the box's top edge"). The tile centres the letter's
-   * line, not its capital, whose ink stands above the line's middle:
-   * lowered by that (tokens.css --font-newsreader-cap-rise, measured), its
-   * ink is as far from the square's top as from its foot, within a
-   * quarter of a pixel. */
+  /* THE LETTER IN THE MIDDLE OF ITS SHARE (2026-11-11, the user: it sat
+   * "too close to the box's top edge"). Where the browser cannot trim a
+   * line to its capitals (below), the share centres the letter's line, not
+   * its capital, whose ink stands above the line's middle: lowered by that
+   * (tokens.css --font-newsreader-cap-rise, measured). */
   --space-eye-tag-letter-drop: calc(var(--text-eye-tag-letter) * var(--font-newsreader-cap-rise));
-  /* Room above a capital trimmed to its height (below), for its overshoot:
-   * in em of the letter, a measurement of the glyph. */
-  --space-eye-tag-letter-room: 0.04em;
 
-  /* The least room between two squares: the word spread across the lead
-   * has more. */
-  --space-eye-tag-tiles: var(--spacing-micro-4);
-  /* The lead's last line box to the tiles. */
+  /* The lead's last line box to the strip. */
   --space-eye-tag-word: var(--spacing-micro-8);
+
+  /* The narrow tag (a phone): its type, its strip, the lead to the strip,
+   * the glint's bloom with the type. */
+  --text-eye-tag-narrow: calc(var(--text-rhythm-5) * 1rem);
+  --leading-eye-tag-narrow: calc(6 / 5);
+  --size-eye-tag-strip-narrow: 0.375rem;
+  /* 6px */
+  --space-eye-tag-word-narrow: var(--spacing-micro-4);
+  --blur-eye-tag-glint-narrow: 0.25rem;
+  /* 4px */
 }
 
 /* As wide as its widest line (or its word, if that is wider), its lead
- * and word stretched to it. */
+ * and word stretched to it. ITS LINES ARE AUTHORED, NEVER WRAPPED: where
+ * its column is narrower (the narrow tag on a 320 phone, 2px under its
+ * 68px lead with the 8px gutter), it reaches into the gutter beside it. */
 [data-eye-tag] {
   display: flex;
   flex-direction: column;
@@ -73,61 +105,77 @@
   line-height: var(--leading-eye-tag);
 }
 
+/* The word: the strip's box, cut into one share a letter, each letter
+ * centred in the strip's height. */
 [data-eye-tag-word] {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  column-gap: var(--space-eye-tag-tiles);
+  align-items: center;
+  height: var(--size-eye-tag-strip);
   margin-top: var(--space-eye-tag-word);
 }
 
-[data-eye-tag-tile] {
+/* The strip: ONE box behind the letters (the head of this file). It waits
+ * undrawn (utilities.css data-reveal-wipe) and is drawn in from the left
+ * (ui/wipeIn); its glint inside it, clipped with it. */
+[data-eye-tag-strip] {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-eye-tag-strip);
+}
+
+[data-eye-tag-glint] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / var(--eye-tag-letters, 8));
+  background: var(--color-eye-tag-glint);
+  box-shadow: 0 0 var(--blur-eye-tag-glint) var(--color-eye-tag-bloom);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A letter, in the middle of its share: a block the strip's row centres
+ * (a block, so the trim below applies to it), its text centred across;
+ * over the strip (positioned, so it is drawn after it), never cut. A share
+ * is never narrower than the strip is tall, so a long word widens the
+ * tag. */
+[data-eye-tag-letter] {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: var(--size-eye-tag-tile);
-  height: var(--size-eye-tag-tile);
+  top: var(--space-eye-tag-letter-drop);
+  display: block;
+  flex: 1 1 0;
+  min-width: var(--size-eye-tag-strip);
   color: var(--color-eye-tag-letter);
   font-size: var(--text-eye-tag-letter);
   line-height: 1;
+  text-align: center;
   text-transform: uppercase;
-}
-
-/* The letter's mask, lowered so its capital's middle is the tile's middle. */
-[data-eye-tag-tile] > [data-reveal-mask] {
-  position: relative;
-  top: var(--space-eye-tag-letter-drop);
 }
 
 /* EXACTLY, WHERE THE BROWSER CAN TRIM A LINE TO ITS CAPITALS (Chrome 133,
  * Safari 18.2): the letter's line box is its capital, top to baseline, and
- * that is what the tile centres — at every size, where the nudge above
- * holds only at the size it was measured at (Chrome snaps a baseline to a
- * whole pixel, a different share of each size: at 1920 the letters rode
- * 1.4px high). The mask keeps a hair of room above the capital (the
- * overshoot of an S or a G), given back by its margin. */
+ * that is what the row centres — at every size, where the nudge above
+ * holds only at the size it was measured at. Nothing clips it: the trim
+ * only places it. */
 @supports (text-box: trim-both cap alphabetic) {
-  [data-eye-tag-tile] > [data-reveal-mask] {
+  [data-eye-tag-letter] {
     top: 0;
-    padding-top: var(--space-eye-tag-letter-room);
-    margin-top: calc(var(--space-eye-tag-letter-room) * -1);
-  }
-
-  [data-eye-tag-tile] [data-reveal-line] {
     text-box: trim-both cap alphabetic;
   }
 }
 
-/* The square, and its lit twin over it. */
-[data-eye-tag-frame],
-[data-eye-tag-glint] {
-  position: absolute;
-  inset: 0;
-  border: var(--size-rule) solid var(--color-eye-tag-frame);
-  pointer-events: none;
-}
-
-[data-eye-tag-glint] {
-  border-color: var(--color-eye-tag-glint);
-  box-shadow: 0 0 var(--blur-eye-tag-glint) var(--color-eye-tag-bloom);
-  opacity: 0;
+/* ── NARROW, ON A PHONE ── (the head of this file). */
+@media (max-width: 767.98px) {
+  [data-eye-tag][data-eye-tag-narrow] {
+    --text-eye-tag: var(--text-eye-tag-narrow);
+    --leading-eye-tag: var(--leading-eye-tag-narrow);
+    --text-eye-tag-letter: var(--text-eye-tag-narrow);
+    --size-eye-tag-strip: var(--size-eye-tag-strip-narrow);
+    --space-eye-tag-word: var(--space-eye-tag-word-narrow);
+    --blur-eye-tag-glint: var(--blur-eye-tag-glint-narrow);
+    --space-eye-tag-letter-drop: calc(var(--text-eye-tag-letter) * var(--font-newsreader-cap-rise));
+  }
 }

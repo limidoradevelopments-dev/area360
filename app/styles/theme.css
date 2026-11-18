@@ -7,12 +7,7 @@
  * must ALSO be declared in :root (tokens.css restates the two families). */
 @theme inline {
   /* Colours */
-  --color-background: #FAFAF8;
-  --color-surface: #F4F4F4;
   --color-foreground: #000000;
-  --color-ink: #1A1A1A;
-  --color-hairline: #E5E5E5;
-  --color-muted: rgba(0, 0, 0, 0.55);
   /* THE DARK SYSTEM (2026-10-29, the user's Figma): the page's black — the
    * preloader's and the scene's ground — and the one accent, a lamp's
    * amber, for what is chosen. Everything on the black is white, told apart
@@ -21,7 +16,8 @@
   --color-accent: #F2A500;
 
   /* Typography — mapped to the variables next/font injects on <html>: the
-   * TITLES' face, Cormorant Garamond (semibold, semibold italic), and since
+   * curtain's face, Cormorant Garamond (semibold, semibold italic; the
+   * titles' medium italic is tokens.css --font-title), and since
    * 2026-10-29 the BODY's, Newsreader (regular). Rename a token when the
    * family behind it changes; a utility named after a face it no longer
    * renders is a class that lies. */
@@ -39,9 +35,14 @@
  *   primary rhythm.
  *
  * A feature names its own token for a part (--space-<feature>-<part>) and
- * points it at a step; it never writes the number again. The steps are rem,
- * so they read exactly as the design at the 1440 origin and ride the root
- * scaler above it, the whole page growing as one.
+ * points it at a step; it never writes the number again.
+ *
+ * EACH TIER HAS ITS SCALE (tokens.css): MICRO IS THE READER'S (rem), sized
+ * to the hand and the letter, which do not shrink with the screen; MACRO
+ * IS THE AIR'S (--print-space), the structure of the picture, so it scales
+ * with it, down to 0.72 (at 1152). Both read as their px on the artboard
+ * (1600 wide, where the line is 16px: the user's 1920 frame at the scale
+ * they approved).
  *
  * Each step is also a utility (the micro or macro name after any padding,
  * margin or gap prefix). STATIC so all fifteen are always emitted: read
@@ -49,15 +50,17 @@
  * scanner never saw would otherwise resolve to nothing.
  *
  * THE RHYTHM (2026-11-10, the user: the phone must come down "with
- * rhythm"): the macro tier AS IT COMES DOWN WITH THE SCREEN. Each is named
- * by its value at the origin and is one step lower on a tablet, two on a
- * phone (tokens.css). A structural space is a rhythm token, so it adapts by
- * itself; a macro or micro token is the same number at every size.
+ * rhythm"): the macro tier AS IT COMES DOWN ON A PHONE, two steps
+ * (tokens.css). A structural space is a rhythm token, so it adapts by
+ * itself; a macro token is the same step at every size (the print still
+ * scales it).
  *
  * THE MARGIN AND THE GUTTER are steps too: every section's outer margin
  * (24, 16 on a phone: tokens.css --space-margin-step), never less than a
- * notch's safe area, and its column gutter (4 at every size: 2026-11-07,
- * the user). NOT INLINE, because the bands (tokens.css) override these. An
+ * notch's safe area, and its column gutter (8 at every size: the scale's
+ * next step from 4, the user, 2026-11-13; it went from 20 to 4 on
+ * 2026-11-07). The promise's copy holds its line breaks whatever the
+ * gutter (its measure is in its own ems). NOT INLINE, because the bands (tokens.css) override these. An
  * inline token is baked into the utility as a literal, so a later :root
  * override never reaches it — the padding silently stays at the desktop's
  * on a phone. Non-inline, the utility reads var() and the override lands.
@@ -71,15 +74,15 @@
   --spacing-micro-20: 1.25rem;
   --spacing-micro-24: 1.5rem;
 
-  --spacing-macro-32: 2rem;
-  --spacing-macro-40: 2.5rem;
-  --spacing-macro-48: 3rem;
-  --spacing-macro-64: 4rem;
-  --spacing-macro-80: 5rem;
-  --spacing-macro-96: 6rem;
-  --spacing-macro-128: 8rem;
-  --spacing-macro-160: 10rem;
-  --spacing-macro-256: 16rem;
+  --spacing-macro-32: calc(var(--print-space) * 2);
+  --spacing-macro-40: calc(var(--print-space) * 2.5);
+  --spacing-macro-48: calc(var(--print-space) * 3);
+  --spacing-macro-64: calc(var(--print-space) * 4);
+  --spacing-macro-80: calc(var(--print-space) * 5);
+  --spacing-macro-96: calc(var(--print-space) * 6);
+  --spacing-macro-128: calc(var(--print-space) * 8);
+  --spacing-macro-160: calc(var(--print-space) * 10);
+  --spacing-macro-256: calc(var(--print-space) * 16);
 
   --spacing-rhythm-32: var(--spacing-macro-32);
   --spacing-rhythm-40: var(--spacing-macro-40);
@@ -92,5 +95,5 @@
   --spacing-rhythm-256: var(--spacing-macro-256);
 
   --spacing-margin: max(var(--space-margin-step), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
-  --spacing-gutter: var(--spacing-micro-4);
+  --spacing-gutter: var(--spacing-micro-8);
 }

@@ -17,11 +17,12 @@
  *
  * WHOLE PIXELS OF TRAVEL, as raiseLines: Chrome rasterises a moving layer
  * once, where its animation starts; carried a fraction of a pixel (1.5rem
- * at a 20.8px root is 31.2px), a card landed soft and snapped onto the
+ * at a 17.28px reader is 25.92px), a card landed soft and snapped onto the
  * screen's pixels when let go.
  */
 
 import { CARD_ENTRANCE, REVEAL_EASE_CSS } from "./motion";
+import { readerPx } from "./scale";
 
 export interface CardCue {
   /** A data-reveal-card. */
@@ -37,7 +38,7 @@ export interface CardFade {
 
 /** Lays every cue's entrance in this one task; returns what stops them. */
 export function floatCards(cues: readonly CardCue[], calm: CardFade | null): () => void {
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const rem = readerPx();
   const ratio = window.devicePixelRatio || 1;
   const travel = Math.ceil(parseFloat(CARD_ENTRANCE.fromY) * rem * ratio - 1e-6) / ratio;
   const from: Keyframe = calm

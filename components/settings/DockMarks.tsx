@@ -4,7 +4,7 @@
  * The settings button's drawing, from the user's Figma frame (2026-10-29),
  * as inline SVG on the 16px artboard's own pixels — each a unit a CSS
  * pixel at the origin, so a 1-unit stroke is a hairline that rides the
- * root scaler with the rest. (The sound wave beside it is drawn by its own
+ * reader with the rest (a control: ui/scale.ts). (The sound wave beside it is drawn by its own
  * button: SoundToggle.)
  *
  *   SettingsGlyph  two sliders, each a track with its knob — the upper's

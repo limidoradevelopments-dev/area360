@@ -1,46 +1,66 @@
 /* ─── Shared tokens ───
  *
  * Tokens every feature may use. A feature's OWN tokens live in its own
- * stylesheet next to its code (components/<feature>/<feature>.css), with its
- * unit and its two step-downs, so one file holds everything that sizes it.
+ * stylesheet next to its code (components/<feature>/<feature>.css), so one
+ * file holds everything that sizes it.
  *
  * Declared outside @theme on purpose: plain :root is always emitted, and
  * these are consumed through var() in inline styles and arbitrary values,
  * which the class scanner cannot see.
  *
  * NOTHING THAT IS SHARED IS WRITTEN TWICE: a value two features use lives
- * here once and both read it (AGENTS.md, "Reusable values"). *
- * THE SPACING SCALE. Every space — a margin, a padding, a gap, a drop from
- * one thing to the next — is a step of the scale (theme.css: micro 4–24,
- * macro 32–256), never a number of its own and never a multiple of a unit: a
- * unit that steps down would carry it off the scale. A structural space is
- * a RHYTHM token, which comes down with the screen by itself (the bands at
- * the end of this file).
+ * here once and both read it (AGENTS.md, "Reusable values").
  *
- * THE ONE-UNIT RULE (for feature stylesheets), for what is NOT a space: a
- * feature's own type, icons, drawings. Each component gets ONE unit and
- * derives those measurements from it with calc(). Authoring convention: the
- * multiplier is the Figma pixel value divided by 16, so at full scale the
- * component is dimensionally identical to the artboard and the stylesheet can
- * be read against the design file without arithmetic. Leave the px value as
- * a trailing comment. Retune a component's scale by changing its unit and
- * nothing else.
+ * THE PRINT AND THE READER (2026-11-13, the user: "a high-end poster
+ * type look", without the text shrinking; AGENTS.md, Scaling System). The
+ * page is one picture that scales with the screen; the words in it stay
+ * read. Every size is read by one of these:
  *
- * THE TWO STEPS DOWN. The root scaler (base.css) only scales UP: it is
- * floored at 1rem, so from 1440 down to a phone the root is a constant 16px
- * and every token holds its 1440 size. That is right for margins, nav,
- * hairlines and body type, and wrong for large display type and dense
- * components, which must come down. So the UNITS, and only the units, step
- * down twice, at exactly these two breakpoints and no private ones:
+ *   THE PRINT (--print) — THE THINGS LOOKED AT: the titles in Cormorant,
+ *   the marks, the drawings, the stars. 1vw from 1360 up; under it they
+ *   hold at 0.85 (the user, 2026-11-13: the h1 and the star "a little bit
+ *   more" on a tablet, where 0.72 left them small).
  *
- *   max-width 1279.98px   tablet and small laptop
- *   max-width 767.98px    phone
+ *   THE AIR (--print-space) — THE STRUCTURE'S SPACES: the macro steps and
+ *   the rhythm (theme.css). 1vw from 1152 up; under it, 0.72: on a narrower
+ *   screen the air tightens more than the things in it (the user, the same
+ *   day: "scale down a bit more"; large things shrink faster).
  *
- * They match the 1280 band the components switch spans on and Tailwind's md
- * (768). Each feature stylesheet repeats the two blocks for its own unit.
- * Calibrate at the CROWDED end of each band: too small never breaks a layout,
- * too large does. */
+ *   THE WORDS (--print-words) — THE PASSAGES: the copy and the heading.
+ *   On a desktop or tablet they are the print, so the title is exactly
+ *   twice the copy at every width; on a phone they are the reader.
+ *
+ *   THE READER (rem, base.css) — WHAT IS PRESSED, AND THE SMALL WORDS: the
+ *   UI, the small copy, the support (12 and 10 are the floor), the micro
+ *   steps, the margin, the controls. Never under the visitor's own font
+ *   size; one with the line from 1600 up (on a phone, from 390).
+ *
+ * All four clamp ONE LINE (--print-line): 1vw on a desktop, the 1600
+ * artboard's px; the phone frame's own on a phone. A token says which it
+ * reads with its unit; a feature points at a voice or a step, which already
+ * says it. */
+
+/* Registered as <length>s, so each is worked out once, on the root, and
+ * every element inherits the px (a script reads them as px too:
+ * ui/scale.ts). Their rem there is the root's: the reader. */
+@property --print {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 16px;
+}
+
+@property --print-space {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 16px;
+}
+
 :root {
+  --print-line: 1vw;
+  --print: clamp(0.85rem, var(--print-line), 3.75rem);
+  --print-space: clamp(0.72rem, var(--print-line), 3.75rem);
+  --print-words: var(--print);
+
   /* The family, restated. The @theme copy (theme.css) is not emitted at
    * runtime (nothing references the variable), so a hand-written rule using
    * var(--font-cormorant) would resolve to nothing without this line. */
@@ -70,91 +90,141 @@
    * classic scale has five). A tempered major third, ×1.26 a rung, and the
    * same chord as the macro spaces: 32, 40, 48 | 64, 80, 96 | 128, 160.
    * 12, 24, 48 and 96 are notes of both. Under 12, the two small sizes
-   * nearest the notes. Named by the value at the origin, as the spacing
-   * rhythm is: the bands at the end of this file bring them down. */
-  --text-rhythm-8: 0.5rem;
-  --text-rhythm-10: 0.625rem;
-  --text-rhythm-12: 0.75rem;
-  --text-rhythm-15: 0.9375rem;
-  --text-rhythm-19: 1.1875rem;
-  --text-rhythm-24: 1.5rem;
-  --text-rhythm-30: 1.875rem;
-  --text-rhythm-38: 2.375rem;
-  --text-rhythm-48: 3rem;
-  --text-rhythm-60: 3.75rem;
-  --text-rhythm-76: 4.75rem;
-  --text-rhythm-96: 6rem;
-  --text-rhythm-120: 7.5rem;
+   * nearest the notes. Named by the value on the artboard.
+   *
+   * A NOTE IS A NUMBER (its px ÷ 16), not a length: the voice that sounds
+   * it says which scale reads it, × var(--print) for display and × 1rem for
+   * reading. The phone's band brings the notes down.
+   *
+   * AND ONE MARK UNDER THEM: 5, the chord's note an octave and a third
+   * under 12 (12 × 2^(−4/3) = 4.76, to the whole px) — not a voice to read
+   * by, a mark beside a title: the narrow eye tag on a phone (2026-11-13,
+   * the user's frame, "small while it can still be read"). Nothing else
+   * stands under the 8 the hero's phone byline takes.
+   *
+   * AND ONE HALF STEP: 21, halfway between 19 and 24 on the chord's own
+   * curve (12 × 2^(5/6) = 21.4, to the whole px) — only for the section
+   * title (2026-11-14, the user: the h2 smaller; 19 had been "too small"
+   * on 2026-11-11, and at 19 an h2 in Cormorant, which reads about a note
+   * under its number, would sit under the 19px h3 heading in Newsreader).
+   * Nothing else stands between two notes. */
+  --text-rhythm-5: 0.3125;
+  --text-rhythm-8: 0.5;
+  --text-rhythm-10: 0.625;
+  --text-rhythm-12: 0.75;
+  --text-rhythm-15: 0.9375;
+  --text-rhythm-19: 1.1875;
+  --text-rhythm-21: 1.3125;
+  --text-rhythm-24: 1.5;
+  --text-rhythm-30: 1.875;
+  --text-rhythm-38: 2.375;
+  --text-rhythm-48: 3;
+  --text-rhythm-60: 3.75;
+  --text-rhythm-76: 4.75;
+  --text-rhythm-96: 6;
+  --text-rhythm-120: 7.5;
 
-  /* ── The copy ──
+  /* ── The copy ── (the words)
    * The body's reading voice: the hero's copy under its headline, and the
    * paragraphs of every section after it (the user, 2026-10-30: the same as
    * the hero's description, "same line height, same everything"). ONE
    * SOURCE, so the two can never drift: Newsreader at 15px on a 20px line,
    * 12 on 16 on a phone, one exact 4:3 at both (the user's 1.34, tried live
    * in the browser, landed on the grid), −1%, at the soft white. */
-  --text-copy: var(--text-rhythm-15);
+  --text-copy: calc(var(--text-rhythm-15) * var(--print-words));
   --leading-copy: calc(20 / 15);
   --tracking-copy: -0.01em;
   --color-copy: var(--color-on-night-soft);
+  /* ITS LETTERS, ONE DRAWING AT EVERY WIDTH (2026-11-13, the user: "every
+   * text if uses same variable need to scale same"): Newsreader draws a
+   * smaller size wider (its optical axis), so left to the size, the copy
+   * at 13.5px was a different drawing from the copy at 18 — and the
+   * promise, held at 18 for its line breaks, drew differently from the
+   * hero's copy beside it. Every copy text is drawn at the frame's own
+   * optical size: the 1920 copy's 18 (the phone's: 12, below). AND NO
+   * COMMON LIGATURES: the promise's letters each leave their line on their
+   * own (promise/assembly.ts), which an fi drawn as one glyph could not,
+   * so no copy draws one. Every rule that sets a text in the copy voice
+   * sets these two with it. */
+  --font-copy-variation: "opsz" 18;
+  --font-copy-ligatures: no-common-ligatures;
 
   /* ── The site's other voices ──
    * EVERY SIZE OF TYPE THE SITE SPEAKS IN IS ONE OF THESE (2026-11-05, the
    * user: "every reusable thing needs to reuse"): a feature names its own
    * token for a part (--text-<feature>-<part>) and points it at a voice
    * here; it never writes the size again. A size of its own is only for
-   * type no other part shares (the preloader's words, the intro's display).
+   * type no other part shares (the preloader's words).
    *
    * EACH VOICE IS A NOTE AND A LINE, the line a multiple of 4 as every
-   * space is, so a block of type always ends on the grid.
+   * space is, so a block of type always ends on the grid. CORMORANT IS THE
+   * PRINT: a title is part of the picture and scales with it. NEWSREADER'S
+   * PASSAGES ARE THE WORDS, the print on a desktop or tablet (the title
+   * twice the copy at every width), the reader on a phone; ITS SMALL VOICES
+   * ARE THE READER, and hold.
    *
-   * THE TITLE: the hero's headline, and every section's heading after it
-   * (the 404's) — Cormorant semibold italic at 30px on a 32px line (24 on
-   * 32 on a phone), at the frames' display tracking. */
-  --text-title: var(--text-rhythm-30);
+   * THE TITLES' FACE, the title's and the section title's: Cormorant
+   * Garamond italic, its own family of two cuts (layout.tsx: not
+   * preloaded) — MEDIUM for the title, REGULAR for the section title
+   * (2026-11-14, the user: the h1 and the h2 "font medium", then the h2's
+   * weight "a bit more" down; both were semibold). A title names the
+   * family, its voice's weight and the italic; the preloader's words keep
+   * the semibold, a drawing fitted in it. The metrics below are the
+   * family's, the same at every weight (measured).
+   *
+   * THE TITLE (the print): the hero's headline, and the 404's — Cormorant
+   * medium italic at 30px on a 32px line (24 on 32 on a phone), at the
+   * frames' display tracking. */
+  --font-title: var(--font-cormorant-title), Georgia, serif;
+  --font-title-weight: 500;
+  --text-title: calc(var(--text-rhythm-30) * var(--print));
   --leading-title: calc(32 / 30);
   --tracking-display: -0.06em;
   /* about −6%: the user's frames, for all display type */
   --tracking-title: var(--tracking-display);
-  /* THE SECTION TITLE: an h2, every section's heading under the page's h1
-   * (the works' "Settling Is Easy …") — the title's face, a note down it:
-   * 19, 24 and 30 for h3, h2 and h1, 15, 19 and 24 on a phone (2026-11-07,
-   * the user: "use a rhythmic different text size for h2"). On a 28px line
-   * (24 on a phone). Tracked −1% since 2026-11-11 (the user: "letter
-   * spacing also bit loose"; it was −3%). That day it went a note down to
-   * 19 and came back the same day ("title too small … increase the size a
-   * bit"): 24 is the note above 19, and nothing lies between. */
-  --text-section-title: var(--text-rhythm-24);
-  --leading-section-title: calc(28 / 24);
+  /* THE SECTION TITLE (the print): an h2, every section's heading under the
+   * page's h1 (the works' "Settling Is Easy …") — the title's face, at its
+   * regular weight, under it: 19, 21 and 30 for h3, h2 and h1, 15, 19 and
+   * 24 on a phone (2026-11-07, the user: "use a rhythmic different text
+   * size for h2"). 24 until 2026-11-14 (the user: "reduce this h2 font
+   * size"); on 2026-11-11 it went a note down to 19 and came back the same
+   * day ("title too small … increase the size a bit"), so it takes the
+   * chord's one half step, 21 (above). On a 24px line (×1.14, display
+   * type's tight leading; 24 on a phone too). Tracked −1% since 2026-11-11
+   * (the user: "letter spacing also bit loose"; it was −3%). */
+  --font-section-title-weight: 400;
+  --text-section-title: calc(var(--text-rhythm-21) * var(--print));
+  --leading-section-title: calc(24 / 21);
   --tracking-section-title: -0.01em;
-  /* THE HEADING: a heading in the body's face, under a section's title — a
-   * work's name over its card (the user, 2026-11-06: "use variables,
-   * because we are gonna reuse those"), and every such name after it.
-   * Newsreader at its one weight, the whole white; the copy's tracking.
-   * 19px on a 24px line (15 on 20 on a phone). */
-  --text-heading: var(--text-rhythm-19);
+  /* THE HEADING (the words): a heading in the body's face, under a
+   * section's title — a work's name on its own page (the user, 2026-11-06:
+   * "use variables, because we are gonna reuse those"), and every such name
+   * after it. (A works card names its work in the copy since 2026-11-12,
+   * the user: "need to be small, use body text".) Newsreader at its one
+   * weight, the whole white; the copy's tracking. 19px on a 24px line (15 on
+   * 20 on a phone). */
+  --text-heading: calc(var(--text-rhythm-19) * var(--print-words));
   --leading-heading: calc(24 / 19);
   --tracking-heading: var(--tracking-copy);
   --color-heading: var(--color-on-night);
-  /* THE SMALL COPY ("body small"): reading text set a note under the copy,
-   * where it is a block of facts beside a picture rather than a passage to
-   * read — a work's details on its page (2026-11-11, the user: "detail
-   * page text size use body small … if not make a body small text").
-   * Newsreader 12 on a 16px line, the copy's tracking and colour: the UI's
-   * note, read rather than pressed. On a phone it is the copy itself
-   * (12 on 16 there too), so the two meet. */
-  --text-copy-small: var(--text-rhythm-12);
+  /* THE SMALL COPY ("body small", the reader): reading text set a note
+   * under the copy, where it is a block of facts beside a picture rather
+   * than a passage to read — a work's details on its page (2026-11-11, the
+   * user: "detail page text size use body small"). Newsreader 12 on a 16px
+   * line, the copy's tracking: the UI's note, read rather than pressed. On a
+   * phone it is the copy itself (12 on 16 there too), so the two meet. */
+  --text-copy-small: calc(var(--text-rhythm-12) * 1rem);
   --leading-copy-small: calc(16 / 12);
   --tracking-copy-small: var(--tracking-copy);
-  --color-copy-small: var(--color-copy);
-  /* THE UI: the words that are controls — the nav, the dock's choices.
-   * 12px on a 16px line. */
-  --text-ui: var(--text-rhythm-12);
+  /* THE UI (the reader): the words that are controls — the nav, the dock's
+   * choices. 12px on a 16px line. */
+  --text-ui: calc(var(--text-rhythm-12) * 1rem);
   --leading-ui: calc(16 / 12);
-  /* THE SUPPORT: every supporting word (the user's size, 2026-10-30) — the
-   * clock and its zone, the hero's notes, the dock's measure, the 404's
-   * strip. 10px on a 16px line. */
-  --text-support: var(--text-rhythm-10);
+  /* THE SUPPORT (the reader): every supporting word (the user's size,
+   * 2026-10-30) — the clock and its zone, the hero's notes, the dock's
+   * measure, the 404's strip. 10px on a 16px line: the floor, nothing read
+   * is set under it. */
+  --text-support: calc(var(--text-rhythm-10) * 1rem);
   --leading-support: 1.6;
 
   /* ── Cormorant Garamond's metrics (em) ──
@@ -195,9 +265,9 @@
   /* ── The frame's edge ──
    * How far the page's chrome stands from the top and the bottom of the
    * screen: the header above, the dock and a phone's byline below. The
-   * master margin's 24px at the origin — but it does NOT narrow on a phone:
-   * the user's 390 frame brings its sides in to 16px and keeps its height
-   * above and below. */
+   * master margin's 24px — but it does NOT narrow on a phone: the user's
+   * 390 frame brings its sides in to 16px and keeps its height above and
+   * below. */
   --space-edge-y: var(--spacing-micro-24);
 
   /* ── The press area ── how far past a small target's own box its press
@@ -209,31 +279,10 @@
    * Hairlines stay 1px at every viewport. A rule is a datum; one that
    * thickens on a large display stops being a datum and becomes a divider. */
   --size-rule: 1px;
-  --color-rule: #E5E5E5;
-  /* THE SCALE'S FIRST STEP, AS A DATUM: 4px that never rides the root
-   * scaler, for what is drawn on the pixel — the amber dots' gap, the focus
-   * ring's offset. Every other space is a step of the scale itself. */
+  /* THE SCALE'S FIRST STEP, AS A DATUM: 4px that never scales, for what is
+   * drawn on the pixel — the amber dots' gap, the focus ring's offset.
+   * Every other space is a step of the scale itself. */
   --space-datum: 4px;
-
-  /* ── Shared depth ──
-   * Layered, high-blur, very low opacity. Never the stock Tailwind shadows.
-   * Consume with the typed arbitrary form: box-shadow, then var(). */
-  --shadow-float:
-    0 2.5rem 3.75rem -0.9375rem rgba(0, 0, 0, 0.05),
-    0 0.5rem 1.125rem -0.5rem rgba(20, 20, 20, 0.06);
-  --shadow-contact:
-    0 0.0625rem 0.125rem -0.0625rem rgba(20, 20, 20, 0.1);
-
-  /* ── Shared glass ── */
-  --color-glass: rgba(255, 255, 255, 0.7);
-  --color-glass-edge: rgba(255, 255, 255, 0.6);
-  --blur-glass: 1.5rem;
-
-  /* ── Technical label (the badge voice) ──
-   * Small uppercase Cormorant at wide tracking, at the supporting size: 10px
-   * is the floor; never set technical type below it. */
-  --text-label: var(--text-support);
-  --tracking-label: 0.22em;
 
   /* ── Focus ──
    * Every focusable thing on the night shows the same ring: a hairline of
@@ -257,10 +306,6 @@
   --size-reveal-card-from: 0.98;
   --blur-reveal-card-from: 8px;
 
-  /* ── The paper's grain (utilities.css bg-noise): one tile of its SVG
-   * noise, drawn at its own size. ── */
-  --size-noise-tile: 256px;
-
   /* ── The film's grain over the page (utilities.css data-film-grain) ──
    * Its tile, at its own size (one pixel a CSS px: a datum, the grain is
    * the film's, never scaled), and its cycle: ten places at the film's 24
@@ -269,84 +314,78 @@
   --duration-grain-cycle: calc(10s / 24);
 }
 
-/* ─── THE RHYTHM COMING DOWN (2026-11-10, the user; AGENTS.md, Scaling
- * System §7) ───
+/* ─── THE PHONE (2026-11-10, the user; AGENTS.md, Scaling System §7) ───
  *
- * ONE RULE, NOT A VALUE PER SECTION. A structural space falls ONE STEP of
- * the ladder on a tablet and TWO on a phone, never below 24, where the micro
- * tier begins; the micro tier does not move, being sized to the hand and the
- * letter, which do not shrink with the screen.
+ * A POSTER OF ITS OWN, from the user's 390 frame (2026-11-13, the user:
+ * "add this poster scale thing for mobile as well", then "keep it
+ * minimally scale up"). THE LINE is the frame's px, 16 at 390: under 390
+ * it follows the phone's width; above, half as fast (×1.05 at 430, ×1.16
+ * at 514), to the reader's ceiling of 1.2 (at 546; base.css); and never
+ * more than the screen's height holds (a 560px tall frame: a phone on its
+ * side keeps the 390 picture). From 390 up the print, the air, the words
+ * and the reader are all the line: the phone is one picture, growing a
+ * little. Under 390 the print and the air shrink with it (to 0.8), the
+ * words and the reader hold the visitor's own size. Where the type grows
+ * more slowly than the columns, a passage that must keep its shape holds
+ * its measure in ems (promise.css).
+ *
+ * THE RHYTHM COMES DOWN TWO STEPS: a structural space falls two steps of
+ * the ladder, never below 24, where the micro tier begins; the micro tier
+ * does not move, being sized to the hand and the letter.
  *
  * WHY THIS LADDER: from 32 to 160 the macro steps climb by ×1.26 a rung on
- * average, the site's own major third (tokens above: h3, h2, h1 at ×1.25).
- * So a rung of space is a rung of type: on a phone the type falls one rung
- * and the space two, a band's every structural space landing near 0.62 of
- * its origin. Large things shrink faster than small ones (Refactoring UI);
- * each step is a pair across the screens, as Utopia's space pairs are, but
- * on the user's own steps: never a size between two of them.
+ * average, the site's own major third (h3, h2, h1 at ×1.25). So a rung of
+ * space is a rung of type: on a phone the type falls one rung and the space
+ * two, every structural space landing near 0.62 of its origin. Large things
+ * shrink faster than small ones (Refactoring UI); each step is a pair across
+ * the screens, as Utopia's space pairs are, but on the user's own steps.
  *
- * THE TYPE COMES DOWN ON THE SAME LADDER. Reading type (30 and under) holds
- * on a tablet and falls one note on a phone; display type (38 and over) is
- * large and moves as space does, one note and then two. The UI and the
- * support hold everywhere: 12 and under are already the floor. */
-@media (max-width: 1279.98px) {
-  :root {
-    --text-rhythm-38: 1.875rem;
-    /* 30 */
-    --text-rhythm-48: 2.375rem;
-    /* 38 */
-    --text-rhythm-60: 3rem;
-    /* 48 */
-    --text-rhythm-76: 3.75rem;
-    /* 60 */
-    --text-rhythm-96: 4.75rem;
-    /* 76 */
-    --text-rhythm-120: 6rem;
-    /* 96 */
-
-    --spacing-rhythm-32: var(--spacing-micro-24);
-    --spacing-rhythm-40: var(--spacing-macro-32);
-    --spacing-rhythm-48: var(--spacing-macro-40);
-    --spacing-rhythm-64: var(--spacing-macro-48);
-    --spacing-rhythm-80: var(--spacing-macro-64);
-    --spacing-rhythm-96: var(--spacing-macro-80);
-    --spacing-rhythm-128: var(--spacing-macro-96);
-    --spacing-rhythm-160: var(--spacing-macro-128);
-    --spacing-rhythm-256: var(--spacing-macro-160);
-  }
-}
-
-/* Phone: the rhythm's second step, and the SHARED tokens that step down —
- * the grid's and the voices'. The outer margin narrows so a phone's text
- * column is not lost to air: the user's 390 frame is four columns, 16px
- * margins. The gutter is 4px at every size (theme.css).
+ * THE TYPE FALLS ONE NOTE from 15 up (display from 38, two); 12 and under
+ * are already the floor. The outer margin narrows so a phone's text column
+ * is not lost to air: the user's 390 frame is four columns, 16px margins.
  *
  * THE LINE BOXES ARE ON THE 4PX GRID AT EVERY SIZE (as Material's type
- * sits on its 4dp baseline). Every space is a multiple of 4; with every
- * line box one too, each block starts on the grid, and no text is left
- * between two device pixels. So the voices whose note falls here take the
+ * sits on its 4dp baseline), so the voices whose note falls here take the
  * line of their new note. */
 @media (max-width: 767.98px) {
   :root {
-    --text-rhythm-15: 0.75rem;
+    /* The width's line, the same at half the speed (8px + half of it),
+     * and the height's: the least of them. In px, not rem: the line is
+     * read both in the root's font size and in the print, whose rems are
+     * not the same. */
+    --print-line: min(100vw * 16 / 390, 8px + 100vw * 8 / 390, 100svh * 16 / 560);
+    /* Never above the reader (its 1rem here is the root's, the line). */
+    --print: clamp(0.8rem, var(--print-line), 1rem);
+    --print-space: var(--print);
+    /* A phone's reading voices are already a note down: they are the
+     * reader, which follows the line up and holds under 390. */
+    --print-words: 1rem;
+    /* The copy drawn at the phone frame's own optical size. */
+    --font-copy-variation: "opsz" 12;
+
+    --text-rhythm-15: 0.75;
     /* 12 */
-    --text-rhythm-19: 0.9375rem;
+    --text-rhythm-19: 0.9375;
     /* 15 */
-    --text-rhythm-24: 1.1875rem;
+    --text-rhythm-21: 1.1875;
+    /* 19: the half step comes down to the note under it, not a half step
+     * more — Cormorant never goes under 19 at 390 (§8: its x-height must
+     * clear the copy's), so the phone's h2 is as it was. */
+    --text-rhythm-24: 1.1875;
     /* 19 */
-    --text-rhythm-30: 1.5rem;
+    --text-rhythm-30: 1.5;
     /* 24 */
-    --text-rhythm-38: 1.5rem;
+    --text-rhythm-38: 1.5;
     /* 24 */
-    --text-rhythm-48: 1.875rem;
+    --text-rhythm-48: 1.875;
     /* 30 */
-    --text-rhythm-60: 2.375rem;
+    --text-rhythm-60: 2.375;
     /* 38 */
-    --text-rhythm-76: 3rem;
+    --text-rhythm-76: 3;
     /* 48 */
-    --text-rhythm-96: 3.75rem;
+    --text-rhythm-96: 3.75;
     /* 60 */
-    --text-rhythm-120: 4.75rem;
+    --text-rhythm-120: 4.75;
     /* 76 */
 
     --spacing-rhythm-32: var(--spacing-micro-24);

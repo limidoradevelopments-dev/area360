@@ -5,7 +5,7 @@ import { LOST_STATUS, type LostTitle as Title } from "./content";
 /**
  * ─── LostTitle ───
  *
- * The headline: Cormorant Garamond semibold italic, the whole white, a line
+ * The headline: Cormorant Garamond medium italic, the whole white, a line
  * to a mask. The frames break it differently (two lines wide, three on a
  * phone), so both breaks are laid and the stylesheet shows one
  * (not-found.css); a reader hears neither — the heading's text is the page's

@@ -13,7 +13,9 @@
  * a canvas that changes every frame a backdrop filter is re-run every
  * frame, on the very devices that chose Low to spare them).
  *
- * One unit. Every token below is its artboard px / 16. */
+ * A CONTROL, SO THE READER (tokens.css): it is pressed, so it holds its
+ * size at every width and on every screen. One unit, the reader's: every
+ * token below is its artboard px / 16. */
 :root {
   --settings-unit: 1rem;
 
@@ -66,21 +68,6 @@
   /* The choice's mark: the accent at the drawn cross's own 80% (its
    * fill-opacity), the parentheses with it. */
   --color-settings-pick: color-mix(in srgb, var(--color-accent) 80%, transparent);
-}
-
-/* Tablet and small laptop: the same; 12px is already the smallest the
- * body's type is set. */
-@media (max-width: 1279.98px) {
-  :root {
-    --settings-unit: 1rem;
-  }
-}
-
-/* Phone: the same, for the same reason. */
-@media (max-width: 767.98px) {
-  :root {
-    --settings-unit: 1rem;
-  }
 }
 
 /* The dock sits in the margin, clear of a phone's home indicator.

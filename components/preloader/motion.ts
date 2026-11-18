@@ -115,8 +115,9 @@ export const ENTRANCE = {
   mark: { at: 0.35, seconds: 1.5 },
   /* The words surface in a wave out from the axis: each place is released
    * when the wavefront reaches it (AGENTS: geometry, not DOM order). The
-   * wave's speed is a word's (÷ PACE). */
-  words: { at: 0.45, secondsPerRem: 0.12 },
+   * wave's speed is a word's (÷ PACE), its distance in the print's units,
+   * as the curtain is drawn. */
+  words: { at: 0.45, secondsPerPrint: 0.12 },
 } as const;
 
 /**

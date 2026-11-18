@@ -3,7 +3,7 @@
  * The headline, the copy under it and the two notes, over the scene (the
  * user's 1920 frame and their 390 phone frame, 2026-10-30), on the hero's
  * twelve columns — four on a phone. The headline Cormorant Garamond
- * semibold italic at 30px, −6%, the whole white; the copy Newsreader at
+ * medium italic at 30px, −6%, the whole white; the copy Newsreader at
  * 15px, −1%; the notes Newsreader at 10px; every word but the headline at
  * 80% white (tokens.css: the soft white).
  *
@@ -78,7 +78,7 @@
  * 12px are the shared voices' own (tokens.css). */
 @media (max-width: 767.98px) {
   :root {
-    --text-hero-note: var(--text-rhythm-8);
+    --text-hero-note: calc(var(--text-rhythm-8) * 1rem);
     /* On a 12px line (the 4px grid: tokens.css). */
     --leading-hero-text: 1.5;
     --space-hero-row: 40.65%;
@@ -112,8 +112,8 @@
   margin-bottom: calc(var(--space-hero-title-gap) - var(--space-hero-title-foot));
   padding-left: var(--space-hero-axis);
   color: var(--color-hero-title);
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-weight: 600;
+  font-family: var(--font-title);
+  font-weight: var(--font-title-weight);
   font-style: italic;
   font-size: var(--text-hero-title);
   line-height: var(--leading-hero-title);
@@ -149,6 +149,8 @@
   font-size: var(--text-hero-lede);
   line-height: var(--leading-hero-lede);
   letter-spacing: var(--tracking-hero-lede);
+  font-variation-settings: var(--font-copy-variation);
+  font-variant-ligatures: var(--font-copy-ligatures);
 }
 
 /* ── The notes ── at the top of the row: the availability at the left

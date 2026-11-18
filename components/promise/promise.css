@@ -8,10 +8,10 @@
  * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
  *
  *   THE BLOCK. The copy stands on the hero's axis, column 7 (2 on a phone),
- *   two columns wide: 7–8, and 2–3 on a phone (the grid overlay). It wraps
- *   in that block, it is not authored line by line, so the dots stay on
- *   the grid's lines at every width. A tablet gives it four columns (7–10):
- *   two of them at 768 are ~100px, a word or two a line.
+ *   on two columns: 7–8, and 2–3 on a phone (the grid overlay). It wraps,
+ *   it is not authored line by line; its measure is the frame's, held in
+ *   its own ems (THE MEASURE, below), so it breaks as the user's frame
+ *   does at every width, its end dots where the copy ends.
  *
  *   THE DOTS. Dots, 16px, a paragraph, 16px, dots (the user's rule): a
  *   row of dots above and below every paragraph, one row shared between
@@ -41,9 +41,11 @@
  *   THE EDGES. The first row of dots 16px under the section's top, as both
  *   frames place it.
  *
- * One unit. Every token below is its artboard px / 16. */
+ * THE PICTURE IS THE PRINT, THE COPY THE READER (tokens.css): the stars,
+ * the mark and the structure scale with the screen; the words hold. One
+ * unit, the drawings': their artboard px / 16. */
 :root {
-  --promise-unit: 1rem;
+  --promise-unit: var(--print);
 
   /* ── The beat ── a row of dots to the paragraph beside it, either way,
    * and the section's edge to its first and last row. */
@@ -53,37 +55,24 @@
    * columns: 7 to 9 is columns 7 and 8). Its corner dots stand on them. */
   --grid-promise-block-start: 7;
   --grid-promise-block-end: 9;
-  /* THE MEASURE KEPT (2026-11-07, the user: the page's gutter went to 4px,
-   * and the copy's line breaks — its rhythm — must stay as they were):
-   * the copy is set to the width its block had at the gutter it was drawn
-   * with, 20px (16px on a phone). A block of s of N columns is s/N of the
-   * row less (N − s)/N of a gutter, so with a narrower gutter it widens by
-   * (that gutter − the page's) × (N − s)/N — taken back here, at the
-   * block's end (the start stays on the page's axis). Two of twelve:
-   * 10/12. Its end dots stand where the copy ends.
+  /* THE MEASURE: THE FRAME'S, IN THE COPY'S OWN EMS. The page is one
+   * picture (the print), so a measure taken from the columns would break
+   * differently at every width (it wandered through five patterns between
+   * 1536 and 2560, and a tablet's two columns broke it into seven lines);
+   * in ems every paragraph is one shape, the breaks of the user's 1920
+   * frame (15.7 of its 15px), from 2560 down through every tablet (the
+   * user, 2026-11-13: "use desktop version line break style for this
+   * screen size also"). From 1280 up it just fills the two columns; under
+   * it, it reaches past them into the empty columns beside it (~33px at
+   * 1070, ~83 at 768: keep those columns empty). A phone holds its 390
+   * frame's (below).
    *
-   * AND AT THE MARGIN IT WAS DRAWN WITH (2026-11-10: the page's margin went
-   * from 30px to a step of the spacing scale): a block of s of N columns
-   * changes by 2s/N of whatever the margin loses, so the trim takes that
-   * back, a third of it for two of twelve. Both are REFERENCES, the width
-   * the copy was set to, not spaces on the page. */
-  --space-promise-measure-gutter: 1.25rem;
-  /* 20px */
-  --size-promise-measure-margin: 1.875rem;
-  /* 30px */
-  --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 10 / 12 + (var(--size-promise-measure-margin) - var(--spacing-margin)) / 3);
-  /* AND AT THE SIZE IT WAS SET IN (2026-11-10: the copy went from 14px to
-   * the type rhythm's 15): set larger, a line needs a wider measure to
-   * break where it broke. By how much the text itself widens, swept
-   * against the old line breaks at thirteen widths, not 15/14: Newsreader's
-   * optical size narrows its letters as it grows, and Windows rounds a
-   * small size's advances. A share of the block, so the percentage (of a
-   * grid item's own area) takes it back at any width. */
-  --size-promise-measure-grow: 1.045;
-  --size-promise-measure-end: calc(var(--size-promise-measure-trim) * var(--size-promise-measure-grow) - 100% * (var(--size-promise-measure-grow) - 1));
-  /* The measure above the root scaler's knee, in the copy's own ems (see the
-   * query below). */
+   * AND ITS LETTERS AT ONE OPTICAL SIZE, the copy voice's (tokens.css
+   * --font-copy-variation): Newsreader draws a smaller size wider, so at
+   * 15px the same ems held a word less a line than at 1920's 18 (measured
+   * 2026-11-13: 1280 to 1728 broke one way, 1920 and 2560 the frame's). */
   --size-promise-measure-ems: 15.7;
+  --size-promise-measure-end: calc(100% - var(--text-promise) * var(--size-promise-measure-ems));
 
   /* ── The copy ── the site's reading voice, as the hero's. */
   --text-promise: var(--text-copy);
@@ -125,7 +114,7 @@
   --space-promise-stage: var(--spacing-rhythm-80);
   /* THE MARK IS HELD AT THE SCREEN'S MIDDLE while its letters land, so it
    * must fit the screen's height: never taller than 72% of it (svh, a size
-   * that answers to the screen's height, which the root scaler knows
+   * that answers to the screen's height, which the print knows
    * nothing of), never wider than the page's margins allow. */
   --size-promise-mark-tallest: 72svh;
   --size-promise-mark-width: min(
@@ -152,7 +141,7 @@
    * it scrolls on and goes dark itself (hero.css, hero/motion.ts
    * DESCENT_FADE). A SHARE OF THE SCREEN'S HEIGHT (svh), the one size here
    * not of the unit: it is measured against the screen-tall scene it
-   * covers, which the root scaler knows nothing about. Half a screen: the
+   * covers, which the print knows nothing about. Half a screen: the
    * dark arrives as a band rising with the section, not as its edge. */
   --size-promise-veil: 50svh;
 
@@ -165,29 +154,6 @@
   --size-promise-air-below: 90svh;
 }
 
-/* ABOVE THE ROOT SCALER'S KNEE (95rem: base.css) THE WHOLE PAGE GROWS AS ONE
- * PICTURE, so the copy's measure does too: a fixed number of its own ems,
- * the paragraphs one shape on every larger screen, the breaks of the user's
- * own 1920 frame. (Set from the viewport, the block outgrew the type and the
- * breaks wandered through five patterns between 1536 and 2560.) NOT A LAYOUT
- * BAND: nothing is laid out differently here, one measure is held. */
-@media (min-width: 95rem) {
-  :root {
-    --size-promise-measure-end: calc(100% - var(--text-promise) * var(--size-promise-measure-ems));
-  }
-}
-
-/* Tablet and small laptop: the copy takes four columns (7–10). At 768 that
- * is ~220px, the desktop's measure at 1440; at 1279, ~390px. */
-@media (max-width: 1279.98px) {
-  :root {
-    --promise-unit: 1rem;
-    --grid-promise-block-end: 11;
-    /* Four of twelve: 8/12, and two thirds of the margin's gain. */
-    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 8 / 12 + (var(--size-promise-measure-margin) - var(--spacing-margin)) * 2 / 3);
-  }
-}
-
 /* Phone: the user's 390 frame. The block on columns 2–3, its edges a
  * single dot each as on the desktop (the user, 2026-10-30: the frame's
  * pairs there were not meant); the stage the whole width (the mark's box
@@ -195,15 +161,17 @@
  * stays 16px (the user's rule, every size). */
 @media (max-width: 767.98px) {
   :root {
-    --promise-unit: 1rem;
     --grid-promise-block-start: 2;
     --grid-promise-block-end: 4;
-    /* The phone frame's 16px gutter; two of four: 2/4. Its margin was
-     * already on the scale, so there is no margin to give back, and the
-     * copy is still 12px, so there is no size either. */
-    --size-promise-measure-grow: 1;
-    --space-promise-measure-gutter: 1rem;
-    --size-promise-measure-trim: calc((var(--space-promise-measure-gutter) - var(--spacing-gutter)) * 2 / 4);
+    /* THE PHONE IS A POSTER TOO (tokens.css), growing more slowly than its
+     * columns: the measure is the 390 frame's, in the copy's own ems (its
+     * block there: 171px of 12px copy, as the frame drew it), and its
+     * letters at the copy voice's optical size on a phone (tokens.css), so
+     * every phone breaks as the frame does. Under 390 the block reaches past
+     * its two columns into the empty fourth (~31px at 320), as a tablet's
+     * does: wrapped in them, its breaks moved with the gutter (2026-11-13,
+     * when the gutter went to 8). */
+    --size-promise-measure-ems: 14.25;
   }
 }
 
@@ -356,17 +324,16 @@
 }
 
 /* ── A paragraph ── in the block, in the copy's voice, wrapped as the
- * browser wraps it: at the frame's own width the breaks are the frame's,
- * "remains" alone on its line before the pause. */
+ * browser wraps it, in the measure that keeps the frame's breaks (THE
+ * MEASURE, above). */
 [data-promise-text] {
   grid-column: var(--grid-promise-block-start) / var(--grid-promise-block-end);
   margin-right: var(--size-promise-measure-end);
   font-size: var(--text-promise);
   line-height: var(--leading-promise);
   letter-spacing: var(--tracking-promise);
-  /* NO LIGATURES: every letter leaves its line on its own (assembly.ts),
-   * and an fi drawn as one glyph could not. */
-  font-variant-ligatures: no-common-ligatures;
+  font-variation-settings: var(--font-copy-variation);
+  font-variant-ligatures: var(--font-copy-ligatures);
 }
 
 /* A letter that has left its line (letters.ts): the canvas draws it now.

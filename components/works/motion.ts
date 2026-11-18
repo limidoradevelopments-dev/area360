@@ -3,32 +3,16 @@
  *
  * Every duration, distance and threshold the works move by, with why.
  *
- * THE PARALLAX IS THE STYLESHEET'S (works.css, THE DEPTH): a scroll-driven
- * CSS animation on the compositor, linear in the scroll, so nothing of it
- * is here — no script reads it.
+ * THE PICTURES' MOTION IS THE STYLESHEET'S (works.css, THE DEPTH and THE
+ * SINK): scroll-driven CSS animations on the compositor, their curves and
+ * ranges written there with their reasons — no script reads them.
  *
- * Tween, not spring, for the entrances: each has a fixed job, to arrive
- * once. The breath is neither: a field the hand lays and the air takes
- * away, worked out from each puff's age every frame (breath.ts).
+ * NO ENTRANCES (2026-11-11, the cards; 2026-11-12, the title: the user,
+ * "doesn't need an appear animation"): the eye tag beside the title plays
+ * its own (ui/motion.ts EYE_TAG). The breath is a field the hand lays and
+ * the air takes away, worked out from each puff's age every frame
+ * (breath.ts).
  */
-
-import { LINE_DROP, REVEAL_EASE_CSS } from "@/components/ui/motion";
-
-export const WORKS_REVEAL = {
-  /* The heading's lines drop into their masks from above, as every heading
-   * after the hero's does (the promise's, the 404's): the house's line, the
-   * reveal curve, a line after the line before it as every paragraph's
-   * (the promise's 0.08 s). Once most of it is on the screen. */
-  title: { ...LINE_DROP, easing: REVEAL_EASE_CSS },
-  titleStagger: 0.08,
-  titleThreshold: 0.6,
-  /* The cards have no entrance (2026-11-11, the user: removed): they
-   * stand, their depth and the breath their only motion. */
-} as const;
-
-/** Reduced motion (respectReducedMotion): the lines and cards fade, no
- *  travel, no blur. */
-export const WORKS_REDUCED = { fadeSeconds: 0.2 } as const;
 
 /**
  * THE BREATH (2026-11-06, the user: over a work's picture, "a WebGL shader
@@ -45,8 +29,8 @@ export const WORKS_REDUCED = { fadeSeconds: 0.2 } as const;
  * Atmos. Res. 1995; breath figures: Rayleigh, Nature 1911). Every puff is
  * a deposit less what has evaporated since (`evaporation`, after `hold`).
  *
- * Sizes in rem: a breath is the same share of a card at any screen, the
- * root scaler growing both.
+ * Sizes in the print's units (ui/scale.ts printPx): a breath is the same
+ * share of a card at any screen, the print growing both.
  */
 export const BREATH = {
   /** The most puffs alive on one card; the shader's array (shaders/
@@ -62,7 +46,7 @@ export const BREATH = {
   hold: 0.3,
 
   /* ── The hand moving: wisps ──
-   * A puff every `spacingRem` of travel, further apart as the hand goes
+   * A puff every `spacingPrint` of travel, further apart as the hand goes
    * faster (`spacingSeconds` of its travel), each stretched along the way
    * toward the next (`reach` of the way), so the trace holds together
    * where the glass holds a breath and breaks into islands where it does
@@ -71,8 +55,8 @@ export const BREATH = {
    * half a breath it read as a smoke cursor's trail; the breath at rest is
    * the gesture, this only its trace. */
   trail: {
-    radiusRem: 1.75,
-    spacingRem: 1.5,
+    radiusPrint: 1.75,
+    spacingPrint: 1.5,
     spacingSeconds: 0.05,
     strength: 0.32,
     speedHalf: 1600,
@@ -85,7 +69,7 @@ export const BREATH = {
 
   /* ── Coming in: one breath, leaning in to look ── */
   enter: {
-    radiusRem: 4.25,
+    radiusPrint: 4.25,
     strength: 0.72,
     form: 0.55,
   },
@@ -96,7 +80,7 @@ export const BREATH = {
    * swung by two sines a golden ratio apart (an ambient loop never
    * repeats: AGENTS.md) — 6.1 s, a calm breath, never a pulse. */
   exhale: {
-    radiusRem: 5.5,
+    radiusPrint: 5.5,
     strength: 1,
     form: 1.1,
     period: 6.1,

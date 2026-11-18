@@ -6,6 +6,7 @@ import { cx } from "@/components/ui/cx";
 import { approach, clamp01, cubicBezier } from "@/components/ui/easing";
 import { loadProgress } from "@/components/ui/loadProgress";
 import { REVEAL_EASE_CSS, WIPE_EASE_CSS } from "@/components/ui/motion";
+import { printPx } from "@/components/ui/scale";
 import { useStageReveal } from "@/components/ui/StageReveal";
 
 import PreloaderCount from "./PreloaderCount";
@@ -111,13 +112,15 @@ export default function Preloader({ className, respectReducedMotion = false }: P
     /* The words surface in a wave out from the axis, released by their
        distance from it (AGENTS: geometry, not DOM order); the rhythm begins
        once the frame has been seen whole. */
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    /* In the print's units, as the curtain is drawn (preloader.css), so the
+       wave keeps its pace across the drawing at every width. */
+    const unit = printPx();
     const centre = anchor.getBoundingClientRect();
     const distance = places.map((place) => {
       const box = place.entrance.el.getBoundingClientRect();
-      return Math.hypot(box.left + box.width / 2 - centre.left, box.top + box.height / 2 - centre.top) / rem;
+      return Math.hypot(box.left + box.width / 2 - centre.left, box.top + box.height / 2 - centre.top) / unit;
     });
-    const delays = distance.map((d) => lead + ENTRANCE.words.at + (d * ENTRANCE.words.secondsPerRem) / PACE);
+    const delays = distance.map((d) => lead + ENTRANCE.words.at + (d * ENTRANCE.words.secondsPerPrint) / PACE);
     const whole = Math.max(...places.map((place, k) => delays[k] + surfaceSeconds(place.far, calm)));
     surfacing.start(delays, whole + RHYTHM.lead / PACE);
 

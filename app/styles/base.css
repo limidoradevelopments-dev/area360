@@ -1,32 +1,25 @@
-/* ─── Global resets & the root scaler ─── */
+/* ─── Global resets & the reader ─── */
 
 html {
-  /* THE ROOT SCALER — the ONLY fluid scaling mechanism in the system.
+  /* THE READER (AGENTS.md, Scaling System §1): what a rem is, so what every
+   * word read or pressed is sized by. It is the print's own line (tokens.css
+   * --print, 1vw) held at the visitor's font size: 16px up to 1600, then
+   * one with the print, 19.2px at 1920 (the look the user approved), 25.6
+   * at 2560.
    *
-   * The design origin is the 1440 artboard, where 1rem = 16px, so a token
-   * written as 1.035rem renders at 16.56px on the artboard it was drawn on.
-   * The root holds 16px up to 95rem (1520px), then grows 0.008px per px of
-   * viewport: 1920 → 19.2px, 2560 → ~24.3px (2026-11-10, the user: at 0.012
-   * the desktop's body text came out a bit too large as it grew; at 1920 the
-   * copy is now a whole 18px on a 24px line). That slope is what makes a 5K
-   * display read as high-end rather than stretched. Every token is a rem
-   * multiple of this, so the whole site grows as one piece and there is
-   * exactly one curve to reason about.
+   * ITS FLOOR IS 1rem, NOT px: at the root, rem is the browser's own font
+   * size, so a visitor who set theirs to 20px keeps it (WCAG 1.4.4). Words
+   * never shrink with the screen; the print does that for everything else.
    *
-   * FLOOR IS 1rem, NOT px. At the root, rem resolves against the browser's
-   * own font size, so a visitor who set theirs to 20px keeps it (WCAG 1.4.4).
-   * A px floor silently discards that preference.
+   * ITS CEILING 3.75rem stops it at 60px (a 6000px window).
    *
-   * FLOOR IS NOT LOWER THAN 1rem. Below 1rem every rem shrinks on most laptops
-   * and technical labels fall under 10px. Scaling DOWN is the job of each
-   * feature's step-down blocks, per component unit.
+   * ON A PHONE the line is the phone frame's (tokens.css --print-line), so
+   * from 390 up the reader grows with it, a little, to 1.2rem: the phone is
+   * one picture, words and all (below).
    *
-   * CEILING 3.75rem caps the root at 60px (~7000px viewport), so an 8K
-   * display stops growing there.
-   *
-   * No clamp() anywhere else in the system, except when a size must answer
-   * to viewport HEIGHT, which this curve knows nothing about. */
-  font-size: clamp(1rem, calc(1rem + (100vw - 95rem) * 0.008), 3.75rem);
+   * 100vw IS THE PAGE'S WIDTH here: the scrollbar is hidden (below), so no
+   * script has to measure it. */
+  font-size: clamp(1rem, var(--print-line), 3.75rem);
   /* THE WHOLE SITE IS ON THE NIGHT, the canvas too: a phone's overscroll
    * shows ground, never a sheet of paper behind a black page. */
   background-color: var(--color-night);
@@ -37,6 +30,15 @@ html {
   -webkit-text-size-adjust: 100%;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+/* THE PHONE'S READER: the line (the 390 frame's px, tokens.css) from the
+ * visitor's own size up to 1.2 of it (at 546): "keep it minimally scale
+ * up" (the user, 2026-11-13; it was 1.5, at the line's full speed). */
+@media (max-width: 767.98px) {
+  html {
+    font-size: clamp(1rem, var(--print-line), 1.2rem);
+  }
 }
 
 html::-webkit-scrollbar,
@@ -50,7 +52,7 @@ body {
   /* BODY TEXT IS NEWSREADER (2026-10-29, the user: "newsreader for body
    * text, keep the existing one for titles"), at the one weight carried
    * (layout.tsx): asked for another, the browser would synthesise it.
-   * Titles name Cormorant themselves, with its 600. */
+   * Titles name their own face and weight (tokens.css --font-title). */
   font-family: var(--font-newsreader), Georgia, serif;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;

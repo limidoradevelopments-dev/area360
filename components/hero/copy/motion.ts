@@ -23,9 +23,8 @@ export const COPY_ENTRANCE = {
   /* THE STONE FIRST, then the headline as the place settles. */
   title: { at: STAGE_CUES.words, stagger: LINE_DROP.stagger },
 
-  /* The copy follows the headline's first line, not its last (as the
-   * intro's support copy does): waiting for both makes two beats of one
-   * gesture. */
+  /* The copy follows the headline's first line, not its last: waiting for
+   * both makes two beats of one gesture. */
   lede: { at: STAGE_CUES.words + 0.25, stagger: 0.08 },
 
   /* The notes are the frame's chrome: they arrive with it, near the end of

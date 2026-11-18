@@ -26,12 +26,12 @@ export const BREATH_LOOK = {
   rim: 0.35,
   rimSlope: 16,
 
-  /** The glass's own unevenness (fbm, `scaleRem` across, stretched along
+  /** The glass's own unevenness (fbm, `scalePrint` across, stretched along
    *  a wiped pane's strokes by `wipe`): where it fogs first and clears
    *  last. FIXED PER CARD — breathe on the same glass twice and the same
    *  pattern comes back. A deposit ×(1 ± `contrast`). */
   glass: {
-    scaleRem: 3.25,
+    scalePrint: 3.25,
     wipe: 1.7,
     contrast: 0.45,
     /** NO BREATH IS A CIRCLE: the glass's nucleation is uneven, so a

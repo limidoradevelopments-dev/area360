@@ -70,17 +70,19 @@ export const LINE_DROP = {
 } as const;
 
 /**
- * THE EYE TAG's entrance (ui/EyeTag: a short lead and a word spelled one
- * letter a tile, 2026-11-11), shared by every section that sets one.
+ * THE EYE TAG's entrance (ui/EyeTag: a short lead and a word spelled out
+ * on a strip, 2026-11-11; one strip since 2026-11-13), shared by every
+ * section that sets one.
  *
  * THE LEAD drops into its masks as every line over the night does; THE
- * WORD IS STRUCK, letter by letter, left to right: each letter drops into
- * its tile as a light runs over the tile's edge — a hairline of the whole
- * white that flashes in fast and dies slowly (`glint`: the site's glare,
- * never a pulse: sharp, light, gone) — and the tile's own edge comes up
- * under it. So the eye is led along the word once, at the pace of a
- * reading glance (`tileStagger`: eight letters in ~0.5 s). ONE PASS: no
- * loop, nothing left running.
+ * WORD IS DRAWN IN, left to right, with the house's wipe (WIPE_EASE: held
+ * back, then fast through its middle, arriving): the strip comes in under
+ * the letters, which appear cut out of it as it passes, and a light rides
+ * its front — the whole white, one letter's share wide, up fast and dying
+ * slowly (`glint`: the site's glare, never a pulse: sharp, light, gone). So
+ * the eye is led along the word once, at the pace of a reading glance (the
+ * eight letters were struck over ~0.5 s; the wipe's fast middle crosses
+ * them in about that). ONE PASS: no loop, nothing left running.
  */
 export const EYE_TAG = {
   /** Once most of it is on the screen. */
@@ -89,12 +91,11 @@ export const EYE_TAG = {
   lineStagger: 0.08,
   /** The word begins as the lead's first line lands its first half. */
   wordAt: 0.3,
-  tileStagger: 0.07,
-  /** A tile's edge comes up under the glint, a beat after it is struck. */
-  frameDelay: 0.08,
-  frameSeconds: 0.6,
-  /** The glint: up in `peak` of its time, then a long fall. */
-  glintSeconds: 0.9,
+  /** The strip's wipe, end to end. */
+  wordSeconds: 0.9,
+  /** The light: up in `peak` of its time, then a long fall, past the
+   *  wipe's landing. */
+  glintSeconds: 1.2,
   glintPeak: 0.12,
 } as const;
 

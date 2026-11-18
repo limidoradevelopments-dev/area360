@@ -10,6 +10,8 @@ import PromiseRule from "./PromiseRule";
  * a row — one row shared between two paragraphs, each a beat clear of the
  * copy (promise.css). Each paragraph waits unseen until the section splits
  * it into its lines and drops them in (data-reveal-lines: ui/splitLines.ts).
+ * Each holds its frame's line breaks (data-measure: its measure in ems,
+ * which `npm run check:scale` compares across widths).
  *
  * Markup and data- hooks only.
  */
@@ -27,7 +29,7 @@ export default function PromisePassage({ place, paragraphs, ref }: PromisePassag
       <PromiseRule />
       {paragraphs.map((text) => (
         <Fragment key={text}>
-          <p data-promise-text data-reveal-lines="">
+          <p data-promise-text data-measure data-reveal-lines="">
             {text}
           </p>
           <PromiseRule />

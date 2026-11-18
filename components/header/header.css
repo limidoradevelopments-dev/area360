@@ -24,9 +24,11 @@
  * left — the camera swinging back to the middle (the dock's lesson,
  * settings.css). Only the links take it.
  *
- * One unit. Every token below is its artboard px / 16. */
+ * THE MARK IS THE PRINT, THE WORDS THE READER (tokens.css): the mark is
+ * part of the picture and scales with it; the clock and the nav are words
+ * to read and press, and hold. One unit, the mark's: its artboard px / 16. */
 :root {
-  --header-unit: 1rem;
+  --header-unit: var(--print);
 
   /* The user's mark, its own 66×47 box drawn 80px across (its wings ~79px
    * of ink, as the frame measures). */
@@ -66,19 +68,10 @@
   --color-header-strong: var(--color-on-night);
 }
 
-/* Tablet and small laptop: the same. The header is all small type, already
- * at the smallest it is set. */
-@media (max-width: 1279.98px) {
-  :root {
-    --header-unit: 1rem;
-  }
-}
-
 /* Phone: the user's 390 frame. The nav keeps the desktop's 12px and its
  * gap (the user, 2026-10-30), so neither is restated here. */
 @media (max-width: 767.98px) {
   :root {
-    --header-unit: 1rem;
     --size-header-mark: calc(var(--header-unit) * 4);
     /* 64px */
     /* The frame sets the mark above the clock's and the nav's line: its

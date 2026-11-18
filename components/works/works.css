@@ -1,51 +1,51 @@
 /* ─── The works ───
  *
- * The section after the reality promise (the user's 1920 frame and its
- * grid overlay, 2026-11-06), on the page's black, in the page's own flow:
- * the promise's stage goes on up and this follows it, nothing laid over
+ * The section after the reality promise (the user's 1920 frames and their
+ * grid overlays, 2026-11-06, 2026-11-11 and 2026-11-12, and their phone
+ * frame of 2026-11-12), on the page's black, in the page's own flow: the
+ * promise's stage goes on up and this follows it, nothing laid over
  * anything (2026-11-02). The moth's last letters fade out above its top
  * edge (promise/assembly.ts, the bloom).
  *
- * READ OFF THE FRAME, every size the frame's px ÷ 16 (AGENTS.md):
+ * READ OFF THE FRAMES — wireframes, the user said: their composition, set
+ * in the site's own voices and on its own steps:
  *
  *   THE TITLE. "Settling Is Easy / The Work Here Isn't Built For That"
- *   (2026-11-11, the user's frame), the section's h2, in the site's
- *   section-title voice (tokens.css: Cormorant semibold italic, 24 on 28,
- *   19 on 24 on a phone, at −1%), on the page's axis — column 7, where the
- *   hero's words and the promise's copy stand (2 on a phone) — its first
- *   baseline 128px under the section's top.
+ *   (2026-11-11), the section's h2, in the site's section-title voice
+ *   (tokens.css: Cormorant regular italic, 21 on 24, 19 on 24 on a
+ *   phone, at −1%), on the page's axis — column 7, where the hero's words
+ *   and the promise's copy stand (2 on a phone) — its first baseline 128px
+ *   under the section's top. No entrance (2026-11-12, the user).
  *
- *   THE EYE TAG (ui/EyeTag, 2026-11-11): at the left margin, three columns
- *   wide, its lead's first line hung from the title's cap line (the two
- *   voices' cap heights: tokens.css). ON A PHONE (the user's phone
- *   frames, 2026-11-11) the tag stands FIRST, at the margin, two columns
- *   wide (the frame's one, at a smaller type; at the 10px floor its lead
- *   needs two), its first baseline where the title's stands on a wide
- *   screen; the title under it on the axis, a step below its squares;
- *   and the numerals the title's own gap under it, as on a wide screen
- *   (the user: "increase between title and cards, matching the rhythm").
+ *   THE EYE TAG (ui/EyeTag): at the left margin beside the title, its
+ *   lead's first cap line hung from the title's (the two voices' cap
+ *   heights: tokens.css) — three columns wide on a wide screen; ON A PHONE
+ *   (2026-11-12 and 13) in the first column, the title on the three after
+ *   it, the tag narrow there (its two lines at 5px, its word a filled
+ *   strip with the letters cut out: eye-tag.css).
  *
- *   THE NUMERALS. Over every card, at its left edge: ( I ), ( II ), ( III )
- *   in the supporting voice at the soft white, their baseline 16px over
- *   the picture — a book's plate numbers. The title's last baseline to the
- *   first row's numerals: 160px (the frame's ~170; it was 80 to the
- *   pictures: the user, "spacing increase between title and cards").
+ *   THE CARDS (2026-11-12). On the page's twelve columns, a row of three
+ *   thirds — a tall picture, a square, a tall one — then a row of two wide
+ *   ones at the two margins, the two columns between them empty; the
+ *   pattern repeats (content.ts WORKS_PATTERN). Their shapes (2026-11-14,
+ *   the user: taller than the frame's, the wide ones a little taller
+ *   again): at 1920, the tall ones 612 × 857 (5:7), the square 612 × 724,
+ *   the wide ones 770 × 924 (5:6). The
+ *   title's last baseline to the first row's pictures 160px, a row's
+ *   pictures to the next row's 256px. THE SQUARE SINKS: drawn level with
+ *   its neighbours' tops, it comes down into line with their feet as the
+ *   page scrolls (THE SINK, below). ON A PHONE every picture on the three
+ *   columns after the first, one under another, all one tall shape (3:4),
+ *   the square standing in line; the spacing a step tighter than the
+ *   rhythm's, and between the cards a step tighter again (below).
  *
- *   THE CARDS. On the page's twelve columns: a wide card (six columns) and
- *   two narrow ones (three), then two wide — the pattern repeats
- *   (content.ts WORKS_PATTERN); on a phone the first work the four
- *   columns, every other two to a row (the user, 2026-11-07). Every picture 650px tall at the frame's
- *   1920 (920 × 650 wide, 450 × 650 narrow): a wide card's picture is
- *   drawn by its aspect, and its row's narrow ones take its height (one
- *   track for a row's pictures: below). 256px from a row's pictures to
- *   the next row's.
- *
- *   THE NAME AND SCOPE. Under each picture: the work's name in the site's
- *   heading voice (tokens.css: Newsreader 19px, the whole white; the
- *   user's), its baseline 32px under the picture; under it the scope in
- *   the copy's voice at the half white (the user: "scope text is body
- *   copy", then, 2026-11-07, "white opacity 50%", and the frame's dotted
- *   rule after the name taken out), its baseline 24px under the name's.
+ *   THE WORDS. Under each picture, on its card's columns after the first,
+ *   a caption: the work's name at the whole white and its scope under it
+ *   at the half white, one voice, the small copy — spaced as the user's
+ *   reference caption (2026-11-14, below). And in the card's first column,
+ *   on the name's baseline, its numeral — ( I ), ( II ), ( III ) — a plate's number in
+ *   the supporting voice at the soft white, centred in that column; on a
+ *   phone at the margin, its capitals hung from the picture's top.
  *
  *   IN BLACK AND WHITE (2026-11-07, the user: every work's picture "as
  *   black and white images no matter its real colour"): the site prints in
@@ -63,6 +63,7 @@
   --text-works-heading: var(--text-section-title);
   --leading-works-heading: var(--leading-section-title);
   --tracking-works-heading: var(--tracking-section-title);
+  --font-works-heading-weight: var(--font-section-title-weight);
   --color-works-heading: var(--color-on-night);
   /* The grid line it stands on: the page's axis. */
   --grid-works-axis: 7;
@@ -72,7 +73,8 @@
    * user, 2026-11-07: "increase the spacing between works and promise a
    * bit"; the frame's was 71px). */
   --space-works-heading-baseline: var(--spacing-rhythm-128);
-  /* Its last baseline to the first row's numerals' baseline. */
+  /* Its last baseline to the first row's pictures (the user, 2026-11-11:
+   * "spacing increase between title and cards"). */
   --space-works-heading-gap: var(--spacing-rhythm-160);
   /* Where its line box starts above its baseline, and ends below it:
    * Cormorant Garamond's ascent and descent, each with half of what the
@@ -83,31 +85,54 @@
 
   /* ── The eye tag ── three columns at the margin; its lead's first cap
    * line hung from the title's: each voice's cap top below its line box's
-   * top, the title's less the tag's (tokens.css: the faces' metrics). */
+   * top, the title's less the tag's (tokens.css: the faces' metrics). The
+   * tag's type is the narrow tag's on a phone (below; eye-tag.css). */
   --grid-works-tag: 1 / span 3;
-  --space-works-tag-hang: calc(var(--text-works-heading) * ((var(--leading-works-heading) - var(--font-cormorant-box)) / 2 + var(--font-cormorant-ascent) - var(--font-cormorant-cap)) - var(--text-eye-tag) * ((var(--leading-eye-tag) - var(--font-newsreader-box)) / 2 + var(--font-newsreader-ascent) - var(--font-newsreader-cap)));
-  /* On a phone, over the title: the tag's foot to the title's first line
-   * box (a step of the hand's tier: the two read as one block), and where
-   * its first line box starts above its baseline. */
-  --space-works-tag-title: var(--spacing-micro-12);
-  --space-works-tag-head: calc(var(--text-eye-tag) * (var(--font-newsreader-ascent) + (var(--leading-eye-tag) - var(--font-newsreader-box)) / 2));
+  --text-works-tag: var(--text-eye-tag);
+  --leading-works-tag: var(--leading-eye-tag);
+  --space-works-tag-hang: calc(var(--text-works-heading) * ((var(--leading-works-heading) - var(--font-cormorant-box)) / 2 + var(--font-cormorant-ascent) - var(--font-cormorant-cap)) - var(--text-works-tag) * ((var(--leading-works-tag) - var(--font-newsreader-box)) / 2 + var(--font-newsreader-ascent) - var(--font-newsreader-cap)));
 
   /* ── The numerals: the supporting voice, at the soft white ── */
   --text-works-numeral: var(--text-support);
   --leading-works-numeral: var(--leading-support);
   --color-works-numeral: var(--color-copy);
-  /* A numeral's baseline to its picture. */
-  --space-works-numeral-drop: var(--spacing-micro-16);
+  /* Its line box's top to its baseline, and to its capitals' top (to set
+   * it on the name's baseline; on a phone, to hang it from the picture). */
   --space-works-numeral-head: calc(var(--text-works-numeral) * (var(--font-newsreader-ascent) + (var(--leading-works-numeral) - var(--font-newsreader-box)) / 2));
-  --space-works-numeral-foot: calc(var(--text-works-numeral) * (var(--font-newsreader-descent) + (var(--leading-works-numeral) - var(--font-newsreader-box)) / 2));
+  --space-works-numeral-cap: calc(var(--text-works-numeral) * ((var(--leading-works-numeral) - var(--font-newsreader-box)) / 2 + var(--font-newsreader-ascent) - var(--font-newsreader-cap)));
 
-  /* ── The cards ── */
-  --size-works-wide-aspect: 920 / 650;
-  --size-works-narrow-aspect: 450 / 650;
+  /* ── The cards ── how many columns a third of the row takes, and a wide
+   * card (counts, not lengths); their pictures' shapes. The tall ones 5:7,
+   * the print's own portrait, the frame's 612 × 724 drawn up 18%; the
+   * square by the same share, which lands it on the frame's tall shape, so
+   * it keeps its place against its neighbours and its sink its proportion
+   * (no longer square, it keeps the frame's name for its place). The wide
+   * ones 5:6, ~8% taller than the tall ones at every width (the user,
+   * 2026-11-14: the bottom two "a bit more" than the row above; five
+   * columns against four is ~1.25× the width at any size, the gutters
+   * being small, so a shape holds the proportion). On a phone every card
+   * 3:4 (the phone frame's 274 × 348 drawn up 5%). */
+  --grid-works-third: 4;
+  --grid-works-wide: 5;
+  --size-works-tall-aspect: 5 / 7;
+  --size-works-square-aspect: 612 / 724;
+  --size-works-wide-aspect: 5 / 6;
+  --size-works-phone-aspect: 3 / 4;
   --color-works-empty: color-mix(in srgb, var(--color-on-night) 13%, var(--color-night));
-  /* A row's pictures' foot to the next row's pictures' top (its numerals
+  /* A row's pictures' foot to the next row's pictures' top (its words
    * stand in that space). */
   --space-works-row: var(--spacing-rhythm-256);
+
+  /* ── THE SINK ── how far the square stands above its place: its tall
+   * neighbours' height less its own. The three share a third of the row's
+   * width, so each height is the third's width over its shape, and the
+   * third is four of the section's columns and the three
+   * gutters between them — read off the section itself (it is the query
+   * container: 100cqi its content box, the columns' whole run). Exact at
+   * every width, by layout, with no script. Lengths in cqi resolve where
+   * they are used, inside the section. */
+  --size-works-third: calc((100cqi - (var(--grid-columns) - 1) * var(--spacing-gutter)) / var(--grid-columns) * var(--grid-works-third) + (var(--grid-works-third) - 1) * var(--spacing-gutter));
+  --size-works-sink: calc(var(--size-works-third) * (1 / (var(--size-works-tall-aspect)) - 1 / (var(--size-works-square-aspect))));
 
   /* ── The depth (the parallax) ── how far the picture behind the frame
    * travels either way, a share of the frame's height: 14%, so across the
@@ -121,55 +146,69 @@
   --works-depth-travel: 0.14;
   --size-works-depth-zoom: 1.16;
 
-  /* ── The name: the site's heading voice ── */
-  --text-works-name: var(--text-heading);
-  --leading-works-name: var(--leading-heading);
-  --tracking-works-name: var(--tracking-heading);
-  --color-works-name: var(--color-heading);
-  /* ── The scope: the site's reading voice ── */
-  --text-works-scope: var(--text-copy);
-  --leading-works-scope: var(--leading-copy);
-  --tracking-works-scope: var(--tracking-copy);
+  /* ── The caption: the name and the scope in one voice, the small copy,
+   * told apart by their white ── */
+  --text-works-caption: var(--text-copy-small);
+  --leading-works-caption: var(--leading-copy-small);
+  --tracking-works-caption: var(--tracking-copy-small);
+  --color-works-name: var(--color-on-night);
   --color-works-scope: var(--color-on-night-muted);
-  /* The picture's foot to the name's baseline. */
-  --space-works-name-drop: var(--spacing-rhythm-32);
-  /* The name's baseline to the scope's. */
-  --space-works-scope-pitch: var(--spacing-micro-24);
-  /* Their line boxes about their baselines: Newsreader's metrics
-   * (tokens.css), as the title's are Cormorant's. */
-  --space-works-name-head: calc(var(--text-works-name) * (var(--font-newsreader-ascent) + (var(--leading-works-name) - var(--font-newsreader-box)) / 2));
-  --space-works-name-foot: calc(var(--text-works-name) * (var(--font-newsreader-descent) + (var(--leading-works-name) - var(--font-newsreader-box)) / 2));
-  --space-works-scope-head: calc(var(--text-works-scope) * (var(--font-newsreader-ascent) + (var(--leading-works-scope) - var(--font-newsreader-box)) / 2));
-  --space-works-scope-foot: calc(var(--text-works-scope) * (var(--font-newsreader-descent) + (var(--leading-works-scope) - var(--font-newsreader-box)) / 2));
+  /* SPACED AS THE USER'S REFERENCE (2026-11-14, a caption under a picture,
+   * read off it in its own cap heights and set in ours): the picture's foot
+   * to the name's baseline 2.44 caps (20.5px), the name's baseline to the
+   * scope's 2.22 (18.7px) — on the steps, 20 and 20. The name close under
+   * its picture, the scope a clear line below it. Micro steps, the
+   * letter's: the same at every size. */
+  --space-works-name-drop: var(--spacing-micro-20);
+  --space-works-scope-pitch: var(--spacing-micro-20);
+  /* The caption's line box above its first baseline and below its last:
+   * Newsreader's metrics (tokens.css), as the title's are Cormorant's. */
+  --space-works-caption-head: calc(var(--text-works-caption) * (var(--font-newsreader-ascent) + (var(--leading-works-caption) - var(--font-newsreader-box)) / 2));
+  --space-works-caption-foot: calc(var(--text-works-caption) * (var(--font-newsreader-descent) + (var(--leading-works-caption) - var(--font-newsreader-box)) / 2));
 }
 
-/* Tablet and small laptop: nothing steps down: the frame's columns hold (at
- * 768 a narrow card is ~160px, its name its width and its rule gone: too
- * small never breaks a layout).
+/* Tablet and small laptop: nothing steps down here: the print holds the
+ * 1280 picture and the frame's columns hold (at 768 a third is ~250px, its words on its last three columns:
+ * the scope may wrap, and its row's words track takes it).
  *
- * Phone: no frame yet. The axis on column 2 as the hero's and the
- * promise's are; the first work the four columns, every other two (a row
- * of two, each its own 450 × 650); the voices' own phone sizes (tokens.css:
- * the name 15px, the scope 12px) on spaces in proportion, the rows
- * closer. */
+ * Phone (the user's phone frames, 2026-11-12 and 13): the axis on column 2
+ * as the hero's and the promise's are; the tag in the first column, narrow
+ * (eye-tag.css); the voices' own phone sizes (tokens.css; the caption is
+ * the small copy, the same at every size).
+ *
+ * A STEP TIGHTER THAN THE RHYTHM (2026-11-13, the user: "make the mobile
+ * spacing more tight", and not the frame's own spacing, drawn loosely): one
+ * column of pictures is read as a list, not a spread, so each structural
+ * space here takes the rhythm's next step down — three steps of the ladder
+ * where the rhythm comes down two: the section's top to the title 64 (it
+ * was 80), the title to the pictures 80 (96). Every one still a step of
+ * the scale.
+ *
+ * AND BETWEEN THE CARDS A STEP TIGHTER AGAIN (2026-11-14, the user: "gap
+ * closer between cards"): a picture's foot to the next 80. No closer: a
+ * caption must stand nearer its own picture than the next — its capitals
+ * ~12px under it, the next picture ~37px past its last line; at 64 that
+ * would be ~21, and the words would read as either picture's. */
 @media (max-width: 767.98px) {
   :root {
     --grid-works-axis: 2;
-    /* The tag under the title, at the margin. */
-    --grid-works-tag: 1 / span 2;
-    /* A pitch from baseline to baseline rides with the type, which comes
-     * down a rung here. */
-    --space-works-scope-pitch: var(--spacing-micro-20);
+    --grid-works-tag: 1;
+    --text-works-tag: var(--text-eye-tag-narrow);
+    --leading-works-tag: var(--leading-eye-tag-narrow);
+    --space-works-heading-baseline: var(--spacing-rhythm-96);
+    --space-works-heading-gap: var(--spacing-rhythm-128);
+    --space-works-row: var(--spacing-rhythm-128);
   }
 }
 
-/* The section: the page's grid on the page's black. EVERY CARD TAKES THREE
- * ROWS of it, its numeral, its picture and its words (a subgrid), so a
- * row's numerals share one track, its pictures another — its narrow ones
- * as tall as its wide one, whatever their words wrap to — and its words a
- * third. */
+/* The section: the page's grid on the page's black. EVERY CARD TAKES TWO
+ * ROWS of it, its picture and its words, and its own columns of it (a
+ * subgrid both ways), so a row's pictures share one track, its words
+ * another, and every word stands on the page's columns. The query
+ * container THE SINK measures its third by. */
 [data-works] {
   position: relative;
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
   column-gap: var(--spacing-gutter);
@@ -187,26 +226,25 @@
   align-items: start;
 }
 
-/* ── The title ── its foot is the gap to the first row's numerals,
- * baseline to baseline: on the title, not the head, so the tag beside it
+/* ── The title ── its foot is the gap to the first row's pictures,
+ * baseline to their top: on the title, not the head, so the tag beside it
  * never pushes the cards down. */
 [data-works-title] {
   grid-column: var(--grid-works-axis) / -1;
   grid-row: 1;
-  margin-bottom: calc(var(--space-works-heading-gap) - var(--space-works-heading-foot) - var(--space-works-numeral-head));
+  margin-bottom: calc(var(--space-works-heading-gap) - var(--space-works-heading-foot));
   color: var(--color-works-heading);
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-weight: 600;
+  font-family: var(--font-title);
+  font-weight: var(--font-works-heading-weight);
   font-style: italic;
   font-size: var(--text-works-heading);
   line-height: var(--leading-works-heading);
   letter-spacing: var(--tracking-works-heading);
 }
 
-/* Its masks clip DOWN only: each line drops in from above it, and the
- * italic's overhang stays whole. */
-[data-works-title] [data-reveal-mask] {
-  overflow: visible clip;
+/* Its lines as the frame breaks them. */
+[data-works-title-line] {
+  display: block;
 }
 
 /* ── The eye tag ── beside the title, its first cap line on the title's. */
@@ -216,33 +254,34 @@
   margin-top: var(--space-works-tag-hang);
 }
 
-/* ── A card ── six columns, or three; three rows of the section. */
+/* ── A card ── a third of the row, or wide; two rows of the section, and
+ * the room to the next row's pictures after it (its margin: the card's own
+ * box is its picture and its words, the box THE SINK is measured by). A
+ * card at the row's end stands against the right margin. */
 [data-work] {
-  grid-column: span 6;
-  grid-row: span 3;
+  grid-column: span var(--grid-works-third);
+  grid-row: span 2;
   display: grid;
+  grid-template-columns: subgrid;
   grid-template-rows: subgrid;
+  margin-bottom: calc(var(--space-works-row) - var(--space-works-name-drop) - var(--space-works-scope-pitch) - var(--space-works-caption-foot));
 }
 
-/* Its numeral, its baseline a step over the picture. */
-[data-work-numeral] {
-  justify-self: start;
-  margin-bottom: calc(var(--space-works-numeral-drop) - var(--space-works-numeral-foot));
-  color: var(--color-works-numeral);
-  font-size: var(--text-works-numeral);
-  line-height: var(--leading-works-numeral);
-  white-space: nowrap;
+[data-work="wide"] {
+  grid-column: span var(--grid-works-wide);
 }
 
-[data-work="narrow"] {
-  grid-column: span 3;
+[data-work][data-work-end] {
+  grid-column-end: -1;
 }
 
-/* The picture and the words are the link, on the card's last two rows. No
- * hover style: the breath answers the hand. */
+/* The link is the whole card, on its columns and rows. No hover style: the
+ * breath answers the hand. */
 [data-work-link] {
-  grid-row: 2 / -1;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
   display: grid;
+  grid-template-columns: subgrid;
   grid-template-rows: subgrid;
   color: inherit;
   text-decoration: none;
@@ -254,14 +293,22 @@
 }
 
 /* ── The picture's frame ── the glass: it clips what is behind it, and the
- * breath's canvas is laid in it. A wide card's picture is drawn by its
- * aspect; a narrow one fills the row's track. It is the parallax's
- * timeline: how far through the screen it is. */
+ * breath's canvas is laid in it. Drawn by its shape across the card; the
+ * square at its row's foot (where THE SINK brings it). It is the
+ * parallax's timeline: how far through the screen it is. */
 [data-work-media] {
+  grid-column: 1 / -1;
+  grid-row: 1;
   position: relative;
   overflow: hidden;
+  aspect-ratio: var(--size-works-tall-aspect);
   background: var(--color-works-empty);
   view-timeline: --work-depth block;
+}
+
+[data-work="square"] [data-work-media] {
+  align-self: end;
+  aspect-ratio: var(--size-works-square-aspect);
 }
 
 [data-work="wide"] [data-work-media] {
@@ -305,7 +352,21 @@
  * and range; the scale only ever covers more, so no edge shows. The travel
  * a share of the layer's own height (a translate's percentage is), which
  * is the frame's and twice the travel. Where the browser has no scroll
- * timelines, the picture simply stands. */
+ * timelines, the picture simply stands.
+ *
+ * THE SINK (2026-11-12, the user's frame: the middle card, "while
+ * scrolling down, scroll down and align to the other two cards' bottom
+ * edge … smoothly"). The square stands at its row's foot (above); it is
+ * DRAWN up level with its tall neighbours' tops — numeral, picture and
+ * words together, the link moved — and as its row comes up the screen it
+ * comes down to its place, lagging the page as a further thing does, and
+ * lands in line as the row reaches the screen's middle, where the eye is.
+ * On its card's view timeline (the card stands still in the grid: the
+ * link moves, so the timeline never measures its own motion), from the
+ * card's top at the screen's foot to its middle at the screen's middle;
+ * on the drift's curve, in and out, so it leaves its neighbours' tops
+ * softly and lands softly. Scrolled back, it rises again. No timelines,
+ * or reduced motion: it stands in line. */
 @supports (animation-timeline: view()) {
   [data-work-depth] {
     animation:
@@ -315,7 +376,18 @@
     animation-range: cover, entry 0% cover 55%;
   }
 
-  [data-works][data-works-calm] [data-work-depth] {
+  [data-work="square"] {
+    view-timeline: --work-sink block;
+  }
+
+  [data-work="square"] [data-work-link] {
+    animation: works-sink cubic-bezier(0.45, 0, 0.55, 1) both;
+    animation-timeline: --work-sink;
+    animation-range: cover 0% cover 50%;
+  }
+
+  [data-works][data-works-calm] [data-work-depth],
+  [data-works][data-works-calm] [data-work-link] {
     animation: none;
   }
 }
@@ -340,6 +412,16 @@
   }
 }
 
+@keyframes works-sink {
+  from {
+    translate: 0 calc(var(--size-works-sink) * -1);
+  }
+
+  to {
+    translate: 0 0;
+  }
+}
+
 /* The breath's canvas (breath.ts), over the picture, and what it leaves
  * fading on a card the hand has left: never taking the pointer. */
 [data-works-breath] {
@@ -350,62 +432,66 @@
   pointer-events: none;
 }
 
-/* ── The words ── under the picture: the name's baseline at its drop, the
- * scope's a pitch under it, and the room to the next row after — less
- * the next row's numerals, which stand in it. */
+/* ── The numeral ── in the card's first column, on the name's baseline,
+ * centred in the column. */
+[data-work-numeral] {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
+  align-self: start;
+  margin-top: calc(var(--space-works-name-drop) - var(--space-works-numeral-head));
+  color: var(--color-works-numeral);
+  font-size: var(--text-works-numeral);
+  line-height: var(--leading-works-numeral);
+  white-space: nowrap;
+}
+
+/* ── The caption ── on the card's columns after the first, its voice set
+ * once for both lines: the name's baseline at its drop under the picture,
+ * the scope's a pitch under it (one line box, and the room the pitch
+ * leaves over it). */
 [data-work-caption] {
-  padding-top: calc(var(--space-works-name-drop) - var(--space-works-name-head));
-  padding-bottom: calc(var(--space-works-row) - var(--space-works-name-drop) - var(--space-works-scope-pitch) - var(--space-works-scope-foot) - var(--space-works-numeral-head) - var(--space-works-numeral-drop));
+  grid-column: 2 / -1;
+  grid-row: 2;
+  padding-top: calc(var(--space-works-name-drop) - var(--space-works-caption-head));
+  font-size: var(--text-works-caption);
+  line-height: var(--leading-works-caption);
+  letter-spacing: var(--tracking-works-caption);
 }
 
 [data-work-title] {
   color: var(--color-works-name);
-  font-size: var(--text-works-name);
-  line-height: var(--leading-works-name);
-  letter-spacing: var(--tracking-works-name);
 }
 
 [data-work-scope] {
-  margin-top: calc(var(--space-works-scope-pitch) - var(--space-works-name-foot) - var(--space-works-scope-head));
+  margin-top: calc(var(--space-works-scope-pitch) - var(--text-works-caption) * var(--leading-works-caption));
   color: var(--color-works-scope);
-  font-size: var(--text-works-scope);
-  line-height: var(--leading-works-scope);
-  letter-spacing: var(--tracking-works-scope);
 }
 
-/* Phone (the user, 2026-11-07): the first work the four columns at a wide
- * card's aspect, every other two to a row, each a narrow card's aspect
- * (no wide card in its row to take the height of). */
+/* Phone (the user's phone frame, 2026-11-12): every card the four
+ * columns, its picture and words on the three after the first, in the
+ * phone's one shape; its numeral in the first, at the margin, its
+ * capitals' top on the picture's. One card a row: the square has no row
+ * to sink into, and stands. */
 @media (max-width: 767.98px) {
-  /* The tag leads: its first baseline where the title's is on a wide
-   * screen, the title under it. */
-  [data-works] {
-    padding-top: calc(var(--space-works-heading-baseline) - var(--space-works-tag-head));
-  }
-
-  [data-works-head] [data-eye-tag] {
-    grid-row: 1;
-    margin-top: 0;
-  }
-
-  [data-works-title] {
-    grid-row: 2;
-    margin-top: var(--space-works-tag-title);
-  }
-
-  [data-work] {
-    grid-column: span 2;
+  [data-work],
+  [data-work="wide"] {
+    grid-column: 1 / -1;
   }
 
   [data-work] [data-work-media] {
-    aspect-ratio: var(--size-works-narrow-aspect);
+    grid-column: 2 / -1;
+    aspect-ratio: var(--size-works-phone-aspect);
   }
 
-  [data-work]:first-of-type {
-    grid-column: span 4;
+  [data-work-numeral] {
+    grid-row: 1;
+    justify-self: start;
+    align-self: start;
+    margin-top: calc(var(--space-works-numeral-cap) * -1);
   }
 
-  [data-work]:first-of-type [data-work-media] {
-    aspect-ratio: var(--size-works-wide-aspect);
+  [data-work="square"] [data-work-link] {
+    animation: none;
   }
 }
