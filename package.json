@@ -14,6 +14,7 @@
     "lost-plate": "node scripts/lost/plate.mjs",
     "lost-still": "node scripts/lost/still.mjs",
     "grain": "node scripts/grain.mjs",
+    "site-images": "node --no-warnings scripts/site-images.mjs",
     "check:scale": "node scripts/scale-check.mjs"
   },
   "dependencies": {

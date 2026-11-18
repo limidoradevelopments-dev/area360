@@ -25,7 +25,10 @@ interface WorkPageProps {
 export async function generateMetadata({ params }: WorkPageProps): Promise<Metadata> {
   const work = workBySlug((await params).slug);
   if (!work) return {};
-  return { title: `${work.title} — kavi`, description: work.about ?? work.scope };
+  /* NOT INDEXED YET (2026-11-18): the first published version is the home
+     page alone; the works' pages are placeholders, linked from nowhere.
+     Followed, so a crawler that finds one still reaches the home page. */
+  return { title: work.title, description: work.about ?? work.scope, robots: { index: false, follow: true } };
 }
 
 export default async function WorkPage({ params }: WorkPageProps) {

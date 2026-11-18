@@ -78,6 +78,20 @@ components/
 public/fonts/         variable woff2 files only
 scripts/scale-check.mjs  npm run check:scale: a page checked against the
                       scaling system at sixteen widths (Scaling System §10)
+components/site/      THE SITE'S IDENTITY, written once (content.ts: the one
+                      address https://kaviklavis.com, the name Kavi Klavis,
+                      the person Kavin Thilakarathna, their skills and
+                      profiles, the title, description and share words), its
+                      structured data (SiteJsonLd: WebSite, ProfilePage,
+                      Person) and the share card's Open Graph fields
+                      (metadata.ts); read by app/layout.tsx, app/page.tsx,
+                      app/robots.ts, app/sitemap.ts, app/manifest.ts, and the
+                      hero's lists and the header's contact
+scripts/site-images.mjs  npm run site-images: the favicons from the mark's
+                      own paths and the 1200×630 share card
+                      (app/opengraph-image.jpg) from the scene's still, in
+                      the site's type; re-run when the mark, the headline,
+                      the name or the scene's look changes
 ```
 
 `components/works/` is the worked example of a feature folder (index, content, motion, its stylesheet, a client section that owns the entrance, server parts). Copy its shape for every new section.

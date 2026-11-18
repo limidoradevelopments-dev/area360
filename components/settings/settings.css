@@ -249,6 +249,7 @@
   color: var(--color-settings-muted);
   font-size: var(--text-settings-note);
   line-height: var(--leading-settings-note);
+  letter-spacing: var(--tracking-support);
 }
 
 [data-settings-rule] {

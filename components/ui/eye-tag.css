@@ -103,6 +103,7 @@
   color: var(--color-eye-tag);
   font-size: var(--text-eye-tag);
   line-height: var(--leading-eye-tag);
+  letter-spacing: var(--tracking-support);
 }
 
 /* The word: the strip's box, cut into one share a letter, each letter
@@ -151,6 +152,9 @@
   color: var(--color-eye-tag-letter);
   font-size: var(--text-eye-tag-letter);
   line-height: 1;
+  /* One letter alone in its share: tracking would only add space after
+   * it and pull it off its share's middle. */
+  letter-spacing: 0;
   text-align: center;
   text-transform: uppercase;
 }

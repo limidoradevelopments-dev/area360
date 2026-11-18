@@ -383,6 +383,7 @@
   color: var(--color-wp-link);
   font-size: var(--text-wp-link);
   line-height: var(--leading-wp-link);
+  letter-spacing: var(--tracking-support);
   text-decoration: none;
   transition: color var(--duration-wp-link-colour) ease-out;
 }

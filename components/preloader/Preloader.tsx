@@ -204,8 +204,12 @@ export default function Preloader({ className, respectReducedMotion = false }: P
     };
   }, [respectReducedMotion, reveal]);
 
+  /* KEPT OUT OF SEARCH SNIPPETS (data-nosnippet, Google's own attribute):
+     its words are the curtain's drawing — every word stacked many times
+     over — not the page's text, and a crawler reads the document before
+     the curtain has lifted. */
   return (
-    <div ref={scope} data-preloader className={cx(className)}>
+    <div ref={scope} data-preloader data-nosnippet className={cx(className)}>
       <PreloaderCount />
       <div data-preloader-anchor aria-hidden="true">
         <span data-preloader-axis />

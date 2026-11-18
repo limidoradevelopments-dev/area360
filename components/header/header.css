@@ -1,94 +1,51 @@
-/* ─── Header · the masthead ───
+/* ─── Header · the contact ───
  *
  * The site's head over the hero's frame (the user's 1920 frame and their
- * 390 phone frame, 2026-10-30): the mark at the left margin, the time in a
- * hairline box on the copy's column (7; 2 on a phone), the nav at the
- * right margin, its words right-aligned against a hairline. Newsreader,
- * white at 80% (tokens.css: the soft white, words over the scene); the
- * mark and the clock's box in the whole white.
+ * 390 phone frame, 2026-11-18): "Contact ↗" at the right margin, on the
+ * frame's top edge, over an amber hairline. The word in the supporting
+ * voice (tokens.css: 10px, 8 on a phone, −1%) in capitals at Newsreader's
+ * medium, at the soft white (80%) as every word over the scene but the
+ * statement; the arrow and the rule in the accent (the frames).
  *
- * READ OFF THE FRAMES: every size below is the frame's px ÷ 16 (AGENTS.md).
- * The line boxes are on the 4px grid (tokens.css). SINCE 2026-10-30, the
- * user's sizes: the nav alone at 12px, the clock and its zone at 10px
- * as every supporting word is (hero/copy: the notes) — the clock's box
- * then 16px with its hairlines; the nav's words the scale's 4px apart.
+ * READ OFF THE FRAMES: the arrow a capital tall, 8 after the word (4 on a
+ * phone: the frame's 9 and 4); the rule along the line box's foot, which
+ * is where both frames draw it (5.2 and 3.9 under the baseline: the
+ * support's line ends 5.65 under it at 10 on 16, 4.1 at 8 on 12), as wide
+ * as the word and the arrow.
  *
- * THE PHONE IS ITS OWN DRAWING, not the desktop scaled: its mark is a
- * fifth smaller and set a little higher, its words nearer the rule; its nav
- * (12px, the user's, as on the desktop) and its clock the same. So the
- * phone block restates only what it redraws, still as multiples of the
- * one unit.
- *
- * TAKES THE POINTER ONLY WHERE IT IS PRESSED: the scene reads the hand over
- * the hero, and a box over the top of it would tell the scene the hand had
- * left — the camera swinging back to the middle (the dock's lesson,
- * settings.css). Only the links take it.
- *
- * THE MARK IS THE PRINT, THE WORDS THE READER (tokens.css): the mark is
- * part of the picture and scales with it; the clock and the nav are words
- * to read and press, and hold. One unit, the mark's: its artboard px / 16. */
+ * TAKES THE POINTER ONLY WHERE IT IS PRESSED: the scene reads the hand
+ * over the hero, and a box over the top of it would tell the scene the
+ * hand had left — the camera swinging back to the middle (the dock's
+ * lesson, settings.css). Only the link takes it. */
 :root {
-  --header-unit: var(--print);
-
-  /* The user's mark, its own 66×47 box drawn 80px across (its wings ~79px
-   * of ink, as the frame measures). */
-  --size-header-mark: calc(var(--header-unit) * 5);
-  /* 80px */
-  /* Where the mark sits against the top line the clock and nav share. */
-  --space-header-mark-y: 0px;
-
-  /* The site's voices (tokens.css): the clock and its zone the supporting
-   * words (10px), the nav the UI (12px: the one thing here to press). */
+  /* The site's supporting voice (tokens.css). */
   --text-header: var(--text-support);
-  --text-header-nav: var(--text-ui);
   --leading-header: var(--leading-support);
-  --leading-header-nav: var(--leading-ui);
+  --tracking-header: var(--tracking-support);
 
-  /* The clock: the time in its box, the zone under it: either side of the
-   * time, and the box to the zone. */
-  --space-header-clock-pad: var(--spacing-micro-4);
-  --space-header-clock-gap: var(--spacing-micro-4);
-
-  /* The nav: its words (the scale's smallest step, the frame's 6 closed up
-   * at the user's word so the list reads as one block), the gap to the
-   * hairline, and the hairline running on a little past the last word, as
-   * the frame draws it. */
-  --space-header-nav-gap: var(--spacing-micro-4);
-  --space-header-nav-rule: var(--spacing-micro-8);
-  --space-header-rule-tail: var(--spacing-micro-4);
-  /* The scroll cue: the gap that runs down the rule (its ends feathered
-   * inside it, so the rule at rest is whole to its top). */
-  --size-header-cue: var(--spacing-macro-32);
-  --size-header-cue-soft: var(--spacing-micro-12);
-  /* A link's press area reaches this far left of its word (and across the
-   * gaps to its neighbours, and on to the rule). */
+  /* The word to its arrow, and the arrow: a capital tall (a measure of the
+   * glyph, so it rides with the type at every size). */
+  --space-header-arrow-gap: var(--spacing-micro-8);
+  --size-header-arrow: calc(var(--font-newsreader-cap) * 1em);
+  /* A link's press area reaches this far past its words. */
   --space-header-link-reach: var(--space-press-reach);
+
+  /* THE RULE'S ANSWER TO THE HAND: it is wiped away to the right, the way
+   * the arrow points, and drawn back in from the left — the house's wipe
+   * (ui/motion.ts WIPE_EASE) out and in, once. The site's one gesture for
+   * a rule that moves (the work page's ways out run a gap along theirs). */
+  --duration-header-rule-pass: 0.9s;
+  --ease-header-rule-pass: cubic-bezier(0.78, 0, 0.3, 1);
 
   --color-header-ink: var(--color-on-night-soft);
   --color-header-strong: var(--color-on-night);
+  --color-header-accent: var(--color-accent);
 }
 
-/* Phone: the user's 390 frame. The nav keeps the desktop's 12px and its
- * gap (the user, 2026-10-30), so neither is restated here. */
+/* Phone: the user's 390 frame draws the arrow nearer its word. */
 @media (max-width: 767.98px) {
   :root {
-    --size-header-mark: calc(var(--header-unit) * 4);
-    /* 64px */
-    /* The frame sets the mark above the clock's and the nav's line: its
-     * wings, the drawing's weight, then sit level with the clock's box. */
-    --space-header-mark-y: calc(var(--spacing-micro-8) * -1);
-    --space-header-nav-rule: var(--spacing-micro-4);
-    --space-header-rule-tail: 0px;
-  }
-}
-
-/* PRESSED BY A FINGER, the words open to a 24px pitch (a 16px line and a
- * step: WCAG 2.5.8's least, so a thumb cannot take the word beside it).
- * A phone, or anything else driven by touch; a mouse keeps the closed list
- * the frame draws. */
-@media (max-width: 767.98px), (pointer: coarse) {
-  :root {
-    --space-header-nav-gap: var(--spacing-micro-8);
+    --space-header-arrow-gap: var(--spacing-micro-4);
   }
 }
 
@@ -101,173 +58,110 @@
   right: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
   column-gap: var(--spacing-gutter);
   align-items: start;
   padding-inline: var(--spacing-margin);
   padding-top: calc(var(--space-edge-y) + env(safe-area-inset-top, 0px));
   color: var(--color-header-ink);
+  font-weight: var(--font-medium-weight);
   font-size: var(--text-header);
   line-height: var(--leading-header);
+  letter-spacing: var(--tracking-header);
+  text-transform: uppercase;
   pointer-events: none;
 }
 
-/* ── The mark ── spans three columns so a tablet's narrow column never
- * squeezes it; it stands at the margin whatever the span. */
-[data-header-mark] {
-  grid-column: 1 / span 3;
-  justify-self: start;
-  display: block;
-  width: var(--size-header-mark);
-  margin-top: var(--space-header-mark-y);
-  color: var(--color-header-strong);
-  pointer-events: auto;
-}
-
-[data-header-mark] svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 66 / 47;
-}
-
-/* ── The clock ── on the copy's column: its box's edge is the edge the
- * headline and the copy stand on below it. */
-[data-header-clock] {
-  grid-column: 7 / span 3;
-  justify-self: start;
-  display: flex;
-  flex-direction: column;
-  row-gap: var(--space-header-clock-gap);
-}
-
-/* The time's box: a hairline round one line of the body's leading, as
- * wide as the time (the figures are tabular: the box never twitches as
- * they turn). */
-[data-header-time] {
-  display: block;
-  width: fit-content;
-  padding-inline: var(--space-header-clock-pad);
-  border: var(--size-rule) solid var(--color-header-strong);
-  /* The box a whole line of the grid, its two hairlines counted in. */
-  line-height: calc(var(--text-header) * var(--leading-header) - var(--size-rule) * 2);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── The nav ── right-aligned against a hairline at the right margin; the
- * rule spans the nav's own box, so it runs exactly as far as the words
- * (and the tail past them). */
-[data-header-nav] {
-  position: relative;
-  grid-column: 10 / -1;
+/* ── The contact ── in the last column, against the right margin. Under
+ * the hand the word takes the whole white. A hover's tint, not a layout or
+ * a mount: a CSS transition is right. */
+[data-header-contact] {
+  grid-column: -2 / -1;
   justify-self: end;
-}
-
-[data-header-nav] ul {
-  display: flex;
-  flex-direction: column;
-  row-gap: var(--space-header-nav-gap);
-  padding-right: var(--space-header-nav-rule);
-  padding-bottom: var(--space-header-rule-tail);
-  font-size: var(--text-header-nav);
-  line-height: var(--leading-header-nav);
-  text-align: right;
-}
-
-/* ── The rule, and the scroll cue on it (scrollCue.ts) ──
- * A hairline window down the nav's right edge. PRE-ENTRANCE: not yet
- * drawn — it draws down from its top as the nav's words arrive (the
- * curtain's own axis does the same, on the same curve). */
-[data-header-rule] {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--size-rule);
-  overflow: clip;
-  transform: scaleY(0);
-  transform-origin: 50% 0;
-}
-
-/* THE CUE: a strip twice the rule's height and a gap more — the line, a
- * soft gap, the line again — standing so that its lower line fills the
- * window and the gap waits just above it. Moved down by a line and a gap
- * it brings the gap through the window from top to bottom and ends showing
- * its upper line, the same picture as at rest: so it simply lets go, and
- * nothing jumps. One transform, on the compositor. */
-[data-header-rule-ink] {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  top: calc(-100% - var(--size-header-cue));
-  height: calc(200% + var(--size-header-cue));
-  background: linear-gradient(to bottom,
-      var(--color-header-ink) calc(50% - var(--size-header-cue) / 2),
-      transparent calc(50% - var(--size-header-cue) / 2 + var(--size-header-cue-soft)),
-      transparent calc(50% + var(--size-header-cue) / 2 - var(--size-header-cue-soft)),
-      var(--color-header-ink) calc(50% + var(--size-header-cue) / 2));
-}
-
-/* A word, and under the hand the whole white. A hover's tint, not a layout
- * or a mount: a CSS transition is right. */
-[data-header-link] {
   position: relative;
   display: block;
   pointer-events: auto;
   transition: color 0.18s var(--ease-out-soft);
 }
 
-/* THE PRESS AREA, wider than the word: over the gaps to its neighbours (so
- * the list has no dead lines between its words), on to the rule, and a
- * little to the left. */
-[data-header-link]::after {
+/* The word and its arrow on one baseline: the arrow's foot on it, its top
+ * at the capitals' height. */
+[data-header-contact] [data-reveal-line] {
+  display: flex;
+  align-items: baseline;
+  column-gap: var(--space-header-arrow-gap);
+  white-space: nowrap;
+}
+
+[data-header-arrow] {
+  flex: none;
+  width: var(--size-header-arrow);
+  height: var(--size-header-arrow);
+  overflow: visible;
+  fill: none;
+  stroke: var(--color-header-accent);
+  stroke-width: var(--size-rule);
+  vector-effect: non-scaling-stroke;
+}
+
+[data-header-arrow] path {
+  vector-effect: non-scaling-stroke;
+}
+
+/* The hairline under both, along the line box's foot. */
+[data-header-rule] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--size-rule);
+  background: var(--color-header-accent);
+}
+
+/* THE PRESS AREA: a thumb's reach round a line of type (tokens.css). */
+[data-header-contact]::after {
   content: "";
   position: absolute;
-  top: calc(var(--space-header-nav-gap) / -2);
-  bottom: calc(var(--space-header-nav-gap) / -2);
-  left: calc(var(--space-header-link-reach) * -1);
-  right: calc(var(--space-header-nav-rule) * -1);
+  inset: calc(var(--space-header-link-reach) * -1);
 }
 
-[data-header-link]:hover,
-[data-header-link]:focus-visible {
+@media (hover: hover) {
+  [data-header-contact]:hover {
+    color: var(--color-header-strong);
+  }
+
+  [data-header-contact]:hover [data-header-rule] {
+    animation: header-rule-pass var(--duration-header-rule-pass) var(--ease-header-rule-pass);
+  }
+}
+
+[data-header-contact]:focus-visible {
   color: var(--color-header-strong);
-}
-
-[data-header-mark]:focus-visible,
-[data-header-link]:focus-visible {
   outline: var(--size-rule) solid var(--color-focus);
   outline-offset: var(--size-focus-offset);
 }
 
-/* Phone: four columns; the clock on the second, the nav on the last. */
-@media (max-width: 767.98px) {
-  [data-site-header] {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+/* Away to the right, then back from the left: each half on the wipe (the
+ * curve is laid per step), the turn made where nothing is drawn. One
+ * transform, on the compositor. */
+@keyframes header-rule-pass {
+  0% {
+    transform: scaleX(1);
+    transform-origin: 100% 50%;
   }
 
-  [data-header-mark] {
-    grid-column: 1 / span 1;
+  50% {
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
   }
 
-  [data-header-clock] {
-    grid-column: 2 / span 2;
+  50.01% {
+    transform: scaleX(0);
+    transform-origin: 0 50%;
   }
 
-  [data-header-nav] {
-    grid-column: 4 / -1;
-  }
-}
-
-/* No scripting: the clock would hold its placeholder forever, a time that
- * is not the time. */
-@media (scripting: none) {
-  [data-header-clock] {
-    display: none;
-  }
-
-  /* Nothing will draw it: it stands drawn. */
-  [data-header-rule] {
-    transform: none;
+  100% {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
   }
 }

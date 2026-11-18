@@ -1,214 +1,368 @@
 /* ─── Hero · the words ───
  *
- * The headline, the copy under it and the two notes, over the scene (the
- * user's 1920 frame and their 390 phone frame, 2026-10-30), on the hero's
- * twelve columns — four on a phone. The headline Cormorant Garamond
- * medium italic at 30px, −6%, the whole white; the copy Newsreader at
- * 15px, −1%; the notes Newsreader at 10px; every word but the headline at
- * 80% white (tokens.css: the soft white).
+ * The words over the scene (the user's 1920 frame and their 390 phone
+ * frame, 2026-11-18, for the first published version), on the hero's
+ * twelve columns — four on a phone. ALL IN THE BODY'S FACE, AT ITS MEDIUM
+ * (the user: "all text use our body font", "all font weights are
+ * medium"): the statement (tokens.css) the whole white, every other word
+ * the supporting voice in capitals at the soft white (80%), as the mark.
  *
- * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md):
+ * READ OFF THE FRAMES, every size the frame's px ÷ 16 (AGENTS.md), every
+ * space landed on its step:
  *
- *   THE AXIS. Column 7's edge (column 2's on a phone): the clock's box
- *   above, "Visceral," and "Not Just The Visible." and the copy all stand
- *   on it; "Designing The" hangs out to its left (HeroTitle). On a phone
- *   the frame moves the axis 4px in, under the clock's figures.
+ *   THE TOP ROW. Everything hangs from the frame's top edge (tokens.css
+ *   --space-edge-y): the statement on columns 1–5, "Specialized" on 6,
+ *   "Social" on 8, the place and its clock on 9, the header's contact at
+ *   the right margin. Their capitals' tops meet within a pixel (the
+ *   statement's line and the support's share Newsreader's metrics).
  *
- *   THE ROW. The copy and the notes share one top (the frame's guide), at
- *   48.65% of the frame's height, where the notes' first baseline falls on
- *   its middle; the phone frame lifts it to 40.65%, the headline in the sky
- *   over the stone. A share of the height, as the scene frames the stone
- *   and the horizon (hero/stage/camera.ts), so the words keep their place
- *   in the picture on any screen.
+ *   THE STATEMENT. The headline and the words under it, 12 apart (the
+ *   frame's 12.7 between their line boxes), written once as phrases, each
+ *   its own mask: the 1920 frame's breaks from 1280 up, the 390 frame's
+ *   under it (content.ts).
  *
- *   THE GAP. 24px at every size runs from the headline's last baseline to
- *   the copy's line box. The headline's line box reaches below that
- *   baseline, so the margin is the gap less that reach.
+ *   THE LISTS. A label, 8, then its items 4 apart (the frame's 19px pitch:
+ *   the support's 16px line and a step); each item's words 24 in from its
+ *   numeral (the frame's 22–24), so the words stand on one edge whatever
+ *   the numeral. On a phone the frame closes the items up (8 on a 12px
+ *   line, no gap) and brings the words in to 20.
  *
- *   THE LEADING. Every line box a multiple of 4 (tokens.css): the
- *   headline's 32, the copy's 20 (16 on a phone), the notes' 16.
+ *   THE PLACE. Two lines, 8, the clock's hairline box: a line of the
+ *   support at 16px tall, its two hairlines counted in.
  *
- * NEVER TAKES THE POINTER: the scene reads the hand through it. */
+ *   THE FOOT. The mark (64px across, the frame's ~60) at the left margin,
+ *   the byline right-aligned at the right one, both on the frame's bottom
+ *   edge (the same 24 as the top).
+ *
+ * A TABLET (768–1279) keeps the desktop's top row only for the statement
+ * (in the phone frame's breaks: the wide ones would run into the lists)
+ * and lays the lists and the place in a row under it, a snippet's space
+ * down; A PHONE (the user's frame) stacks them, the lists side by side,
+ * the place under them, each a snippet's space apart — the user's 64
+ * (the rhythm's 96, two steps down there), and on a tablet the same token's
+ * own size.
+ *
+ * NEVER TAKES THE POINTER but at its links: the scene reads the hand
+ * through it. */
 :root {
-  /* ── The headline: the site's title voice (tokens.css), 30px on a 32px
-   * line (24 on 32 on a phone) ── */
-  --text-hero-title: var(--text-title);
-  --leading-hero-title: var(--leading-title);
-  --tracking-hero-title: var(--tracking-title);
-  /* The last baseline to the copy. */
-  --space-hero-title-gap: var(--spacing-micro-24);
-  /* How far the headline's line box reaches below its last baseline:
-   * Cormorant Garamond's descent, plus half of what the leading adds to
-   * its box — here takes from it (tokens.css: its metrics). */
-  --space-hero-title-foot: calc(var(--text-hero-title) * (var(--font-cormorant-descent) + (var(--leading-hero-title) - var(--font-cormorant-box)) / 2));
+  /* What the mark reads: it is part of the picture. */
+  --hero-copy-unit: var(--print);
 
-  /* ── The copy and the notes ──
-   * The copy is the site's reading voice (tokens.css: the copy), shared
-   * with every paragraph after the hero: 15px on a 20px line (12 on 16 on
-   * a phone), −1%. */
-  --text-hero-lede: var(--text-copy);
-  --tracking-hero-lede: var(--tracking-copy);
-  --leading-hero-lede: var(--leading-copy);
-  /* The notes: the site's supporting voice (tokens.css: 10px), as the
-   * header's clock is. */
-  --text-hero-note: var(--text-support);
-  --leading-hero-text: var(--leading-support);
-  /* The byline to its year. */
-  --space-hero-note-gap: var(--spacing-micro-4);
+  /* ── The statement (tokens.css: its voice) ── */
+  --text-hero-statement: var(--text-statement);
+  --leading-hero-statement: var(--leading-statement);
+  --tracking-hero-statement: var(--tracking-statement);
+  --color-hero-statement: var(--color-statement);
+  /* The headline's line box to the words under it. */
+  --space-hero-statement-gap: var(--spacing-micro-12);
 
-  /* ── Where they stand ── */
-  --space-hero-row: 48.65%;
-  --space-hero-axis: 0px;
-  /* The row is never higher than lets the headline clear the header's
-   * clock (its box and zone end ~65px down) by a gutter: on a short screen,
-   * a landscape phone, it comes down rather than climbing into the clock. */
-  --space-hero-clear: var(--spacing-macro-96);
-  --space-hero-row-least: calc(var(--space-hero-clear) + 2 * var(--leading-hero-title) * var(--text-hero-title) + var(--space-hero-title-gap) - var(--space-hero-title-foot));
+  /* ── Every other word: the supporting voice (tokens.css) ── */
+  --text-hero-small: var(--text-support);
+  --leading-hero-small: var(--leading-support);
+  --tracking-hero-small: var(--tracking-support);
+  --color-hero-small: var(--color-on-night-soft);
+  /* A link under the hand, or focused. */
+  --color-hero-link-on: var(--color-on-night);
 
-  --color-hero-title: var(--color-on-night);
-  --color-hero-text: var(--color-on-night-soft);
+  /* ── The lists ── */
+  --space-hero-list-label: var(--spacing-micro-8);
+  --space-hero-list-gap: var(--spacing-micro-4);
+  /* The numeral's column: where an item's words start. */
+  --space-hero-numeral: var(--spacing-micro-24);
+  /* Between two links: the list's own gap under a mouse, opened under a
+   * finger (below). */
+  --space-hero-link-gap: var(--space-hero-list-gap);
+
+  /* ── The place and its clock ── */
+  --space-hero-clock-gap: var(--spacing-micro-8);
+  --space-hero-clock-pad: var(--spacing-micro-4);
+  --size-hero-clock: var(--spacing-micro-16);
+
+  /* ── The snippets apart, where they stack (a tablet, a phone) ── */
+  --space-hero-snippet: var(--spacing-rhythm-96);
+
+  /* ── The foot ── */
+  --size-hero-mark: calc(var(--hero-copy-unit) * 4);
+  /* 64px */
 }
 
-/* Tablet and small laptop: the same. The headline is already modest at
- * 30px, and at the band's crowded end (768) the byline wraps into its
- * three columns before it meets the copy.
- *
- * Phone: the user's 390 frame, its own drawing (the byline a note under the
- * supporting voice, the frame's own). The headline's 24px and the copy's
- * 12px are the shared voices' own (tokens.css). */
-@media (max-width: 767.98px) {
+/* PRESSED BY A FINGER, the links open to a 24px pitch (WCAG 2.5.8's least,
+ * so a thumb cannot take the link beside it): the support's 16px line and
+ * a step on a tablet, its 12px line and a step on a phone (below). A mouse
+ * keeps the frame's closed list. */
+@media (pointer: coarse) {
   :root {
-    --text-hero-note: calc(var(--text-rhythm-8) * 1rem);
-    /* On a 12px line (the 4px grid: tokens.css). */
-    --leading-hero-text: 1.5;
-    --space-hero-row: 40.65%;
-    --space-hero-axis: var(--spacing-micro-4);
+    --space-hero-link-gap: var(--spacing-micro-8);
   }
 }
 
-/* The layer: over the stage, the section's height, the hero's grid. Three
- * rows — down to the row (the headline at its foot), the row, and the rest
- * of the height (the phone's byline at its foot). */
+/* Phone: the user's 390 frame. The items closed up, their words nearer the
+ * numerals; the links still a thumb apart. */
+@media (max-width: 767.98px) {
+  :root {
+    --space-hero-list-gap: 0px;
+    --space-hero-numeral: var(--spacing-micro-20);
+    --space-hero-link-gap: var(--spacing-micro-12);
+  }
+}
+
+/* The layer: over the stage, IN THE SECTION'S FLOW and a screen tall at
+ * least (so the section is: HeroSection), on the hero's grid. Three rows —
+ * the top row, the room between, the foot. Taller than a screen only where
+ * the words need it (a phone on its side): then the section grows with it
+ * rather than clip the foot. */
 [data-hero-copy] {
-  position: absolute;
-  inset: 0;
+  position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: max(var(--space-hero-row), var(--space-hero-row-least)) auto minmax(0, 1fr);
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: start;
   column-gap: var(--spacing-gutter);
+  min-height: 100svh;
   padding-inline: var(--spacing-margin);
-  color: var(--color-hero-text);
-  font-size: var(--text-hero-note);
-  line-height: var(--leading-hero-text);
+  padding-top: calc(var(--space-edge-y) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
+  color: var(--color-hero-small);
+  font-weight: var(--font-medium-weight);
+  font-size: var(--text-hero-small);
+  line-height: var(--leading-hero-small);
+  letter-spacing: var(--tracking-hero-small);
+  text-transform: uppercase;
   pointer-events: none;
 }
 
-/* ── The headline ── at the foot of the first row, on the axis. */
-[data-hero-title] {
-  grid-column: 7 / -1;
+/* ── The statement ── */
+[data-hero-statement] {
+  grid-column: 1 / span 5;
   grid-row: 1;
-  align-self: end;
-  margin-bottom: calc(var(--space-hero-title-gap) - var(--space-hero-title-foot));
-  padding-left: var(--space-hero-axis);
-  color: var(--color-hero-title);
-  font-family: var(--font-title);
-  font-weight: var(--font-title-weight);
-  font-style: italic;
-  font-size: var(--text-hero-title);
-  line-height: var(--leading-hero-title);
-  letter-spacing: var(--tracking-hero-title);
 }
 
-/* Its masks clip DOWN only: a line slides up out of the mask's foot, while
- * the hung words, out to the left of the mask's box, and the italic's
- * overhang stay whole. (Clip, not hidden: one axis can clip while the
- * other stays visible.) */
-[data-hero-title] [data-reveal-mask] {
-  overflow: visible clip;
-}
-
-/* What a hung word stands against. */
-[data-hero-title] [data-reveal-line] {
-  position: relative;
-}
-
-/* A hung word: just left of what follows it, on the same line. */
-[data-hero-hang] {
-  position: absolute;
-  top: 0;
-  right: 100%;
+/* NEVER WRAPPED BY THE BROWSER: every break is a frame's (below). */
+[data-hero-title],
+[data-hero-lede] {
+  color: var(--color-hero-statement);
+  font-size: var(--text-hero-statement);
+  line-height: var(--leading-hero-statement);
+  letter-spacing: var(--tracking-hero-statement);
+  text-transform: none;
   white-space: nowrap;
 }
 
-/* ── The copy ── at the top of the row, on the axis. */
 [data-hero-lede] {
-  grid-column: 7 / -1;
-  grid-row: 2;
-  padding-left: var(--space-hero-axis);
-  font-size: var(--text-hero-lede);
-  line-height: var(--leading-hero-lede);
-  letter-spacing: var(--tracking-hero-lede);
-  font-variation-settings: var(--font-copy-variation);
-  font-variant-ligatures: var(--font-copy-ligatures);
+  margin-top: var(--space-hero-statement-gap);
 }
 
-/* ── The notes ── at the top of the row: the availability at the left
- * margin, the byline right-aligned at the right one. */
-[data-hero-note] {
-  grid-row: 2;
-  align-self: start;
+/* A phrase's mask stands in the line, beside the next phrase on it: its
+ * top on the line's (a mask that clips sits on its own foot otherwise, a
+ * line box higher), as tall as the line. */
+[data-hero-title] [data-reveal-mask],
+[data-hero-lede] [data-reveal-mask] {
+  display: inline-block;
+  vertical-align: top;
 }
 
-[data-hero-note="availability"] {
-  grid-column: 1 / span 3;
-  justify-self: start;
+/* The frames' breaks: the 1920 frame's from 1280 up, the 390 frame's
+ * under it. A break not shown is no break: its phrases share a line. */
+@media (min-width: 1280px) {
+  [data-hero-break="narrow"] {
+    display: none;
+  }
 }
 
-/* Three columns: where it runs out of room (a tablet's crowded end) it
- * wraps, balanced, rather than run into the copy. */
-[data-hero-note="byline"] {
-  grid-column: 10 / -1;
-  justify-self: end;
+/* ── The lists ── on the top row: "Specialized" on two columns, "Social"
+ * on one, as the frame sets them. */
+[data-hero-list] {
+  grid-row: 1;
+}
+
+[data-hero-list="specialized"] {
+  grid-column: 6 / span 2;
+}
+
+[data-hero-list="social"] {
+  grid-column: 8 / span 1;
+}
+
+[data-hero-list] ol {
   display: flex;
   flex-direction: column;
-  row-gap: var(--space-hero-note-gap);
+  row-gap: var(--space-hero-list-gap);
+  margin-top: var(--space-hero-list-label);
+}
+
+[data-hero-list="social"] ol {
+  row-gap: var(--space-hero-link-gap);
+}
+
+/* An item: its numeral in a column of its own, its words after it. */
+[data-hero-list] li [data-reveal-line] {
+  display: grid;
+  grid-template-columns: var(--space-hero-numeral) max-content;
+}
+
+/* A link: the whole line, and under the hand the whole white. A hover's
+ * tint, not a layout or a mount: a CSS transition is right. */
+[data-hero-link] {
+  position: relative;
+  display: block;
+  width: fit-content;
+  pointer-events: auto;
+  transition: color 0.18s var(--ease-out-soft);
+}
+
+/* THE PRESS AREA, wider than the words: halfway over the gaps to its
+ * neighbours (so the list has no dead lines between its links), and a
+ * thumb's reach either side. */
+[data-hero-link]::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-hero-link-gap) / -2);
+  bottom: calc(var(--space-hero-link-gap) / -2);
+  left: calc(var(--space-press-reach) * -1);
+  right: calc(var(--space-press-reach) * -1);
+}
+
+@media (hover: hover) {
+  [data-hero-link]:hover {
+    color: var(--color-hero-link-on);
+  }
+}
+
+[data-hero-link]:focus-visible {
+  color: var(--color-hero-link-on);
+  outline: var(--size-rule) solid var(--color-focus);
+  outline-offset: var(--size-focus-offset);
+}
+
+/* ── The place ── on the top row, two columns. */
+[data-hero-place] {
+  grid-column: 9 / span 2;
+  grid-row: 1;
+}
+
+[data-hero-clock] {
+  margin-top: var(--space-hero-clock-gap);
+}
+
+/* The time's box: a hairline round one line, as wide as the time (the
+ * figures are tabular: the box never twitches as they turn). */
+[data-hero-time] {
+  display: block;
+  width: fit-content;
+  padding-inline: var(--space-hero-clock-pad);
+  border: var(--size-rule) solid currentColor;
+  line-height: calc(var(--size-hero-clock) - var(--size-rule) * 2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The foot ── on the frame's bottom edge. */
+[data-hero-mark] {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+  align-self: end;
+  justify-self: start;
+  display: block;
+  width: var(--size-hero-mark);
+}
+
+[data-hero-mark] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 66 / 47;
+}
+
+[data-hero-byline] {
+  grid-column: 9 / -1;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
   text-align: right;
-  text-wrap: balance;
 }
 
-[data-hero-note] small {
-  font-size: inherit;
-}
-
-/* Phone: four columns, the axis on the second. Only "Designing" hangs
- * ("The" stands in the line again, holding it); the byline goes to the
- * frame's foot, as far up as the header is down from the top, and the frame
- * shows no availability. */
-@media (max-width: 767.98px) {
+/* Tablet: the statement alone on the top row, in the phone frame's
+ * breaks; the lists and the place in a row under it, a snippet's space
+ * down, wide enough at the band's crowded end (768) for their longest
+ * lines. */
+@media (max-width: 1279.98px) {
   [data-hero-copy] {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
   }
 
-  [data-hero-title],
-  [data-hero-lede] {
-    grid-column: 2 / -1;
+  [data-hero-statement] {
+    grid-column: 1 / span 6;
   }
 
-  [data-hero-hang="2"] {
-    position: relative;
-    right: auto;
-    display: inline-block;
-  }
-
-  [data-hero-note="availability"] {
+  [data-hero-break="wide"] {
     display: none;
   }
 
-  [data-hero-note="byline"] {
-    grid-column: 2 / -1;
+  [data-hero-list],
+  [data-hero-place] {
+    grid-row: 2;
+    margin-top: var(--space-hero-snippet);
+  }
+
+  [data-hero-list="specialized"] {
+    grid-column: 1 / span 3;
+  }
+
+  [data-hero-list="social"] {
+    grid-column: 4 / span 2;
+  }
+
+  [data-hero-place] {
+    grid-column: 6 / span 3;
+  }
+
+  [data-hero-mark],
+  [data-hero-byline] {
+    grid-row: 4;
+  }
+}
+
+/* Phone: four columns, everything stacked at the left margin, a snippet's
+ * space apart — the lists side by side, the place under them — and the
+ * byline at the foot's left. The frame shows no mark. */
+@media (max-width: 767.98px) {
+  [data-hero-copy] {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+
+  [data-hero-statement] {
+    grid-column: 1 / -1;
+  }
+
+  [data-hero-list="specialized"] {
+    grid-column: 1 / span 2;
+  }
+
+  [data-hero-list="social"] {
+    grid-column: 3 / span 2;
+  }
+
+  [data-hero-place] {
+    grid-column: 1 / span 2;
     grid-row: 3;
-    align-self: end;
-    margin-bottom: calc(var(--space-edge-y) + env(safe-area-inset-bottom, 0px));
+  }
+
+  [data-hero-mark] {
+    display: none;
+  }
+
+  [data-hero-byline] {
+    grid-column: 1 / span 3;
+    grid-row: 5;
+    justify-self: start;
+    text-align: left;
+  }
+}
+
+/* No scripting: the clock would hold its placeholder forever, a time that
+ * is not the time. */
+@media (scripting: none) {
+  [data-hero-clock] {
+    display: none;
   }
 }

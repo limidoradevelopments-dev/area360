@@ -47,8 +47,11 @@ const HOLDS = [
   { from: 0, to: 767, reference: 390 },
 ];
 
-/* The floors no voice goes under (AGENTS.md, Scaling System §8). */
+/* The floors no voice goes under (AGENTS.md, Scaling System §8); on a
+ * phone the support's is 8 (2026-11-18, the user: "mobile supportive text
+ * 8px"). */
 const FLOORS = { copy: 12, ui: 12, support: 10 };
+const PHONE_FLOORS = { ...FLOORS, support: 8 };
 
 const args = process.argv.slice(2);
 const urlArg = args.find((a) => !a.startsWith("--")) ?? "http://localhost:3000/";
@@ -232,7 +235,9 @@ for (const r of results) {
   if (!(v.title > v.sectionTitle && v.sectionTitle > v.heading && v.heading > v.copy && v.copy >= v.copySmall && v.copySmall >= v.support)) {
     problems.push("voices out of order");
   }
-  for (const [name, least] of Object.entries(FLOORS)) if (v[name] < least - 0.01) problems.push(`${name} under ${least}px`);
+  for (const [name, least] of Object.entries(r.width < 768 ? PHONE_FLOORS : FLOORS)) {
+    if (v[name] < least - 0.01) problems.push(`${name} under ${least}px`);
+  }
   if (r.width >= 768 && r.copyLooks.length > 1) problems.push(`texts in the copy voice render differently: ${r.copyLooks.join(" | ")}`);
   const hold = HOLDS.find((h) => r.width >= h.from && r.width <= h.to);
   let measure = r.measures.length ? "wraps" : "";

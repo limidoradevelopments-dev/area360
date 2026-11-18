@@ -34,9 +34,13 @@ import { descentLight, ENTRANCE, REDUCED } from "./motion";
  *                                   lost context, no scripting
  *       [data-hero-stage]           the scene (WebGL), coming up out of the
  *                                   black as it arrives (motion.ts ENTRANCE)
- *   [data-hero-copy]                the words over it: the headline (the
- *                                   section's h1), the copy, the notes
- *                                   (copy/). Never takes the pointer, so the
+ *   [data-hero-copy]                the words over it, IN THE SECTION'S
+ *                                   FLOW: the statement (the section's h1),
+ *                                   the lists, the place, the foot (copy/).
+ *                                   A screen tall at least, so the section
+ *                                   is too; taller only where the words need
+ *                                   it (a phone on its side). Never takes
+ *                                   the pointer but at its links, so the
  *                                   scene reads the hand through it. They
  *                                   scroll with the page.
  *
@@ -71,9 +75,10 @@ import { descentLight, ENTRANCE, REDUCED } from "./motion";
  * script and are waiting when it asks (fetch, CORS, as the engine's own
  * request is — or the browser fetches them twice).
  *
- * THE WORDS (2026-10-30, the user's frames): the headline, the copy and the
- * notes are this section's (copy/HeroCopy, arriving after the stone, as
- * the scene settles); the nav and the clock are the site's header
+ * THE WORDS (2026-11-18, the user's frames for the first published
+ * version): the statement, the lists, the place and its clock, the mark
+ * and the byline are this section's (copy/HeroCopy, the statement arriving
+ * after the stone, as the scene settles); the contact is the site's header
  * (components/header), over the top of this frame.
  */
 export interface HeroSectionProps {
@@ -182,7 +187,7 @@ export default function HeroSection({ className, respectReducedMotion = false }:
       aria-labelledby={HEADING_ID}
       data-hero-ground
       data-hero-fallback={fallback ? "" : undefined}
-      className={cx("relative h-svh w-full overflow-clip", "select-none touch-pan-y", className)}
+      className={cx("relative min-h-svh w-full overflow-clip", "select-none touch-pan-y", className)}
     >
       <div data-hero-frame>
         <div data-hero-scene>

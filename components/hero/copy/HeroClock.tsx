@@ -4,13 +4,15 @@ import { useEffect, useRef } from "react";
 
 import RevealLine from "@/components/ui/RevealLine";
 
-import { HEADER_CLOCK } from "./content";
+import { HERO_CLOCK } from "../content";
 import { CLOCK } from "./motion";
 
 /**
- * ─── HeaderClock ───
+ * ─── HeroClock ───
  *
- * The time in Sri Lanka, ticking, in a hairline box, its zone under it.
+ * The time in Sri Lanka, ticking, in a hairline box (moved here from the
+ * header on 2026-11-18: the frames set it under the place it tells the time
+ * of).
  *
  * WRITTEN STRAIGHT TO THE DOM, ON THE SECOND (AGENTS.md: per-frame work
  * outside React; motion.ts CLOCK). The page is exported static, so the
@@ -23,14 +25,14 @@ import { CLOCK } from "./motion";
 /* en-GB on a 24-hour cycle: "16:12:28". `hourCycle`, not `hour12: false`:
    some engines print midnight as "24:00:00" under the latter. */
 const TIME = new Intl.DateTimeFormat("en-GB", {
-  timeZone: HEADER_CLOCK.timeZone,
+  timeZone: HERO_CLOCK.timeZone,
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
   hourCycle: "h23",
 });
 
-export default function HeaderClock() {
+export default function HeroClock() {
   const face = useRef<HTMLTimeElement>(null);
 
   useEffect(() => {
@@ -43,12 +45,11 @@ export default function HeaderClock() {
       el.textContent = TIME.format(now);
       timer = window.setTimeout(tick, 1000 - (now % 1000) + CLOCK.lateMs);
     };
-    /* PARKED WHILE UNSEEN (2026-10-31, the load audit; as the scroll cue
-       beside it): the header scrolls away with the hero, and a write a
-       second to a box no one sees still restyles it, and wakes the CPU,
-       for the rest of the visit. No timer while the box is off the screen
-       or the tab put aside; back, it is put right at once — the margin
-       starts it before the box is seen, so no stale time is ever drawn. */
+    /* PARKED WHILE UNSEEN (2026-10-31, the load audit): a write a second to
+       a box no one sees still restyles it, and wakes the CPU. No timer
+       while the box is off the screen or the tab put aside; back, it is
+       put right at once — the margin starts it before the box is seen, so
+       no stale time is ever drawn. */
     const sync = () => {
       const seen = near && document.visibilityState === "visible";
       if (seen && !timer) tick();
@@ -66,7 +67,7 @@ export default function HeaderClock() {
       },
       { rootMargin: CLOCK.wakeMargin },
     );
-    sight.observe(el.closest("[data-header-clock]") ?? el);
+    sight.observe(el.closest("[data-hero-clock]") ?? el);
     sync();
     document.addEventListener("visibilitychange", sync);
     return () => {
@@ -77,14 +78,13 @@ export default function HeaderClock() {
   }, []);
 
   return (
-    <p data-header-clock>
-      <span className="sr-only">{HEADER_CLOCK.label} </span>
+    <p data-hero-clock>
+      <span className="sr-only">{HERO_CLOCK.label} </span>
       <RevealLine>
-        <time ref={face} data-header-time>
-          {HEADER_CLOCK.placeholder}
-        </time>{" "}
+        <time ref={face} data-hero-time>
+          {HERO_CLOCK.placeholder}
+        </time>
       </RevealLine>
-      <RevealLine>{HEADER_CLOCK.zone}</RevealLine>
     </p>
   );
 }

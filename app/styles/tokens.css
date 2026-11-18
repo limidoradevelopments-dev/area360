@@ -221,11 +221,36 @@
   --text-ui: calc(var(--text-rhythm-12) * 1rem);
   --leading-ui: calc(16 / 12);
   /* THE SUPPORT (the reader): every supporting word (the user's size,
-   * 2026-10-30) — the clock and its zone, the hero's notes, the dock's
-   * measure, the 404's strip. 10px on a 16px line: the floor, nothing read
-   * is set under it. */
+   * 2026-10-30) — the clock, the hero's lists and notes, the dock's
+   * measure, the 404's strip. 10px on a 16px line, 8 on 12 on a phone (the
+   * phone block), the floor: nothing read is set under it. TRACKED −1%
+   * EVERYWHERE (2026-11-18, the user: "all supportive text letter spacing
+   * -1% … this change affect to existing site as well"): every rule that
+   * sets a text in this voice sets the tracking with it. */
   --text-support: calc(var(--text-rhythm-10) * 1rem);
   --leading-support: 1.6;
+  --tracking-support: -0.01em;
+
+  /* THE STATEMENT (the words): the hero's big text in the body's face
+   * (2026-11-18, the user's frames for the first published version: "all
+   * text use our body font", the big text "28px with 120% line height -2%
+   * letter spacing", "mobile size 22"). Landed on the chord: 24 on a 28px
+   * line (their 120% to the nearest 4px line), 28.8px at 1920 as their
+   * 28px frame is drawn there; it was 30, and stepped down a note the same
+   * day ("way too much"). ON A PHONE IT HOLDS 24 (the user: the nearest
+   * note to their 22), where the chord would take it to 19 (the phone
+   * block). The whole white. A passage, so the words: the print on a
+   * desktop and a tablet, the reader on a phone. */
+  --text-statement: calc(var(--text-rhythm-24) * var(--print-words));
+  --leading-statement: calc(28 / 24);
+  --tracking-statement: -0.02em;
+  --color-statement: var(--color-on-night);
+
+  /* NEWSREADER'S MEDIUM (layout.tsx: its 500 cut, with the optical-size
+   * axis): every word over the hero and in the header since 2026-11-18
+   * (the user: "all font weights are medium"). The body keeps the regular
+   * elsewhere (base.css). */
+  --font-medium-weight: 500;
 
   /* ── Cormorant Garamond's metrics (em) ──
    * Its ascent and descent, and the box they make: what a headline's first
@@ -401,9 +426,17 @@
     --space-margin-step: var(--spacing-micro-16);
     --grid-columns: 4;
     /* The title at 24px on a 32px line, the section title 19 on 24, the
-     * heading 15 on 20. The copy's 4:3 is the same at its 12 on 16. */
+     * heading 15 on 20, the statement 24 on 28. The copy's 4:3 is the same
+     * at its 12 on 16. */
     --leading-title: calc(32 / 24);
     --leading-section-title: calc(24 / 19);
     --leading-heading: calc(20 / 15);
+    /* The statement holds 24 on 28: the 30's phone note, not the 24's. */
+    --text-statement: calc(var(--text-rhythm-30) * var(--print-words));
+    /* THE SUPPORT AT 8 ON 12 (2026-11-18, the user: "mobile supportive
+     * text 8px -1%"): the chord's 8, the hero's phone byline's before it,
+     * on the nearest 4px line to its 4:3. The phone's one voice under 10. */
+    --text-support: calc(var(--text-rhythm-8) * 1rem);
+    --leading-support: 1.5;
   }
 }

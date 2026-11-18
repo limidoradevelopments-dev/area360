@@ -18,3 +18,16 @@
 
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
+
+# THE ONE ADDRESS IS kaviklavis.com (components/site). Cloudflare Pages also
+# serves every deploy at the project's pages.dev host and each preview at
+# its own sub-host: the same pages at other addresses. The pages name
+# kaviklavis.com as their canonical one; these hosts also say outright that
+# they are not to be indexed (Cloudflare's own rule for it). The www host
+# is a redirect in Cloudflare's dashboard (Bulk Redirects), not a header.
+
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex

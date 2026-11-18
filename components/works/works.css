@@ -443,6 +443,7 @@
   color: var(--color-works-numeral);
   font-size: var(--text-works-numeral);
   line-height: var(--leading-works-numeral);
+  letter-spacing: var(--tracking-support);
   white-space: nowrap;
 }
 

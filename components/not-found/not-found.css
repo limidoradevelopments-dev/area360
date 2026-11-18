@@ -199,6 +199,7 @@
   color: var(--color-lost-strip);
   font-size: var(--text-lost-strip);
   line-height: var(--leading-lost-strip);
+  letter-spacing: var(--tracking-support);
 }
 
 /* Between its two columns, never less than a word's space. */

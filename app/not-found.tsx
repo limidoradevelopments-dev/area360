@@ -10,8 +10,11 @@ import { NotFoundSection } from "@/components/not-found";
  * with the home page (components/not-found).
  */
 export const metadata: Metadata = {
-  title: "Page not found — kavi",
+  title: "Page not found",
   description: "This page does not exist. Go back to home.",
+  /* Not a page to find: stated here so the site's own "index" (the root
+     layout) does not stand beside Next's noindex for it. */
+  robots: { index: false, follow: true },
 };
 
 export default function NotFound() {
