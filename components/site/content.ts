@@ -31,7 +31,7 @@ export const PERSON = {
   /** Elsewhere: the hero's "Social" list and the structured data's sameAs. */
   profiles: [
     { label: "LinkedIn", href: "https://www.linkedin.com/in/kavin-thilakarathna/" },
-    { label: "X", href: "https://x.com/kaveen00" },
+    { label: "X", href: "https://x.com/kaviklavis" },
   ] as readonly Profile[],
   /** On X, for the share card's creator. */
   handle: "@kaveen00",
